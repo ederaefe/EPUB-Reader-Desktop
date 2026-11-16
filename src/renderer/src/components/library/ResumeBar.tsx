@@ -1,5 +1,5 @@
 import React from 'react'
-import { Play, BookOpen } from 'lucide-react'
+import { Play } from 'lucide-react'
 import type { Book } from '../../db'
 
 interface ResumeBarProps {
@@ -11,31 +11,24 @@ export const ResumeBar: React.FC<ResumeBarProps> = ({ book, onContinue }) => {
   if (!book) return null
 
   return (
-    <footer className="glass-panel rounded-2xl p-2.5 px-4 flex items-center justify-between shadow-2xl border border-white/10">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-11 rounded-lg bg-slate-800 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
-          {book.coverDataUrl ? (
-            <img src={book.coverDataUrl} alt={book.title} className="w-full h-full object-cover" />
-          ) : (
-            <BookOpen className="w-4 h-4 text-blue-400" />
-          )}
-        </div>
-        <div className="truncate max-w-md">
-          <div className="text-xs font-bold text-white truncate">{book.title}</div>
-          <div className="text-[11px] text-slate-400 truncate">
-            {book.author} · Progress {book.progressPercent || 0}%
-          </div>
+    <footer className="h-11 bg-[#14161c] border-t border-[#232732] px-4 flex items-center justify-between select-none shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => onContinue(book)}
+          className="ice-btn-blue px-3 py-1.5 text-xs flex items-center gap-1.5 shadow-sm"
+        >
+          <Play className="w-3 h-3 fill-current" />
+          <span>Continue reading</span>
+        </button>
+
+        <div className="flex items-center gap-2 truncate text-xs">
+          <span className="font-semibold text-white truncate">{book.title}</span>
+          <span className="text-[#8b949e] truncate">by {book.author || 'Unknown'}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onContinue(book)}
-          className="btn-press px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-lg shadow-blue-600/30"
-        >
-          <Play className="w-3.5 h-3.5 fill-current" />
-          Continue Reading
-        </button>
+      <div className="text-[12px] text-[#8b949e] shrink-0 font-medium">
+        {book.currentPage ? `p. ${book.currentPage} / ${book.totalPages} (${book.progressPercent || 0}%)` : `${book.progressPercent || 0}% read`}
       </div>
     </footer>
   )

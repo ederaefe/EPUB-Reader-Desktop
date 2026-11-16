@@ -33,7 +33,7 @@ export interface Annotation {
   cfiRange: string
   text: string
   note: string
-  color: 'yellow' | 'green' | 'blue' | 'pink' | 'purple'
+  color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline'
   createdAt: number
 }
 
@@ -49,7 +49,7 @@ export interface Bookmark {
 export interface UserSettings {
   id?: number
   theme: 'night' | 'day' | 'light-sepia' | 'dark-sepia'
-  fontFamily: 'serif' | 'sans-serif' | 'monospace'
+  fontFamily: 'original' | 'serif' | 'sans-serif' | 'monospace'
   fontSize: number
   lineHeight: number
   marginWidth: number

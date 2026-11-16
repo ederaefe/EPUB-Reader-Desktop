@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Copy, Highlighter, MessageSquare, Volume2, Globe, Check } from 'lucide-react'
+import { Copy, FileText, Volume2, Globe, Check, Underline } from 'lucide-react'
 import { DICT_PROVIDERS, getDefinitionUrl } from '../../services/dictService'
 import { ttsService } from '../../services/ttsService'
 
@@ -7,7 +7,7 @@ interface SelectionPopupProps {
   selectedText: string
   position: { x: number; y: number }
   onClose: () => void
-  onHighlight: (color: 'yellow' | 'green' | 'blue' | 'pink' | 'purple') => void
+  onHighlight: (color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline') => void
   onAddNote: (note: string) => void
 }
 
@@ -29,7 +29,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     setTimeout(() => {
       setCopied(false)
       onClose()
-    }, 800)
+    }, 700)
   }
 
   const handleSpeak = () => {
@@ -55,98 +55,125 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   return (
     <>
       <div
-        style={{ left: `${position.x}px`, top: `${position.y - 48}px` }}
-        className="fixed z-50 transform -translate-x-1/2 glass-card rounded-full p-1.5 flex items-center gap-1.5 shadow-2xl border border-white/15 select-none animate-fade-in"
+        style={{ left: `${position.x}px`, top: `${Math.max(10, position.y - 44)}px` }}
+        className="fixed z-50 transform -translate-x-1/2 bg-[#1c1f26] border border-[#3c404d] rounded p-1 flex items-center gap-1 shadow-2xl select-none animate-in fade-in duration-100"
       >
         <button
           onClick={handleCopy}
-          className="btn-press px-2.5 py-1 rounded-full text-xs font-medium text-slate-200 hover:text-white hover:bg-white/10 flex items-center gap-1 transition-colors"
+          className="ice-btn-dark px-2 py-1 text-xs gap-1"
           title="Copy Text"
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#8b949e]" />}
           <span>{copied ? 'Copied' : 'Copy'}</span>
         </button>
 
-        {/* Highlights */}
-        <div className="flex items-center gap-1 px-1 border-x border-white/10">
-          <button
-            onClick={() => onHighlight('yellow')}
-            className="w-4 h-4 rounded-full bg-amber-400/80 hover:scale-125 transition-transform"
-            title="Yellow Highlight"
-          />
-          <button
-            onClick={() => onHighlight('green')}
-            className="w-4 h-4 rounded-full bg-emerald-400/80 hover:scale-125 transition-transform"
-            title="Green Highlight"
-          />
+        {/* Icecream Highlight Colors */}
+        <div className="flex items-center gap-1 px-1.5 border-x border-[#2d323f]">
+          {/* Blue */}
           <button
             onClick={() => onHighlight('blue')}
-            className="w-4 h-4 rounded-full bg-blue-400/80 hover:scale-125 transition-transform"
+            className="w-4 h-4 rounded-sm border border-black/40 hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#aed9f1' }}
             title="Blue Highlight"
           />
+          {/* Purple */}
           <button
-            onClick={() => onHighlight('pink')}
-            className="w-4 h-4 rounded-full bg-pink-400/80 hover:scale-125 transition-transform"
-            title="Pink Highlight"
+            onClick={() => onHighlight('purple')}
+            className="w-4 h-4 rounded-sm border border-black/40 hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#ccb8e4' }}
+            title="Purple Highlight"
           />
+          {/* Red */}
+          <button
+            onClick={() => onHighlight('red')}
+            className="w-4 h-4 rounded-sm border border-black/40 hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#f3a2a2' }}
+            title="Red Highlight"
+          />
+          {/* Yellow */}
+          <button
+            onClick={() => onHighlight('yellow')}
+            className="w-4 h-4 rounded-sm border border-black/40 hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#f3e3a2' }}
+            title="Yellow Highlight"
+          />
+          {/* Green */}
+          <button
+            onClick={() => onHighlight('green')}
+            className="w-4 h-4 rounded-sm border border-black/40 hover:scale-110 transition-transform"
+            style={{ backgroundColor: '#b1f3a4' }}
+            title="Green Highlight"
+          />
+          {/* Underline */}
+          <button
+            onClick={() => onHighlight('underline')}
+            className="w-4 h-4 rounded-sm border border-[#3c404d] bg-[#282c37] text-white flex items-center justify-center hover:scale-110 transition-transform"
+            title="Underline text"
+          >
+            <Underline className="w-2.5 h-2.5" />
+          </button>
         </div>
 
         {/* Note */}
         <button
           onClick={() => setShowNoteInput(true)}
-          className="btn-press px-2 py-1 rounded-full text-xs font-medium text-slate-200 hover:text-white hover:bg-white/10 flex items-center gap-1"
+          className="ice-btn-dark px-2 py-1 text-xs gap-1"
           title="Add Note"
         >
-          <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+          <FileText className="w-3.5 h-3.5 text-[#2a69df]" />
           <span>Note</span>
         </button>
 
         {/* Speak */}
         <button
           onClick={handleSpeak}
-          className="btn-press px-2 py-1 rounded-full text-xs font-medium text-slate-200 hover:text-white hover:bg-white/10 flex items-center gap-1"
-          title="Speak Selection"
+          className="ice-btn-dark p-1"
+          title="Read Aloud this text"
         >
-          <Volume2 className="w-3.5 h-3.5 text-purple-400" />
-          <span>Speak</span>
+          <Volume2 className="w-3.5 h-3.5 text-[#8b949e]" />
         </button>
 
-        {/* Define */}
+        {/* Web Dictionary */}
         <button
           onClick={() => setShowDictModal(true)}
-          className="btn-press px-2.5 py-1 rounded-full text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 flex items-center gap-1"
-          title="Web Dictionary Lookup"
+          className="ice-btn-dark p-1"
+          title="Lookup in Dictionary"
         >
-          <Globe className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Define</span>
+          <Globe className="w-3.5 h-3.5 text-[#8b949e]" />
         </button>
       </div>
 
-      {/* Note input dialog */}
+      {/* Note input popup */}
       {showNoteInput && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSaveNote} className="glass-panel rounded-2xl p-5 w-full max-w-sm space-y-4">
-            <h3 className="text-sm font-bold text-white">Add Note to Selection</h3>
-            <p className="text-xs text-slate-400 italic line-clamp-2">"{selectedText}"</p>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveNote}
+            className="bg-[#1c1f26] border border-[#3c404d] rounded p-4 w-96 shadow-2xl space-y-3"
+          >
+            <div className="text-xs font-semibold text-white">Add Note to Highlight</div>
+            <div className="text-[11px] text-[#8b949e] italic line-clamp-2 bg-[#12141a] p-2 rounded border border-[#2d323f]">
+              "{selectedText}"
+            </div>
             <textarea
               autoFocus
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder="Write your note here..."
-              className="w-full h-24 bg-white/5 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-400"
+              rows={3}
+              className="ice-input w-full p-2 text-xs"
             />
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowNoteInput(false)}
-                className="btn-press px-3 py-1.5 rounded-xl bg-white/5 text-xs text-slate-400"
+                onClick={() => {
+                  setShowNoteInput(false)
+                  onClose()
+                }}
+                className="ice-btn-dark px-3 py-1 text-xs"
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="btn-press px-4 py-1.5 rounded-xl bg-blue-600 text-xs font-bold text-white shadow-md"
-              >
+              <button type="submit" className="ice-btn-blue px-3 py-1 text-xs">
                 Save Note
               </button>
             </div>
@@ -154,38 +181,32 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         </div>
       )}
 
-      {/* Dictionary Modal */}
+      {/* Contextual Dictionary Modal */}
       {showDictModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl border border-white/15">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Globe className="w-4 h-4 text-cyan-400" />
-                Dictionary & Translation Matrix
-              </h3>
-              <button
-                onClick={() => setShowDictModal(false)}
-                className="btn-press p-1 text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-300">
-              Lookup <span className="font-semibold text-cyan-300">"{selectedText}"</span> in:
-            </p>
-
-            <div className="grid grid-cols-2 gap-2">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-[#1c1f26] border border-[#3c404d] rounded p-4 w-80 shadow-2xl space-y-3">
+            <div className="text-xs font-semibold text-white">Lookup "{selectedText.slice(0, 24)}..."</div>
+            <div className="space-y-1">
               {DICT_PROVIDERS.map((provider) => (
                 <button
                   key={provider.name}
                   onClick={() => handleOpenDict(provider.name)}
-                  className="btn-press p-2.5 rounded-xl glass-card text-left text-xs font-medium text-slate-200 hover:text-white hover:border-cyan-400/40 transition-colors truncate"
+                  className="w-full text-left px-3 py-2 bg-[#232732] hover:bg-[#282c37] border border-[#2d323f] rounded text-xs text-[#c9d1d9] flex items-center justify-between"
                 >
-                  {provider.name}
+                  <span>{provider.name}</span>
+                  <span className="text-[10px] text-[#8b949e]">Open &rarr;</span>
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => {
+                setShowDictModal(false)
+                onClose()
+              }}
+              className="ice-btn-dark w-full py-1 text-xs"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

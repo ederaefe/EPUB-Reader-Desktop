@@ -1,73 +1,71 @@
 import React, { useEffect } from 'react'
 import { useAppStore } from './stores/useAppStore'
 import { db } from './db'
-import { AppBackground } from './components/ui/AppBackground'
 import { TitleBar } from './components/ui/TitleBar'
 import { LibraryView } from './components/library/LibraryView'
 import { EpubReaderView } from './components/reader/EpubReaderView'
+import { HelpModal } from './components/ui/HelpModal'
+
+// Bundled authentic assets
+import fifthSeasonCover from './assets/covers/the_fifth_season.jpg'
+import fifthSeasonEpub from './assets/books/the_fifth_season.epub'
 
 export const App: React.FC = () => {
-  const { currentView, activeBook, setView, setActiveBook } = useAppStore()
+  const { currentView, activeBook, setView, setActiveBook, toggleHelpModal } = useAppStore()
 
-  // Seed sample books from APK on first launch if library is empty
+  // Seed authentic starter library matching screen recording
   useEffect(() => {
     async function seedDefaults() {
       const count = await db.books.count()
       if (count === 0) {
-        // Add sample starter books
-        await db.books.bulkAdd([
-          {
-            filePath: 'src/renderer/src/assets/books/alicesadventures.epub',
-            title: "Alice's Adventures in Wonderland",
-            author: 'Lewis Carroll',
-            coverDataUrl: null,
-            format: 'epub',
-            fileSize: 188710,
-            addedAt: Date.now(),
-            lastOpenedAt: Date.now(),
-            progressCfi: null,
-            progressPercent: 12,
-            currentPage: 15,
-            totalPages: 120,
-            categoryId: null,
-            isFavorite: true,
-            isRead: false,
-            isDeleted: false
-          },
-          {
-            filePath: 'src/renderer/src/assets/books/mobydick.epub',
-            title: 'Moby-Dick; or, The Whale',
-            author: 'Herman Melville',
-            coverDataUrl: null,
-            format: 'epub',
-            fileSize: 836537,
-            addedAt: Date.now(),
-            lastOpenedAt: null,
-            progressCfi: null,
-            progressPercent: 0,
-            currentPage: 1,
-            totalPages: 520,
-            categoryId: null,
-            isFavorite: false,
-            isRead: false,
-            isDeleted: false
-          }
-        ])
+        // Pre-seed The Fifth Season matching the video
+        await db.books.add({
+          filePath: fifthSeasonEpub,
+          title: 'The Fifth Season',
+          author: 'N. K. Jemisin',
+          coverDataUrl: fifthSeasonCover,
+          format: 'epub',
+          fileSize: 3200797,
+          addedAt: Date.now(),
+          lastOpenedAt: Date.now(),
+          progressCfi: null,
+          progressPercent: 3,
+          currentPage: 13,
+          totalPages: 416,
+          categoryId: null,
+          isFavorite: false,
+          isRead: false,
+          isDeleted: false
+        })
 
-        // Add default categories
+        // Pre-seed categories
         await db.categories.bulkAdd([
-          { name: 'Classics', color: '#3b82f6', createdAt: Date.now() },
+          { name: 'Favorites', color: '#f59e0b', createdAt: Date.now() },
           { name: 'Sci-Fi & Fantasy', color: '#8b5cf6', createdAt: Date.now() },
-          { name: 'Science & Tech', color: '#10b981', createdAt: Date.now() }
+          { name: 'Classics', color: '#2a69df', createdAt: Date.now() }
         ])
       }
     }
     seedDefaults()
   }, [])
 
+  // Global hotkeys listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F1') {
+        e.preventDefault()
+        toggleHelpModal()
+      } else if (e.key === 'F11') {
+        e.preventDefault()
+        window.desktopAPI?.toggleFullscreen?.()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleHelpModal])
+
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden text-slate-100 font-sans select-none relative">
-      <AppBackground />
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#171a21] text-[#e6edf3] font-sans select-none">
       <TitleBar />
 
       <main className="flex-1 flex overflow-hidden">
@@ -83,6 +81,8 @@ export const App: React.FC = () => {
           />
         )}
       </main>
+
+      <HelpModal />
     </div>
   )
 }

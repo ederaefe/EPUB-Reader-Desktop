@@ -9,33 +9,51 @@ export default {
   theme: {
     extend: {
       colors: {
-        mesh: {
-          base: '#0b0e14',
-          blob1: '#1a2d52',
-          blob2: '#271d47',
-          blob3: '#123328'
+        icecream: {
+          sidebar: '#171a21',
+          canvas: '#1c1f26',
+          topbar: '#14161c',
+          dock: '#14161c',
+          card: '#1f232d',
+          cardHover: '#262a36',
+          border: '#2b2f3a',
+          divider: '#262a34',
+          btnDark: '#282c37',
+          btnBorder: '#3c404d',
+          btnHover: '#333846',
+          blue: '#2a69df',
+          blueHover: '#3b79ef',
+          activeNav: '#232732',
+          textMuted: '#8b949e',
+          textSubtle: '#6e7681'
         },
-        glass: {
-          surface: 'rgba(18, 24, 40, 0.65)',
-          raised: 'rgba(26, 36, 60, 0.75)',
-          overlay: 'rgba(14, 20, 34, 0.85)',
-          border: 'rgba(255, 255, 255, 0.08)',
-          shine: 'rgba(255, 255, 255, 0.14)'
+        themeDay: {
+          bg: '#ffffff',
+          text: '#202020'
         },
-        accent: {
-          DEFAULT: '#3b82f6',
-          hover: '#2563eb',
-          glow: '#1d4ed8'
+        themeNight: {
+          bg: '#1c1f26',
+          text: '#d8d8d8'
+        },
+        themeLightSepia: {
+          bg: '#fbf0d9',
+          text: '#5f4b32'
+        },
+        themeDarkSepia: {
+          bg: '#2d261e',
+          text: '#d5c7b3'
         }
       },
-      borderRadius: {
-        card: '16px',
-        drawer: '24px',
-        pill: '9999px'
+      fontFamily: {
+        sans: ['"Segoe UI"', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        readingSerif: ['Georgia', '"Times New Roman"', 'serif'],
+        readingSans: ['"Segoe UI"', '-apple-system', 'sans-serif']
       },
-      boxShadow: {
-        glass: '0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-        panel: '0 16px 40px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14)'
+      borderRadius: {
+        sm: '2px',
+        DEFAULT: '4px',
+        md: '4px',
+        lg: '6px'
       }
     }
   },

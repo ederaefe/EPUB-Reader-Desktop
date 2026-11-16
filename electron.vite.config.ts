@@ -24,6 +24,7 @@ export default defineConfig({
     }
   },
   renderer: {
+    assetsInclude: ['**/*.epub'],
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src/renderer/src')

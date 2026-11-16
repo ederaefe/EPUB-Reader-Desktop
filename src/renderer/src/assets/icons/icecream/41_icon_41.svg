@@ -1,0 +1,7 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="10" height="1" rx="0.5" transform="matrix(1 0 0 -1 6 4)" fill="black"/>
+<rect width="10" height="1" rx="0.5" transform="matrix(1 0 0 -1 6 8)" fill="black"/>
+<rect width="10" height="1" rx="0.5" transform="matrix(1 0 0 -1 6 12)" fill="black"/>
+<path d="M2.5 0.5L2.5 5.5M2.5 0.5L3.5 1.5M2.5 0.5L1.5 1.5M3.5 1.5L4.5 2.5L0.5 2.5L1.5 1.5M3.5 1.5L1.5 1.5" stroke="black" stroke-linejoin="round"/>
+<path d="M2.5 14.5L2.5 9.5M2.5 14.5L3.5 13.5M2.5 14.5L1.5 13.5M3.5 13.5L4.5 12.5L0.5 12.5L1.5 13.5M3.5 13.5L1.5 13.5" stroke="black" stroke-linejoin="round"/>
+</svg>

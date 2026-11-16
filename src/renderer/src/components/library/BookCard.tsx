@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpen, Heart, Trash2, FileText } from 'lucide-react'
+import { BookOpen, Star, Trash2 } from 'lucide-react'
 import type { Book } from '../../db'
 import { db } from '../../db'
 
@@ -7,9 +7,10 @@ interface BookCardProps {
   book: Book
   onOpen: (book: Book) => void
   onUpdate: () => void
+  viewMode?: 'grid' | 'list'
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate }) => {
+export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, viewMode = 'grid' }) => {
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!book.id) return
@@ -24,82 +25,118 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate }) =>
     onUpdate()
   }
 
-  const formatBadgeColors = {
-    epub: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
-    pdf: 'bg-rose-500/20 text-rose-300 border-rose-400/30',
-    mobi: 'bg-amber-500/20 text-amber-300 border-amber-400/30',
-    txt: 'bg-slate-500/20 text-slate-300 border-slate-400/30'
+  if (viewMode === 'list') {
+    return (
+      <div
+        onClick={() => onOpen(book)}
+        className="w-full h-11 px-3 bg-[#1f232d] hover:bg-[#282c37] border-b border-[#2b2f3a] flex items-center justify-between text-xs text-[#c9d1d9] cursor-pointer transition-colors group select-none"
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+          <div className="w-6 h-8 bg-[#171a21] border border-[#3c404d] rounded-sm overflow-hidden shrink-0 flex items-center justify-center">
+            {book.coverDataUrl ? (
+              <img src={book.coverDataUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <BookOpen className="w-3 h-3 text-[#6e7681]" />
+            )}
+          </div>
+          <span className="font-medium text-white truncate">{book.title}</span>
+          <span className="text-[#8b949e] truncate">({book.author || 'Unknown'})</span>
+        </div>
+
+        <div className="flex items-center gap-6 shrink-0 text-[11px] text-[#8b949e]">
+          <span className="uppercase text-[10px] px-1.5 py-0.5 bg-[#171a21] border border-[#2d323f] rounded font-mono">
+            {book.format}
+          </span>
+          <span className="w-16 text-right">
+            {book.currentPage ? `p.${book.currentPage} / ${book.totalPages}` : `${book.progressPercent || 0}%`}
+          </span>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={toggleFavorite}
+              className={`p-1 rounded hover:bg-[#333846] ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#8b949e]'}`}
+              title="Favorite"
+            >
+              <Star className="w-3.5 h-3.5 fill-current" />
+            </button>
+            <button
+              onClick={handleDelete}
+              className="p-1 rounded hover:bg-[#333846] text-[#8b949e] hover:text-[#f85149]"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
+  // Grid view (1:1 Icecream Reader book cover display)
   return (
     <div
       onClick={() => onOpen(book)}
-      className="btn-press glass-card rounded-2xl p-3 group hover:border-blue-400/35 transition-all duration-200 cursor-pointer flex flex-col justify-between"
+      className="w-36 flex flex-col cursor-pointer group select-none transition-transform duration-100 hover:-translate-y-0.5"
     >
-      {/* Cover / Placeholder */}
-      <div className="aspect-[3/4] rounded-xl bg-slate-800/80 mb-3 overflow-hidden relative border border-white/5 flex items-center justify-center">
+      {/* Rectangular Cover Container */}
+      <div className="w-full aspect-[3/4.2] rounded bg-[#151820] border border-[#2d323f] group-hover:border-[#3c404d] shadow-md relative overflow-hidden flex flex-col justify-between">
         {book.coverDataUrl ? (
-          <img src={book.coverDataUrl} alt={book.title} className="w-full h-full object-cover" />
+          <img
+            src={book.coverDataUrl}
+            alt={book.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
         ) : (
-          <div className="text-center p-3 z-10">
-            <BookOpen className="w-8 h-8 text-blue-400/50 mx-auto mb-2" />
-            <div className="text-xs font-bold text-white line-clamp-2">{book.title}</div>
-            <div className="text-[11px] text-slate-400 mt-1 line-clamp-1">{book.author}</div>
+          <div className="w-full h-full p-2.5 flex flex-col justify-between bg-gradient-to-b from-[#232834] to-[#151820]">
+            <div>
+              <div className="text-[10px] uppercase font-mono tracking-wider text-[#6e7681]">
+                {book.format}
+              </div>
+              <div className="text-[12px] font-bold text-white line-clamp-3 mt-1.5 leading-snug">
+                {book.title}
+              </div>
+            </div>
+            <div className="text-[11px] text-[#8b949e] line-clamp-1">{book.author}</div>
           </div>
         )}
 
-        {/* Top Badges */}
-        <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5">
-          <span
-            className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-              formatBadgeColors[book.format] || formatBadgeColors.epub
-            }`}
-          >
-            {book.format}
-          </span>
-        </div>
-
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Action icons on hover */}
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 p-0.5 rounded border border-white/10">
           <button
             onClick={toggleFavorite}
-            className={`p-1 rounded-lg backdrop-blur-md transition-colors ${
-              book.isFavorite ? 'bg-rose-500/40 text-rose-300' : 'bg-black/40 text-slate-300 hover:text-white'
-            }`}
+            className={`p-1 rounded hover:bg-white/20 ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#8b949e]'}`}
             title="Favorite"
           >
-            <Heart className="w-3.5 h-3.5 fill-current" />
+            <Star className="w-3 h-3 fill-current" />
           </button>
           <button
             onClick={handleDelete}
-            className="p-1 rounded-lg bg-black/40 text-slate-300 hover:text-rose-400 backdrop-blur-md transition-colors"
+            className="p-1 rounded hover:bg-white/20 text-[#8b949e] hover:text-[#f85149]"
             title="Delete"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3 h-3" />
           </button>
         </div>
 
-        {/* Bottom Vignette */}
-        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#0e1422] to-transparent pointer-events-none" />
+        {/* Bottom embedded progress indicator */}
+        <div className="absolute inset-x-0 bottom-0 h-1 bg-[#171a21]/80">
+          <div
+            className="bg-[#2a69df] h-full transition-all duration-300"
+            style={{ width: `${Math.max(2, book.progressPercent || 0)}%` }}
+          />
+        </div>
       </div>
 
-      {/* Info & Progress */}
-      <div className="space-y-1.5">
-        <h3 className="text-xs font-bold text-white truncate" title={book.title}>
+      {/* Book Metadata below cover */}
+      <div className="mt-2 space-y-0.5">
+        <div
+          className="text-[12px] font-semibold text-[#e6edf3] truncate leading-tight group-hover:text-white"
+          title={book.title}
+        >
           {book.title}
-        </h3>
-        <p className="text-[11px] text-slate-400 truncate">{book.author || 'Unknown Author'}</p>
-
-        <div className="pt-1">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
-            <span>Progress</span>
-            <span className="font-semibold text-slate-200">{book.progressPercent || 0}%</span>
-          </div>
-          <div className="w-full bg-white/10 rounded-full h-1 overflow-hidden">
-            <div
-              className="bg-blue-500 h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.max(2, book.progressPercent || 0)}%` }}
-            />
-          </div>
+        </div>
+        <div className="text-[11px] text-[#8b949e] truncate leading-tight">
+          {book.author || 'Unknown'}
         </div>
       </div>
     </div>

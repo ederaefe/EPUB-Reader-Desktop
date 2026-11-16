@@ -11,48 +11,155 @@
   }
 }
 
-/* Encapsulated Obsidian Glassmorphism utility classes */
-.glass-card {
-  background: rgba(18, 24, 40, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* Base native typography and background */
+body {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #171a21;
+  color: #e6edf3;
+  user-select: none;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
-.glass-panel {
-  background: rgba(14, 20, 34, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+/* 1:1 Icecream Desktop Button Classes */
+.ice-btn-dark {
+  background-color: #282c37;
+  border: 1px solid #3c404d;
+  color: #e6edf3;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 100ms ease, border-color 100ms ease;
 }
 
-.glass-pill {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+.ice-btn-dark:hover {
+  background-color: #333846;
+  border-color: #4e5363;
 }
 
-/* Micro-interaction: scale 0.96 on press */
-.btn-press:active {
-  transform: scale(0.96);
-  transition: transform 150ms ease-out;
+.ice-btn-dark:active {
+  background-color: #22252e;
 }
 
-/* Custom smooth scrollbar */
+.ice-btn-blue {
+  background-color: #2a69df;
+  border: 1px solid #2a69df;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 100ms ease;
+}
+
+.ice-btn-blue:hover {
+  background-color: #3b79ef;
+  border-color: #3b79ef;
+}
+
+.ice-btn-blue:active {
+  background-color: #2156b8;
+}
+
+.ice-icon-btn {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: #9da7b3;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 100ms ease;
+}
+
+.ice-icon-btn:hover {
+  background-color: #282c37;
+  border-color: #3c404d;
+  color: #ffffff;
+}
+
+.ice-icon-btn.active {
+  background-color: #282c37;
+  border-color: #2a69df;
+  color: #ffffff;
+}
+
+/* Rectangular desktop input */
+.ice-input {
+  background-color: #12141a;
+  border: 1px solid #2d323f;
+  color: #e6edf3;
+  border-radius: 4px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.ice-input:focus {
+  border-color: #2a69df;
+}
+
+.ice-input::placeholder {
+  color: #6e7681;
+}
+
+/* Custom crisp rectangular desktop scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
+
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #171a21;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 9999px;
+  background: #323744;
+  border-radius: 2px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: #464c5e;
+}
+
+/* Icecream Reader Highlighting Annotations */
+span.bluenote {
+  background-color: #aed9f1 !important;
+  color: #1a1a1a !important;
+}
+
+span.purplenote {
+  background-color: #ccb8e4 !important;
+  color: #1a1a1a !important;
+}
+
+span.rednote {
+  background-color: #f3a2a2 !important;
+  color: #1a1a1a !important;
+}
+
+span.yellownote {
+  background-color: #f3e3a2 !important;
+  color: #1a1a1a !important;
+}
+
+span.greennote {
+  background-color: #b1f3a4 !important;
+  color: #1a1a1a !important;
+}
+
+span.underlinenote {
+  text-decoration: underline !important;
+}
+
+span.speechActive {
+  background-color: #f3e3a2 !important;
+  color: #111111 !important;
 }

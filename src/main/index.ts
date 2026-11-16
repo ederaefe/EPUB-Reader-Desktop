@@ -13,7 +13,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 600,
     frame: false,
-    backgroundColor: '#0b0e14',
+    backgroundColor: '#171a21',
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -52,6 +52,11 @@ ipcMain.handle('window:maximize', () => {
 })
 ipcMain.handle('window:close', () => mainWindow?.close())
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() || false)
+ipcMain.handle('window:toggleFullscreen', () => {
+  if (mainWindow) {
+    mainWindow.setFullScreen(!mainWindow.isFullScreen())
+  }
+})
 
 // File System & Dialogs
 ipcMain.handle('dialog:openFiles', async () => {

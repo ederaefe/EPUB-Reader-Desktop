@@ -1,15 +1,19 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
-  ArrowLeft,
+  ChevronLeft,
   List,
+  FileText,
+  Bookmark,
+  Search,
+  Columns,
+  Square as SinglePageIcon,
   Volume2,
   VolumeX,
+  Maximize2,
+  Minimize2,
+  Settings,
   Play,
-  Pause,
-  Sliders,
-  Maximize,
-  Minimize,
-  BookMarked
+  Square
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -24,21 +28,28 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapt
     activeBook,
     isTTSActive,
     setTTSActive,
-    isAutoscrollActive,
-    setAutoscrollActive,
+    isTOCDrawerOpen,
     toggleTOCDrawer,
+    isNotesDrawerOpen,
+    toggleNotesDrawer,
+    isBookmarksDrawerOpen,
+    toggleBookmarksDrawer,
+    isSearchDrawerOpen,
+    toggleSearchDrawer,
+    isSettingsDrawerOpen,
     toggleSettingsDrawer,
-    settings
+    settings,
+    updateSettings
   } = useAppStore()
 
-  const [isFullscreen, setIsFullscreen] = React.useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen()
+      document.documentElement.requestFullscreen().catch(() => {})
       setIsFullscreen(true)
     } else {
-      document.exitFullscreen()
+      document.exitFullscreen().catch(() => {})
       setIsFullscreen(false)
     }
   }
@@ -49,7 +60,6 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapt
       setTTSActive(false)
     } else {
       setTTSActive(true)
-      // Play current page text
       const readerIframe = document.querySelector('iframe')
       const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Reading'
       ttsService.speak(text, {
@@ -61,76 +71,127 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapt
     }
   }
 
+  const togglePageSpread = () => {
+    updateSettings({
+      pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+    })
+  }
+
   return (
-    <header className="h-11 glass-card border-b border-white/5 flex items-center justify-between px-4 z-40">
-      <div className="flex items-center gap-3">
+    <header className="h-10 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0 z-40">
+      {/* Left Group: Back to Library & Section Drawers */}
+      <div className="flex items-center gap-1.5">
         <button
           onClick={onBack}
-          className="btn-press px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
-          title="Back to Library"
+          className="ice-btn-dark h-7 px-2.5 gap-1 text-xs"
+          title="Back to Library (Esc)"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ChevronLeft className="w-3.5 h-3.5" />
           <span>Library</span>
         </button>
-        <span className="text-xs font-semibold text-slate-200 truncate max-w-sm">
-          {activeBook?.title} {currentChapter ? `· ${currentChapter}` : ''}
-        </span>
-      </div>
 
-      <div className="flex items-center gap-2">
-        {/* TOC Drawer button */}
+        <div className="h-4 w-px bg-[#2d323f] mx-1" />
+
+        {/* Contents (TOC) */}
         <button
           onClick={() => toggleTOCDrawer()}
-          className="btn-press p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-          title="Table of Contents"
+          className={`h-7 px-2 ice-icon-btn gap-1.5 text-xs ${isTOCDrawerOpen ? 'active' : ''}`}
+          title="Table of Contents (Left drawer)"
         >
-          <List className="w-4 h-4" />
+          <List className="w-3.5 h-3.5 text-[#8b949e]" />
+          <span>Contents</span>
         </button>
 
-        {/* TTS Toggle */}
+        {/* Notes */}
+        <button
+          onClick={() => toggleNotesDrawer()}
+          className={`h-7 px-2 ice-icon-btn gap-1.5 text-xs ${isNotesDrawerOpen ? 'active' : ''}`}
+          title="Notes & Highlights"
+        >
+          <FileText className="w-3.5 h-3.5 text-[#8b949e]" />
+          <span>Notes</span>
+        </button>
+
+        {/* Bookmarks */}
+        <button
+          onClick={() => toggleBookmarksDrawer()}
+          className={`h-7 px-2 ice-icon-btn gap-1.5 text-xs ${isBookmarksDrawerOpen ? 'active' : ''}`}
+          title="Bookmarks (Ctrl+B)"
+        >
+          <Bookmark className="w-3.5 h-3.5 text-[#8b949e]" />
+          <span>Bookmarks</span>
+        </button>
+
+        {/* Search */}
+        <button
+          onClick={() => toggleSearchDrawer()}
+          className={`w-7 h-7 ice-icon-btn ${isSearchDrawerOpen ? 'active' : ''}`}
+          title="Search in book (Ctrl+F)"
+        >
+          <Search className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Center: Title & Current Chapter */}
+      <div className="flex items-center gap-2 truncate max-w-md text-center">
+        <span className="text-xs font-semibold text-white truncate">
+          {activeBook?.title || 'EPUB Reader'}
+        </span>
+        {currentChapter && (
+          <span className="text-[11px] text-[#8b949e] truncate hidden md:inline">
+            · {currentChapter}
+          </span>
+        )}
+      </div>
+
+      {/* Right Controls: Columns, TTS, Fullscreen, Settings */}
+      <div className="flex items-center gap-1.5">
+        {/* Toggle Page View (Single / Double) */}
+        <button
+          onClick={togglePageSpread}
+          className={`h-7 px-2 ice-icon-btn gap-1 text-xs ${settings.pageSpread === 'double' ? 'active' : ''}`}
+          title={`Page spread: ${settings.pageSpread === 'double' ? 'Two columns (F10)' : 'Single column (F10)'}`}
+        >
+          {settings.pageSpread === 'double' ? (
+            <Columns className="w-3.5 h-3.5 text-[#2a69df]" />
+          ) : (
+            <SinglePageIcon className="w-3.5 h-3.5 text-[#8b949e]" />
+          )}
+          <span className="text-[11px]">{settings.pageSpread === 'double' ? 'Double' : 'Single'}</span>
+        </button>
+
+        {/* Read Aloud TTS button */}
         <button
           onClick={handleToggleTTS}
-          className={`btn-press px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-            isTTSActive
-              ? 'bg-purple-600/30 text-purple-300 border border-purple-400/40 shadow-sm animate-pulse'
-              : 'text-slate-400 hover:text-white hover:bg-white/10'
+          className={`h-7 px-2 ice-icon-btn gap-1 text-xs ${
+            isTTSActive ? 'active border-[#2a69df] text-[#79c0ff]' : ''
           }`}
-          title="Text-to-Speech (Librera Rules)"
+          title="Read Aloud (F7 / F8)"
         >
-          {isTTSActive ? <Volume2 className="w-3.5 h-3.5 text-purple-300" /> : <VolumeX className="w-3.5 h-3.5" />}
-          <span>TTS</span>
+          {isTTSActive ? (
+            <Volume2 className="w-3.5 h-3.5 text-[#2a69df] animate-pulse" />
+          ) : (
+            <Play className="w-3.5 h-3.5 text-[#8b949e] fill-current" />
+          )}
+          <span className="text-[11px]">Read Aloud</span>
         </button>
 
-        {/* Autoscroll Toggle */}
-        <button
-          onClick={() => setAutoscrollActive(!isAutoscrollActive)}
-          className={`btn-press px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-            isAutoscrollActive
-              ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-400/40'
-              : 'text-slate-400 hover:text-white hover:bg-white/10'
-          }`}
-          title="Hands-free Autoscroll"
-        >
-          {isAutoscrollActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          <span>Scroll</span>
-        </button>
-
-        {/* Settings Drawer */}
-        <button
-          onClick={() => toggleSettingsDrawer()}
-          className="btn-press p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-          title="Reading Settings (Themes, Typography, Dimming)"
-        >
-          <Sliders className="w-4 h-4" />
-        </button>
-
-        {/* Fullscreen */}
+        {/* Fullscreen Toggle */}
         <button
           onClick={toggleFullscreen}
-          className="btn-press p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-7 h-7 ice-icon-btn"
           title="Fullscreen (F11)"
         >
-          {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+        </button>
+
+        {/* Settings Flyout Trigger */}
+        <button
+          onClick={() => toggleSettingsDrawer()}
+          className={`w-7 h-7 ice-icon-btn ${isSettingsDrawerOpen ? 'active text-white' : ''}`}
+          title="Reading Settings"
+        >
+          <Settings className="w-3.5 h-3.5" />
         </button>
       </div>
     </header>

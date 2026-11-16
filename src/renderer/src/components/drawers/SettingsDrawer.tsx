@@ -1,5 +1,5 @@
 import React from 'react'
-import { X, Sun, Moon, Coffee, Sliders, Type, Volume2, MoveDown } from 'lucide-react'
+import { X, Columns, Square, AlignJustify, Minus, Plus } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 
 export const SettingsDrawer: React.FC = () => {
@@ -7,229 +7,197 @@ export const SettingsDrawer: React.FC = () => {
 
   if (!isSettingsDrawerOpen) return null
 
+  const handleLineSpacingChange = (delta: number) => {
+    const next = Math.max(1.0, Math.min(2.5, Number((settings.lineHeight + delta).toFixed(1))))
+    updateSettings({ lineHeight: next })
+  }
+
   return (
-    <aside className="fixed inset-y-0 right-0 w-84 glass-panel rounded-drawer p-5 z-50 flex flex-col justify-between shadow-2xl border-l border-white/10 overflow-y-auto animate-slide-in select-none">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-blue-400" />
-            <h2 className="text-sm font-bold text-white tracking-wide">Reading Settings</h2>
-          </div>
+    <aside className="fixed inset-y-0 right-0 w-80 bg-[#171a21] border-l border-[#232732] z-50 flex flex-col justify-between shadow-2xl select-none animate-in slide-in-from-right duration-150">
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3 flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-white">Settings</span>
           <button
             onClick={() => toggleSettingsDrawer(false)}
-            className="btn-press p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Themes (Day, Night, Light Sepia, Dark Sepia) */}
-        <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-            Color Themes
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => updateSettings({ theme: 'day' })}
-              className={`btn-press p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                settings.theme === 'day'
-                  ? 'bg-amber-100 text-stone-900 border-amber-400 shadow-md'
-                  : 'bg-stone-200/90 text-stone-800 border-transparent hover:bg-stone-100'
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5 text-amber-600" />
-              Day
-            </button>
-
-            <button
-              onClick={() => updateSettings({ theme: 'night' })}
-              className={`btn-press p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                settings.theme === 'night'
-                  ? 'bg-blue-600 text-white border-blue-400 shadow-md'
-                  : 'bg-[#121620] text-slate-300 border-white/10 hover:bg-[#1a202c]'
-              }`}
-            >
-              <Moon className="w-3.5 h-3.5 text-blue-300" />
-              Night
-            </button>
-
-            <button
-              onClick={() => updateSettings({ theme: 'light-sepia' })}
-              className={`btn-press p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                settings.theme === 'light-sepia'
-                  ? 'bg-[#fbf0d9] text-[#5f4b32] border-[#bda078] shadow-md'
-                  : 'bg-[#f5e7c8] text-[#5f4b32] border-transparent hover:bg-[#faeed6]'
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#886944]" />
-              Light Sepia
-            </button>
-
-            <button
-              onClick={() => updateSettings({ theme: 'dark-sepia' })}
-              className={`btn-press p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                settings.theme === 'dark-sepia'
-                  ? 'bg-[#2b2621] text-[#d5c7b3] border-[#7d674c] shadow-md'
-                  : 'bg-[#201c18] text-[#a89984] border-white/5 hover:bg-[#2b2621]'
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#b09673]" />
-              Dark Sepia
-            </button>
-          </div>
-        </div>
-
-        {/* Dimming Slider */}
-        <div>
-          <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-            <span>Dimming Overlay</span>
-            <span className="font-semibold text-blue-400">{settings.dimming}%</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="70"
-            value={settings.dimming}
-            onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-            className="w-full accent-blue-500 cursor-pointer"
-          />
-        </div>
-
-        {/* Page Spread (Single vs Double) */}
-        <div>
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-            Page Layout
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => updateSettings({ pageSpread: 'single' })}
-              className={`btn-press p-2 rounded-xl text-xs font-semibold border transition-all ${
-                settings.pageSpread === 'single'
-                  ? 'bg-blue-600/30 text-blue-300 border-blue-400/40'
-                  : 'bg-white/5 text-slate-400 border-transparent hover:bg-white/10'
-              }`}
-            >
-              Single Page
-            </button>
-            <button
-              onClick={() => updateSettings({ pageSpread: 'double' })}
-              className={`btn-press p-2 rounded-xl text-xs font-semibold border transition-all ${
-                settings.pageSpread === 'double'
-                  ? 'bg-blue-600/30 text-blue-300 border-blue-400/40'
-                  : 'bg-white/5 text-slate-400 border-transparent hover:bg-white/10'
-              }`}
-            >
-              Double Spread
-            </button>
-          </div>
-        </div>
-
-        {/* Typography */}
-        <div className="space-y-3">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Typography
-          </label>
-
-          {/* Font Family */}
-          <div className="grid grid-cols-3 gap-1.5 text-xs">
-            {(['serif', 'sans-serif', 'monospace'] as const).map((font) => (
+        {/* Settings Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs text-[#c9d1d9]">
+          {/* 1. Theme Tiles (4 in a row, matching Icecream rec_05.jpg) */}
+          <div>
+            <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
+              Color profile
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {/* Day */}
               <button
-                key={font}
-                onClick={() => updateSettings({ fontFamily: font })}
-                className={`btn-press p-2 rounded-xl border capitalize font-medium transition-all ${
-                  settings.fontFamily === font
-                    ? 'bg-blue-600/30 text-blue-300 border-blue-400/40'
-                    : 'bg-white/5 text-slate-400 border-transparent hover:bg-white/10'
+                onClick={() => updateSettings({ theme: 'day' })}
+                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                  settings.theme === 'day'
+                    ? 'border-[#2a69df] bg-white ring-1 ring-[#2a69df]'
+                    : 'border-[#3c404d] bg-white/90 hover:bg-white'
                 }`}
               >
-                {font === 'sans-serif' ? 'Sans' : font}
+                <span className="text-sm font-serif font-bold text-[#111111]">A</span>
+                <span className="text-[10px] text-[#444444] font-medium">Day</span>
               </button>
-            ))}
+
+              {/* Night */}
+              <button
+                onClick={() => updateSettings({ theme: 'night' })}
+                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                  settings.theme === 'night'
+                    ? 'border-[#2a69df] bg-[#1c1f26] ring-1 ring-[#2a69df]'
+                    : 'border-[#3c404d] bg-[#1c1f26] hover:bg-[#232732]'
+                }`}
+              >
+                <span className="text-sm font-serif font-bold text-white">A</span>
+                <span className="text-[10px] text-[#8b949e] font-medium">Night</span>
+              </button>
+
+              {/* Light Sepia */}
+              <button
+                onClick={() => updateSettings({ theme: 'light-sepia' })}
+                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                  settings.theme === 'light-sepia'
+                    ? 'border-[#2a69df] bg-[#fbf0d9] ring-1 ring-[#2a69df]'
+                    : 'border-[#3c404d] bg-[#f5e7c8] hover:bg-[#fbf0d9]'
+                }`}
+              >
+                <span className="text-sm font-serif font-bold text-[#5f4b32]">A</span>
+                <span className="text-[10px] text-[#5f4b32] font-medium">Sepia</span>
+              </button>
+
+              {/* Dark Sepia */}
+              <button
+                onClick={() => updateSettings({ theme: 'dark-sepia' })}
+                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                  settings.theme === 'dark-sepia'
+                    ? 'border-[#2a69df] bg-[#2d261e] ring-1 ring-[#2a69df]'
+                    : 'border-[#3c404d] bg-[#201c18] hover:bg-[#2d261e]'
+                }`}
+              >
+                <span className="text-sm font-serif font-bold text-[#d5c7b3]">A</span>
+                <span className="text-[10px] text-[#d5c7b3] font-medium">D-Sepia</span>
+              </button>
+            </div>
           </div>
 
-          {/* Font Size */}
+          {/* 2. Dimming Slider */}
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-              <span>Font Size</span>
-              <span className="font-semibold text-blue-400">{settings.fontSize}px</span>
+            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
+              <span>Dimming</span>
+              <span className="font-mono text-white">{settings.dimming}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="75"
+              value={settings.dimming}
+              onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
+              className="w-full accent-[#2a69df] h-1.5 bg-[#232732] rounded cursor-pointer"
+            />
+          </div>
+
+          <div className="h-px bg-[#232732]" />
+
+          {/* 3. Page view (Single vs Double, 1:1 Icecream rec_05.jpg) */}
+          <div>
+            <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
+              Page view
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => updateSettings({ pageSpread: 'double' })}
+                className={`h-8 rounded flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
+                  settings.pageSpread === 'double'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
+                }`}
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span>Double</span>
+              </button>
+
+              <button
+                onClick={() => updateSettings({ pageSpread: 'single' })}
+                className={`h-8 rounded flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
+                  settings.pageSpread === 'single'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
+                }`}
+              >
+                <Square className="w-3.5 h-3.5" />
+                <span>Single</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="h-px bg-[#232732]" />
+
+          {/* 4. Text Font Dropdown (rec_05.jpg shows 'Original font') */}
+          <div>
+            <label className="text-[11px] font-medium text-[#8b949e] block mb-1.5">
+              Text font
+            </label>
+            <select
+              value={settings.fontFamily}
+              onChange={(e) => updateSettings({ fontFamily: e.target.value as any })}
+              className="ice-input w-full h-8 px-2 text-xs bg-[#12141a] border-[#2d323f] text-white rounded cursor-pointer"
+            >
+              <option value="original">Original font</option>
+              <option value="sans-serif">Segoe UI (Sans)</option>
+              <option value="serif">Georgia (Serif)</option>
+              <option value="monospace">Consolas (Monospace)</option>
+            </select>
+          </div>
+
+          {/* 5. Font size Slider (rec_05.jpg shows 21px) */}
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
+              <span>Font size</span>
+              <span className="font-mono text-white">{settings.fontSize}px</span>
             </div>
             <input
               type="range"
               min="12"
-              max="36"
+              max="42"
+              step="1"
               value={settings.fontSize}
               onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-              className="w-full accent-blue-500 cursor-pointer"
+              className="w-full accent-[#2a69df] h-1.5 bg-[#232732] rounded cursor-pointer"
             />
           </div>
 
-          {/* Line Height */}
+          {/* 6. Line Spacing buttons */}
           <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-              <span>Line Spacing</span>
-              <span className="font-semibold text-blue-400">{settings.lineHeight.toFixed(1)}</span>
+            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
+              <span>Line spacing</span>
+              <span className="font-mono text-white">{Math.round(settings.lineHeight * 100)}%</span>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => updateSettings({ lineHeight: Math.max(1.1, settings.lineHeight - 0.1) })}
-                className="btn-press flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300"
+                onClick={() => handleLineSpacingChange(-0.1)}
+                className="ice-btn-dark flex-1 h-8 gap-1.5 text-xs"
+                title="Decrease line spacing"
               >
-                Decrease
+                <Minus className="w-3.5 h-3.5" />
+                <span>Decrease</span>
               </button>
               <button
-                onClick={() => updateSettings({ lineHeight: Math.min(2.5, settings.lineHeight + 0.1) })}
-                className="btn-press flex-1 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300"
+                onClick={() => handleLineSpacingChange(0.1)}
+                className="ice-btn-dark flex-1 h-8 gap-1.5 text-xs"
+                title="Increase line spacing"
               >
-                Increase
+                <Plus className="w-3.5 h-3.5" />
+                <span>Increase</span>
               </button>
             </div>
-          </div>
-        </div>
-
-        {/* TTS & Autoscroll Controls */}
-        <div className="space-y-3 pt-3 border-t border-white/10">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            Speech & Autoscroll
-          </label>
-
-          {/* TTS Speed */}
-          <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-              <span className="flex items-center gap-1.5">
-                <Volume2 className="w-3.5 h-3.5 text-purple-400" />
-                TTS Speed
-              </span>
-              <span className="font-semibold text-purple-400">{settings.ttsSpeed.toFixed(1)}x</span>
-            </div>
-            <input
-              type="range"
-              min="0.5"
-              max="2.5"
-              step="0.1"
-              value={settings.ttsSpeed}
-              onChange={(e) => updateSettings({ ttsSpeed: Number(e.target.value) })}
-              className="w-full accent-purple-500 cursor-pointer"
-            />
-          </div>
-
-          {/* Autoscroll Speed */}
-          <div>
-            <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-              <span className="flex items-center gap-1.5">
-                <MoveDown className="w-3.5 h-3.5 text-cyan-400" />
-                Autoscroll Velocity
-              </span>
-              <span className="font-semibold text-cyan-400">{settings.autoscrollSpeed} px/s</span>
-            </div>
-            <input
-              type="range"
-              min="10"
-              max="150"
-              step="5"
-              value={settings.autoscrollSpeed}
-              onChange={(e) => updateSettings({ autoscrollSpeed: Number(e.target.value) })}
-              className="w-full accent-cyan-500 cursor-pointer"
-            />
           </div>
         </div>
       </div>

@@ -7,34 +7,34 @@ export const TitleBar: React.FC = () => {
   const handleClose = () => window.desktopAPI?.close()
 
   return (
-    <header className="app-drag-region h-10 w-full glass-card border-b border-white/5 flex items-center justify-between px-4 z-50">
-      <div className="flex items-center gap-2.5">
-        <div className="w-5 h-5 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400">
-          <BookOpen className="w-3.5 h-3.5" />
+    <header className="app-drag-region h-8 w-full bg-[#14161c] border-b border-[#232732] flex items-center justify-between px-3 z-50 select-none">
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 rounded-sm bg-[#2a69df] flex items-center justify-center text-white">
+          <BookOpen className="w-2.5 h-2.5" />
         </div>
-        <span className="text-xs font-semibold tracking-wide text-slate-200">
-          EPUB Reader Desktop
+        <span className="text-[12px] font-medium text-[#c8d1dc]">
+          Icecream Ebook Reader
         </span>
       </div>
 
-      <div className="app-no-drag flex items-center gap-1">
+      <div className="app-no-drag flex items-center h-full">
         <button
           onClick={handleMinimize}
-          className="btn-press w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
           title="Minimize"
         >
           <Minus className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={handleMaximize}
-          className="btn-press w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
           title="Maximize"
         >
           <Square className="w-3 h-3" />
         </button>
         <button
           onClick={handleClose}
-          className="btn-press w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#c42b1c] transition-colors"
           title="Close"
         >
           <X className="w-3.5 h-3.5" />

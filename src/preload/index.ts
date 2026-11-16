@@ -5,6 +5,7 @@ export interface DesktopAPI {
   maximize: () => Promise<void>
   close: () => Promise<void>
   isMaximized: () => Promise<boolean>
+  toggleFullscreen: () => Promise<void>
   openFiles: () => Promise<string[]>
   openFolder: () => Promise<string | null>
   scanFolder: (folderPath: string) => Promise<string[]>
@@ -17,6 +18,7 @@ const api: DesktopAPI = {
   maximize: () => ipcRenderer.invoke('window:maximize'),
   close: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   openFiles: () => ipcRenderer.invoke('dialog:openFiles'),
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   scanFolder: (p) => ipcRenderer.invoke('fs:scanFolder', p),
