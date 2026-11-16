@@ -110,6 +110,19 @@ export class AdaptiveScrollEngine {
     this.notify()
   }
 
+  public isPausedState(): boolean {
+    return this.isPaused
+  }
+
+  public reset(wpm = 250): void {
+    this.currentWpm = wpm
+    this.targetWpm = wpm
+    this.observedWpm = wpm
+    this.isPaused = false
+    this.isMicroPausing = false
+    this.notify()
+  }
+
   public setTargetWpm(wpm: number): void {
     this.targetWpm = Math.max(80, Math.min(1200, wpm))
     this.currentWpm = this.targetWpm

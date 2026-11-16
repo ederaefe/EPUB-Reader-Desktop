@@ -115,7 +115,7 @@ export const SettingsDrawer: React.FC = () => {
               max="75"
               value={settings.dimming}
               onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-              className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+              className="ice-slider w-full"
             />
           </div>
 
@@ -181,7 +181,7 @@ export const SettingsDrawer: React.FC = () => {
               step="1"
               value={settings.fontSize}
               onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-              className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+              className="ice-slider w-full"
             />
           </div>
 
@@ -239,7 +239,7 @@ export const SettingsDrawer: React.FC = () => {
                     step="100"
                     value={settings.warmFilterTemp || 3200}
                     onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
-                    className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                    className="ice-slider w-full"
                   />
                   <div className="flex justify-between text-[9px] text-[#6e7681] mt-0.5">
                     <span>2000K Candle</span>
@@ -259,7 +259,7 @@ export const SettingsDrawer: React.FC = () => {
                     step="5"
                     value={settings.warmFilterIntensity || 40}
                     onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
-                    className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                    className="ice-slider w-full"
                   />
                 </div>
               </div>
@@ -294,7 +294,7 @@ export const SettingsDrawer: React.FC = () => {
                 step="25"
                 value={settings.targetWpm || 250}
                 onChange={(e) => updateSettings({ targetWpm: Number(e.target.value) })}
-                className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                className="ice-slider w-full"
               />
             </div>
           </div>

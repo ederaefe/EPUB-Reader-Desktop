@@ -3,7 +3,7 @@ import { Minus, Square, X, BookOpen } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 
 export const TitleBar: React.FC = () => {
-  const { currentView, activeBook } = useAppStore()
+  const { currentView, activeBook, currentChapterTitle } = useAppStore()
 
   const handleMinimize = () => window.desktopAPI?.minimize()
   const handleMaximize = () => window.desktopAPI?.maximize()
@@ -25,9 +25,9 @@ export const TitleBar: React.FC = () => {
 
       {/* Center title in Reader mode */}
       <div className="flex-1 text-center truncate px-4 pointer-events-none">
-        {currentView === 'reader' && (
+        {currentView === 'reader' && activeBook && (
           <span className="text-[12px] text-[#8b949e]">
-            {activeBook ? `${activeBook.title}: Prologue: you are here` : 'The Fifth Season: Prologue: you are here'}
+            {activeBook.title}{currentChapterTitle ? `: ${currentChapterTitle}` : ''}
           </span>
         )}
       </div>

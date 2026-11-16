@@ -12,6 +12,7 @@ interface AppState {
   // Active book
   activeBook: Book | null
   activeBookBuffer: ArrayBuffer | null
+  currentChapterTitle: string
 
   // Modals & drawers
   isTOCDrawerOpen: boolean
@@ -40,6 +41,7 @@ interface AppState {
   setFormatFilter: (fmt: string | null) => void
   setViewMode: (mode: 'grid' | 'list') => void
   setActiveBook: (book: Book | null, buffer?: ArrayBuffer | null) => void
+  setCurrentChapterTitle: (title: string) => void
   toggleTOCDrawer: (open?: boolean) => void
   toggleNotesDrawer: (open?: boolean) => void
   toggleBookmarksDrawer: (open?: boolean) => void
@@ -65,6 +67,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   activeBook: null,
   activeBookBuffer: null,
+  currentChapterTitle: '',
 
   isTOCDrawerOpen: false,
   isNotesDrawerOpen: false,
@@ -108,6 +111,7 @@ export const useAppStore = create<AppState>((set) => ({
   setFormatFilter: (fmt) => set({ formatFilter: fmt }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setActiveBook: (book, buffer = null) => set({ activeBook: book, activeBookBuffer: buffer }),
+  setCurrentChapterTitle: (title) => set({ currentChapterTitle: title }),
   toggleTOCDrawer: (open) =>
     set((s) => ({
       isTOCDrawerOpen: open ?? !s.isTOCDrawerOpen,

@@ -230,6 +230,7 @@ export const FullSettingsModal: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
                     <span>Dimming</span>
+                    <span className="font-mono text-white text-[11px]">{settings.dimming}%</span>
                   </div>
                   <input
                     type="range"
@@ -237,29 +238,38 @@ export const FullSettingsModal: React.FC = () => {
                     max="75"
                     value={settings.dimming}
                     onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-                    className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                    className="ice-slider w-full"
                   />
                 </div>
 
-                {/* Toggles */}
-                <div className="space-y-2 pt-2">
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer">
+                {/* Toggles (Sleek Modern Desktop Checkboxes) */}
+                <div className="space-y-2.5 pt-2">
+                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={copyExternal}
                       onChange={(e) => setCopyExternal(e.target.checked)}
-                      className="accent-[#2a69df] rounded-[2px] w-3.5 h-3.5"
+                      className="ice-checkbox"
                     />
-                    <span>Copy eBooks from external devices</span>
+                    <span className="group-hover:text-white transition-colors">Copy eBooks from external devices</span>
                   </label>
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer">
+                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={autoUpdate}
                       onChange={(e) => setAutoUpdate(e.target.checked)}
-                      className="accent-[#2a69df] rounded-[2px] w-3.5 h-3.5"
+                      className="ice-checkbox"
                     />
-                    <span>Check for updates automatically</span>
+                    <span className="group-hover:text-white transition-colors">Check for the updates automatically</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={sendStats}
+                      onChange={(e) => setSendStats(e.target.checked)}
+                      className="ice-checkbox"
+                    />
+                    <span className="group-hover:text-white transition-colors">Send anonymous usage stats</span>
                   </label>
                 </div>
               </div>
@@ -326,7 +336,7 @@ export const FullSettingsModal: React.FC = () => {
                   max="42"
                   value={settings.fontSize}
                   onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-                  className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                  className="ice-slider w-full"
                 />
               </div>
 
@@ -342,7 +352,7 @@ export const FullSettingsModal: React.FC = () => {
                   step="10"
                   value={Math.round(settings.lineHeight * 100)}
                   onChange={(e) => updateSettings({ lineHeight: Number(e.target.value) / 100 })}
-                  className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                  className="ice-slider w-full"
                 />
               </div>
 
@@ -377,7 +387,7 @@ export const FullSettingsModal: React.FC = () => {
                         step="100"
                         value={settings.warmFilterTemp || 3200}
                         onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
-                        className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                        className="ice-slider w-full"
                       />
                     </div>
 
@@ -393,7 +403,7 @@ export const FullSettingsModal: React.FC = () => {
                         step="5"
                         value={settings.warmFilterIntensity || 40}
                         onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
-                        className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                        className="ice-slider w-full"
                       />
                     </div>
                   </div>
@@ -417,7 +427,7 @@ export const FullSettingsModal: React.FC = () => {
                   step="0.1"
                   value={settings.ttsSpeed}
                   onChange={(e) => updateSettings({ ttsSpeed: Number(e.target.value) })}
-                  className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                  className="ice-slider w-full"
                 />
               </div>
 
@@ -433,7 +443,7 @@ export const FullSettingsModal: React.FC = () => {
                   step="0.1"
                   value={settings.ttsPitch}
                   onChange={(e) => updateSettings({ ttsPitch: Number(e.target.value) })}
-                  className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+                  className="ice-slider w-full"
                 />
               </div>
 

@@ -38,7 +38,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     toggleRSVP,
     activeFootnote,
     setActiveFootnote,
-    toggleBookmarksDrawer
+    toggleBookmarksDrawer,
+    setCurrentChapterTitle
   } = useAppStore()
 
   const [toc, setToc] = useState<TocItem[]>([])
@@ -54,6 +55,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 })
   const [isBottomHovered, setIsBottomHovered] = useState(false)
   const [chapterFullText, setChapterFullText] = useState('')
+  const [isEnginePaused, setIsEnginePaused] = useState(false)
+
+  // Real-time manual reading cadence profiler refs
+  const pageEnteredAtRef = useRef<number>(Date.now())
+  const lastWordsOnPageRef = useRef<number>(180)
 
   // Theme palettes matching Semply Reader
   const themeStyles = {
@@ -83,7 +89,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     )
 
     noteLinks.forEach((link: any) => {
-      link.addEventListener('click', (e: MouseEvent) => {
+      // Idle suspension on hovering over footnote links
+      link.addEventListener('mouseenter', () => {
+        adaptiveScrollEngine.setPaused(true)
+      })
+      link.addEventListener('mouseleave', () => {
+        adaptiveScrollEngine.setPaused(false)
+      })
+
+      link.addEventListener('click', async (e: MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
         const href = link.getAttribute('href') || ''
@@ -93,6 +107,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const targetElem = doc.getElementById(hash)
           if (targetElem) {
             noteText = targetElem.innerText.trim()
+          } else if (epubBookRef.current) {
+            // Target might be in a separate endnotes chapter file
+            try {
+              const targetDocPath = href.split('#')[0]
+              if (targetDocPath) {
+                const section = (epubBookRef.current.spine as any)?.get?.(targetDocPath) ||
+                  (epubBookRef.current as any)?.section?.(targetDocPath)
+                if (section) {
+                  const loadedDoc = await section.load((epubBookRef.current as any).load.bind(epubBookRef.current))
+                  const el = loadedDoc?.getElementById(hash)
+                  if (el) noteText = el.innerText.trim()
+                }
+              }
+            } catch (err) {
+              console.warn('Cross-document footnote load error:', err)
+            }
           }
         }
         if (!noteText) {
@@ -292,13 +322,29 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         if (location.start.href) {
           setCurrentHref(location.start.href)
           const matching = toc.find((t) => location.start.href.includes(t.href))
-          if (matching) setCurrentChapter(matching.label)
+          const chapterLabel = matching ? matching.label : ''
+          if (chapterLabel) {
+            setCurrentChapter(chapterLabel)
+            setCurrentChapterTitle(chapterLabel)
+          }
         }
 
-        // Cache chapter full text for RSVP speed reader
+        // Feature 1: Record manual reading cadence between page turns
+        const now = Date.now()
+        const elapsedMs = now - pageEnteredAtRef.current
+        const prevWords = lastWordsOnPageRef.current
+        if (!isAutoscrollActive && elapsedMs >= 2000 && elapsedMs <= 300000 && prevWords > 10) {
+          adaptiveScrollEngine.recordManualReading(prevWords, elapsedMs)
+        }
+        pageEnteredAtRef.current = now
+
+        // Cache chapter full text and count words on current page
         const iframeDoc = (renditionInstance?.getContents()?.[0] as any)?.document
-        if (iframeDoc?.body?.innerText) {
-          setChapterFullText(iframeDoc.body.innerText)
+        const pageText = iframeDoc?.body?.innerText || ''
+        if (pageText) {
+          setChapterFullText(pageText)
+          const words = pageText.split(/\s+/).filter(Boolean).length || 180
+          lastWordsOnPageRef.current = words
         }
 
         if (book.id) {
@@ -365,9 +411,29 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const handleNext = useCallback(() => renditionRef.current?.next(), [])
   const handlePrev = useCallback(() => renditionRef.current?.prev(), [])
 
+  // Feature 1: Window-level focus/blur listeners for idle suspension
+  useEffect(() => {
+    const handleBlur = () => adaptiveScrollEngine.setPaused(true)
+    const handleFocus = () => adaptiveScrollEngine.setPaused(false)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('focus', handleFocus)
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
+  // Subscribe to AdaptiveScrollEngine state updates
+  useEffect(() => {
+    return adaptiveScrollEngine.subscribe((metrics) => {
+      setIsEnginePaused(metrics.isPaused)
+    })
+  }, [])
+
   // Feature 1: Adaptive Auto-Scroll Engine Loop
   useEffect(() => {
-    if (!isAutoscrollActive) return
+    // Suspend auto-scroll if deactivated, paused, or if the reader is viewing a footnote or selection
+    if (!isAutoscrollActive || isEnginePaused || activeFootnote || selectedText) return
 
     let cancelled = false
     let timerId: any = null
@@ -379,7 +445,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       const wordCount = bodyText.split(/\s+/).filter(Boolean).length || 180
 
       const durationMs = adaptiveScrollEngine.calculateBlockDurationMs(wordCount)
-      const hasBreak = !!iframeDoc?.querySelector('hr, .section-break, .break')
+      // Expanded break detection: hr, section-break, blockquotes, and asterism markers (***)
+      const hasBreak = !!(
+        iframeDoc?.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
+        /\*\s*\*\s*\*|\u2042|\u2041/.test(bodyText)
+      )
 
       timerId = setTimeout(() => {
         if (cancelled) return
@@ -399,7 +469,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       cancelled = true
       if (timerId) clearTimeout(timerId)
     }
-  }, [isAutoscrollActive, currentCfi, handleNext])
+  }, [isAutoscrollActive, isEnginePaused, activeFootnote, selectedText, currentCfi, handleNext])
 
   // Keyboard Navigation
   useEffect(() => {
@@ -587,7 +657,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
                   const cfi = epubBookRef.current?.locations.cfiFromPercentage(val / 100)
                   if (cfi) renditionRef.current?.display(cfi)
                 }}
-                className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded-full cursor-pointer appearance-none"
+                className="ice-slider w-full"
               />
             </div>
           </div>

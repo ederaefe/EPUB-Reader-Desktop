@@ -57,6 +57,122 @@
     .ice-input:focus {
       border-color: #2a69df;
     }
+
+    /* Sleek Modern Desktop Sliders (Custom Track & Tactile Thumb) */
+    input[type="range"],
+    .ice-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #252834;
+      border-radius: 9999px;
+      outline: none;
+      margin: 6px 0;
+      cursor: pointer;
+      border: 1px solid #1f222d;
+      transition: background-color 150ms ease, border-color 150ms ease;
+    }
+
+    input[type="range"]:hover,
+    .ice-slider:hover {
+      background: #2e3342;
+      border-color: #2a2e3d;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track,
+    .ice-slider::-webkit-slider-runnable-track {
+      height: 4px;
+      background: transparent;
+      border-radius: 9999px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb,
+    .ice-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #2a69df;
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      margin-top: -4px;
+      transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1), background-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover,
+    .ice-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+      background: #3c7bf0;
+      box-shadow: 0 2px 6px rgba(42, 105, 223, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.3);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:active,
+    .ice-slider::-webkit-slider-thumb:active {
+      transform: scale(1.1);
+      background: #1f56be;
+    }
+
+    /* Sleek Modern Desktop Tick Boxes / Checkboxes */
+    input[type="checkbox"],
+    .ice-checkbox {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 3px;
+      background-color: #171a22;
+      border: 1.5px solid #353b4c;
+      cursor: pointer;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin: 0;
+      transition: all 120ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    input[type="checkbox"]:hover,
+    .ice-checkbox:hover {
+      border-color: #4f5870;
+      background-color: #1c202a;
+    }
+
+    input[type="checkbox"]:focus-visible,
+    .ice-checkbox:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(42, 105, 223, 0.35);
+      border-color: #2a69df;
+    }
+
+    input[type="checkbox"]:checked,
+    .ice-checkbox:checked {
+      background-color: #2a69df;
+      border-color: #2a69df;
+    }
+
+    input[type="checkbox"]:checked:hover,
+    .ice-checkbox:checked:hover {
+      background-color: #3879f0;
+      border-color: #3879f0;
+    }
+
+    /* Crisp 45-degree White Checkmark */
+    input[type="checkbox"]:checked::after,
+    .ice-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 4.5px;
+      top: 1.5px;
+      width: 4.5px;
+      height: 8px;
+      border: solid #ffffff;
+      border-width: 0 1.8px 1.8px 0;
+      transform: rotate(45deg);
+    }
   </style>
 </head>
 <body class="h-screen w-screen flex flex-col overflow-hidden text-[12px]">
@@ -439,7 +555,7 @@
             15 / 507
           </div>
           <div class="w-full relative flex items-center h-4">
-            <input type="range" min="1" max="507" value="15" class="w-full accent-[#2a69df] h-1 bg-[#323744] rounded-full cursor-pointer appearance-none">
+            <input type="range" min="1" max="507" value="15" class="ice-slider w-full">
           </div>
         </div>
       </footer>
@@ -513,7 +629,7 @@
             <div class="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
               <span>Dimming</span>
             </div>
-            <input type="range" min="0" max="75" value="0" class="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer">
+            <input type="range" min="0" max="75" value="0" class="ice-slider w-full">
           </div>
 
           <!-- 3. Page View -->
@@ -548,7 +664,7 @@
               <span>Font size</span>
               <span class="font-mono text-white text-[11px]">21px</span>
             </div>
-            <input type="range" min="12" max="42" value="21" class="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer">
+            <input type="range" min="12" max="42" value="21" class="ice-slider w-full">
           </div>
 
           <!-- 6. Line Spacing (1:1 rec_12.jpg & rec_14.jpg) -->
@@ -622,8 +738,27 @@
             </div>
           </div>
           <div>
-            <span class="text-[11px] text-[#8b949e] block mb-1.5">Dimming</span>
-            <input type="range" min="0" max="75" value="0" class="w-full accent-[#2a69df] h-1 bg-[#323744] rounded">
+            <div class="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
+              <span>Dimming</span>
+              <span class="font-mono text-white text-[11px]">0%</span>
+            </div>
+            <input type="range" min="0" max="75" value="0" class="ice-slider w-full">
+          </div>
+
+          <!-- Toggles (Sleek Modern Desktop Checkboxes) -->
+          <div class="space-y-2.5 pt-2">
+            <label class="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+              <input type="checkbox" class="ice-checkbox">
+              <span class="group-hover:text-white transition-colors">Copy eBooks from external devices</span>
+            </label>
+            <label class="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+              <input type="checkbox" checked class="ice-checkbox">
+              <span class="group-hover:text-white transition-colors">Check for the updates automatically</span>
+            </label>
+            <label class="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+              <input type="checkbox" class="ice-checkbox">
+              <span class="group-hover:text-white transition-colors">Send anonymous usage stats</span>
+            </label>
           </div>
         </div>
         <div class="space-y-4">
