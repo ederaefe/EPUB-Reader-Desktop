@@ -17,6 +17,9 @@ export const App: React.FC = () => {
   // Seed authentic starter library matching screen recording
   useEffect(() => {
     async function seedDefaults() {
+      // Purge any old pre-seeded default categories from database
+      await db.categories.where('name').anyOf(['Favorites', 'Sci-Fi & Fantasy', 'Science & Tech', 'Classics']).delete()
+
       const count = await db.books.count()
       if (count === 0) {
         // Pre-seed The Fifth Season matching the video
@@ -38,13 +41,6 @@ export const App: React.FC = () => {
           isRead: false,
           isDeleted: false
         })
-
-        // Pre-seed categories
-        await db.categories.bulkAdd([
-          { name: 'Favorites', color: '#f59e0b', createdAt: Date.now() },
-          { name: 'Sci-Fi & Fantasy', color: '#8b5cf6', createdAt: Date.now() },
-          { name: 'Classics', color: '#2a69df', createdAt: Date.now() }
-        ])
       }
     }
     seedDefaults()
@@ -59,6 +55,19 @@ export const App: React.FC = () => {
       } else if (e.key === 'F11') {
         e.preventDefault()
         window.desktopAPI?.toggleFullscreen?.()
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+          e.preventDefault()
+          const current = window.desktopAPI?.getZoomFactor?.() ?? 1.0
+          window.desktopAPI?.setZoomFactor?.(Math.min(3.0, Math.round((current + 0.1) * 10) / 10))
+        } else if (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
+          e.preventDefault()
+          const current = window.desktopAPI?.getZoomFactor?.() ?? 1.0
+          window.desktopAPI?.setZoomFactor?.(Math.max(0.5, Math.round((current - 0.1) * 10) / 10))
+        } else if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
+          e.preventDefault()
+          window.desktopAPI?.setZoomFactor?.(1.0)
+        }
       }
     }
     window.addEventListener('keydown', handleKeyDown)

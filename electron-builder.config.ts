@@ -1,8 +1,8 @@
 import type { Configuration } from 'electron-builder'
 
 const config: Configuration = {
-  appId: 'com.ederaefe.epub-reader',
-  productName: 'EPUB Reader Desktop',
+  appId: 'com.ederaefe.semple-ebook-reader',
+  productName: 'Semply Ebook Reader',
   directories: {
     output: 'release'
   },

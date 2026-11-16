@@ -153,11 +153,51 @@
             <span class="text-[11px] text-[#6e7681]">v</span>
           </button>
 
-          <!-- Add new category -->
-          <button class="w-full h-7 flex items-center gap-2 px-2.5 text-[11px] text-[#6e7681] hover:text-[#9da7b3] transition-colors">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            <span>Add new category</span>
-          </button>
+          <!-- User Custom Categories -->
+          <div id="userCategoriesList" class="space-y-0.5"></div>
+
+          <!-- Add new category trigger & form -->
+          <div id="addCategoryContainer">
+            <button id="showAddCatBtn" onclick="toggleAddCategoryForm(true)" class="w-full h-7 flex items-center gap-2 px-2.5 text-[11px] text-[#6e7681] hover:text-[#9da7b3] transition-colors rounded-[2px]">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              <span>Add new category</span>
+            </button>
+
+            <form id="addCategoryForm" onsubmit="handleCreateCategoryPreview(event)" class="hidden p-2 bg-[#1c1f26] border border-[#2d323f] rounded-[2px] space-y-2 my-1.5">
+              <div class="text-[11px] font-medium text-[#c8d1dc]">New Category</div>
+              <input
+                id="newCatNameInput"
+                type="text"
+                placeholder="Category name..."
+                oninput="updateCategoryPreview()"
+                class="ice-input w-full px-2 py-1 text-xs rounded-[2px]"
+              />
+              <div>
+                <div class="text-[10px] text-[#8b949e] mb-1">Color:</div>
+                <div class="flex items-center gap-1.5 flex-wrap" id="previewColorSwatches">
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 pt-1 border-t border-[#232732]">
+                <span id="previewDot" class="w-2 h-2 rounded-full shrink-0" style="background-color: #2a69df;"></span>
+                <span id="previewText" class="text-[11px] text-[#9da7b3] truncate">Preview</span>
+              </div>
+              <div class="flex items-center justify-end gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onclick="toggleAddCategoryForm(false)"
+                  class="px-2 py-0.5 text-[11px] bg-[#282c37] hover:bg-[#323744] text-[#8b949e] hover:text-white rounded-[2px] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="px-2.5 py-0.5 text-[11px] bg-[#2a69df] hover:bg-[#387bf0] text-white font-medium rounded-[2px] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </form>
+          </div>
 
           <div class="h-px bg-[#232732] my-2"></div>
 
@@ -689,6 +729,107 @@
         idle.classList.remove('hidden');
       }
     }
+
+    const PRESET_COLORS = ['#2a69df', '#8b5cf6', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#ec4899', '#06b6d4', '#64748b'];
+    let selectedColor = '#2a69df';
+    let userCategories = JSON.parse(localStorage.getItem('semply_categories') || '[]');
+
+    function initColorSwatches() {
+      const swatches = document.getElementById('previewColorSwatches');
+      if (!swatches) return;
+      swatches.innerHTML = '';
+      PRESET_COLORS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-3.5 h-3.5 rounded-full transition-transform hover:scale-105 ' + (selectedColor === c ? 'ring-2 ring-white scale-110' : '');
+        btn.style.backgroundColor = c;
+        btn.onclick = () => {
+          selectedColor = c;
+          initColorSwatches();
+          updateCategoryPreview();
+        };
+        swatches.appendChild(btn);
+      });
+
+      const label = document.createElement('label');
+      label.className = 'relative cursor-pointer';
+      label.title = 'Custom color';
+      label.innerHTML = `
+        <input type="color" value="${selectedColor}" class="w-3.5 h-3.5 opacity-0 absolute inset-0 cursor-pointer">
+        <div class="w-3.5 h-3.5 rounded-full border border-dashed border-[#8b949e] flex items-center justify-center text-[8px] text-[#8b949e] hover:border-white hover:text-white" style="background-color: ${PRESET_COLORS.includes(selectedColor) ? 'transparent' : selectedColor}">+</div>
+      `;
+      const input = label.querySelector('input');
+      input.onchange = (e) => {
+        selectedColor = e.target.value;
+        initColorSwatches();
+        updateCategoryPreview();
+      };
+      swatches.appendChild(label);
+    }
+
+    function updateCategoryPreview() {
+      const name = document.getElementById('newCatNameInput').value.trim();
+      document.getElementById('previewText').textContent = name || 'Preview';
+      document.getElementById('previewDot').style.backgroundColor = selectedColor;
+    }
+
+    function renderUserCategories() {
+      const container = document.getElementById('userCategoriesList');
+      if (!container) return;
+      container.innerHTML = '';
+      userCategories.forEach((cat, idx) => {
+        const item = document.createElement('div');
+        item.className = 'group w-full h-8 flex items-center justify-between px-2.5 rounded-[2px] transition-colors cursor-pointer text-[#9da7b3] hover:bg-[#1f232c] hover:text-white relative';
+        item.innerHTML = `
+          <span class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${cat.color}"></span>
+            <span class="truncate">${cat.name}</span>
+          </span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="text-[11px] text-[#6e7681] group-hover:hidden">0</span>
+            <button onclick="deleteCategoryPreview(${idx})" class="hidden group-hover:flex w-4 h-4 items-center justify-center text-[#8b949e] hover:text-[#f85149] rounded transition-colors" title="Delete category">
+              ✕
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function toggleAddCategoryForm(show) {
+      const form = document.getElementById('addCategoryForm');
+      const btn = document.getElementById('showAddCatBtn');
+      if (show) {
+        form.classList.remove('hidden');
+        btn.classList.add('hidden');
+        initColorSwatches();
+        document.getElementById('newCatNameInput').focus();
+      } else {
+        form.classList.add('hidden');
+        btn.classList.remove('hidden');
+        document.getElementById('newCatNameInput').value = '';
+      }
+    }
+
+    function handleCreateCategoryPreview(e) {
+      e.preventDefault();
+      const input = document.getElementById('newCatNameInput');
+      const name = input.value.trim();
+      if (!name) return;
+      userCategories.push({ name, color: selectedColor, createdAt: Date.now() });
+      localStorage.setItem('semply_categories', JSON.stringify(userCategories));
+      toggleAddCategoryForm(false);
+      renderUserCategories();
+    }
+
+    function deleteCategoryPreview(idx) {
+      userCategories.splice(idx, 1);
+      localStorage.setItem('semply_categories', JSON.stringify(userCategories));
+      renderUserCategories();
+    }
+
+    // Initialize custom categories
+    renderUserCategories();
   </script>
 </body>
 </html>

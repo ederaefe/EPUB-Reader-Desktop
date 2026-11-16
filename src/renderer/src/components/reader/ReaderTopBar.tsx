@@ -13,7 +13,10 @@ import {
   Minimize2,
   Settings,
   Play,
-  Pause
+  Pause,
+  Zap,
+  Gauge,
+  DownloadCloud
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -23,11 +26,14 @@ interface ReaderTopBarProps {
   currentChapter?: string
 }
 
-export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack }) => {
+export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapter }) => {
   const {
     activeBook,
     isTTSActive,
     setTTSActive,
+    isAutoscrollActive,
+    setAutoscrollActive,
+    toggleRSVP,
     isTOCDrawerOpen,
     toggleTOCDrawer,
     isNotesDrawerOpen,
@@ -44,6 +50,8 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack }) => {
 
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [isExportingAudio, setIsExportingAudio] = useState(false)
+  const [exportNotice, setExportNotice] = useState<string | null>(null)
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -78,9 +86,39 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack }) => {
     updateSettings({ ttsSpeed: speeds[nextIdx] })
   }
 
+  const handleToggleAutoScroll = () => {
+    setAutoscrollActive(!isAutoscrollActive)
+  }
+
+  const handleExportAudio = async () => {
+    try {
+      setIsExportingAudio(true)
+      const readerIframe = document.querySelector('iframe')
+      const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Chapter content'
+      const title = `${activeBook?.title || 'Audiobook'}_${currentChapter || 'Chapter'}`
+      const res = await ttsService.exportAudioFile(text, title)
+      if (res.success) {
+        setExportNotice('Audio recording saved successfully!')
+      } else {
+        setExportNotice('Audio export cancelled.')
+      }
+    } catch {
+      setExportNotice('Export failed.')
+    } finally {
+      setIsExportingAudio(false)
+      setTimeout(() => setExportNotice(null), 3000)
+    }
+  }
+
   return (
-    <header className="h-9 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0 z-40">
-      {/* Left Action Group with authentic dividers (1:1 Icecream Reader) */}
+    <header className="h-9 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0 z-40 relative">
+      {exportNotice && (
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-[#1f232d] border border-[#2a69df] text-white px-3 py-1 rounded-[2px] shadow-lg text-[11px] animate-in fade-in duration-100">
+          {exportNotice}
+        </div>
+      )}
+
+      {/* Left Action Group with authentic dividers */}
       <div className="flex items-center text-[12px]">
         {/* Back to Library */}
         <button
@@ -148,8 +186,42 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack }) => {
         </button>
       </div>
 
-      {/* Right Controls: Columns, TTS, Fullscreen, Settings (1:1 Icecream Reader) */}
+      {/* Right Controls: Columns, TTS, Autoscroll, RSVP, Fullscreen, Settings */}
       <div className="flex items-center gap-1 text-[12px]">
+        {/* Adaptive Auto-Scroll Toggle */}
+        <button
+          onClick={handleToggleAutoScroll}
+          className={`h-7 px-2 flex items-center gap-1.5 rounded-[2px] transition-colors ${
+            isAutoscrollActive ? 'bg-[#f59e0b] text-black font-semibold' : 'text-[#8b949e] hover:text-white hover:bg-[#282c37]'
+          }`}
+          title="Toggle Adaptive Auto-Scroll (WPM Cadence Engine)"
+        >
+          <Zap className="w-3.5 h-3.5 fill-current" />
+          <span>Auto-Scroll</span>
+        </button>
+
+        {/* RSVP Speed Reader */}
+        <button
+          onClick={() => toggleRSVP(true)}
+          className="h-7 px-2 flex items-center gap-1.5 rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+          title="RSVP Speed Reading Mode (Optimal Recognition Point)"
+        >
+          <Gauge className="w-3.5 h-3.5 text-[#2a69df]" />
+          <span>RSVP</span>
+        </button>
+
+        {/* Audio Export (isRecordTTS) */}
+        <button
+          onClick={handleExportAudio}
+          disabled={isExportingAudio}
+          className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors disabled:opacity-50"
+          title="Export speech as offline WAV audio file"
+        >
+          <DownloadCloud className="w-3.5 h-3.5" />
+        </button>
+
+        <span className="text-[#2d323f] px-1 font-light">|</span>
+
         {/* Double Page Spread */}
         <button
           onClick={() => updateSettings({ pageSpread: 'double' })}

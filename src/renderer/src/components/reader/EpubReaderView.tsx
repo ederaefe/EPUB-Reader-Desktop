@@ -9,6 +9,12 @@ import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { SelectionPopup } from './SelectionPopup'
+import { FootnotePopover } from './FootnotePopover'
+import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
+import { RSVPSpeedReaderModal } from './RSVPSpeedReaderModal'
+import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
+import { getWarmFilterOverlay } from '../../services/colorTempService'
+import { splitIntoSentences } from '../../services/ttsService'
 
 interface EpubReaderViewProps {
   book: Book
@@ -26,7 +32,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     activeBookBuffer,
     isTTSActive,
     setTTSActive,
-    toggleHelpModal,
+    isAutoscrollActive,
+    setAutoscrollActive,
+    isRSVPActive,
+    toggleRSVP,
+    activeFootnote,
+    setActiveFootnote,
     toggleBookmarksDrawer
   } = useAppStore()
 
@@ -42,8 +53,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [selectedCfiRange, setSelectedCfiRange] = useState<string>('')
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 })
   const [isBottomHovered, setIsBottomHovered] = useState(false)
+  const [chapterFullText, setChapterFullText] = useState('')
 
-  // Theme palettes matching Icecream Reader
+  // Theme palettes matching Semply Reader
   const themeStyles = {
     day: { bg: '#ffffff', text: '#202020', link: '#2a69df', bottomBg: '#f2f2f2', border: '#e1e4e8' },
     night: { bg: '#1c1f26', text: '#d8d8d8', link: '#79c0ff', bottomBg: '#14161c', border: '#232732' },
@@ -52,6 +64,73 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   }
 
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
+
+  // Feature 5: Warm Blue Light Night Filter style
+  const warmFilter = getWarmFilterOverlay(
+    settings.warmFilterEnabled || false,
+    settings.warmFilterTemp || 3200,
+    settings.warmFilterIntensity || 40
+  )
+
+  // Attach smart footnote click interception and cadence wheel listener to iframe
+  const attachIframeHooks = useCallback((contents: any) => {
+    const doc = contents.document
+    if (!doc) return
+
+    // Feature 4: Smart footnote interception
+    const noteLinks = doc.querySelectorAll(
+      'a[epub\\:type~="noteref"], a[href*="#fn"], a[href*="#footnote"], a[role="doc-noteref"], sup a'
+    )
+
+    noteLinks.forEach((link: any) => {
+      link.addEventListener('click', (e: MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const href = link.getAttribute('href') || ''
+        const hash = href.includes('#') ? href.split('#')[1] : ''
+        let noteText = ''
+        if (hash) {
+          const targetElem = doc.getElementById(hash)
+          if (targetElem) {
+            noteText = targetElem.innerText.trim()
+          }
+        }
+        if (!noteText) {
+          noteText = link.getAttribute('title') || link.innerText || 'Footnote reference.'
+        }
+        setActiveFootnote({
+          id: hash || 'fn',
+          index: link.innerText.trim() || 'fn',
+          text: noteText,
+          href
+        })
+      })
+    })
+
+    // Feature 1: Cadence Behavioral Correction Wheel Listener
+    let lastWheelTime = 0
+    contents.window.addEventListener('wheel', (e: WheelEvent) => {
+      const now = Date.now()
+      if (now - lastWheelTime < 200) return
+      lastWheelTime = now
+
+      if (e.deltaY < -25) {
+        // Back-scroll detected: User scrolled up -> decrease WPM (-15%)
+        adaptiveScrollEngine.onBackScrollDetected()
+      } else if (e.deltaY > 25) {
+        // Forward nudge detected: User scrolling forward -> increase WPM (+10%)
+        adaptiveScrollEngine.onForwardNudgeDetected()
+      }
+    }, { passive: true })
+
+    // Idle suspension on blur or hovering over active links
+    contents.window.addEventListener('blur', () => {
+      adaptiveScrollEngine.setPaused(true)
+    })
+    contents.window.addEventListener('focus', () => {
+      adaptiveScrollEngine.setPaused(false)
+    })
+  }, [setActiveFootnote])
 
   // Initialize ePub reader engine
   useEffect(() => {
@@ -87,7 +166,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       })
       renditionRef.current = renditionInstance
 
-      // Register Icecream themes with exact CSS injection
+      // Register themes with exact CSS injection
       const registerThemes = () => {
         const fontFam =
           settings.fontFamily === 'serif'
@@ -155,6 +234,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       registerThemes()
 
+      // Hook iframe rendered content
+      renditionInstance.hooks.content.register((contents: any) => {
+        attachIframeHooks(contents)
+      })
+
       // Load Navigation TOC
       epubInstance.loaded.navigation.then((nav) => {
         if (isCancelled) return
@@ -211,6 +295,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           if (matching) setCurrentChapter(matching.label)
         }
 
+        // Cache chapter full text for RSVP speed reader
+        const iframeDoc = (renditionInstance?.getContents()?.[0] as any)?.document
+        if (iframeDoc?.body?.innerText) {
+          setChapterFullText(iframeDoc.body.innerText)
+        }
+
         if (book.id) {
           db.books.update(book.id, {
             progressCfi: cfi,
@@ -248,7 +338,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       isCancelled = true
       renditionInstance?.destroy()
     }
-  }, [book, activeBookBuffer, settings.pageSpread])
+  }, [book, activeBookBuffer, settings.pageSpread, attachIframeHooks])
 
   // Synchronize dynamic settings
   useEffect(() => {
@@ -275,7 +365,43 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const handleNext = useCallback(() => renditionRef.current?.next(), [])
   const handlePrev = useCallback(() => renditionRef.current?.prev(), [])
 
-  // Keyboard Navigation (1:1 with rec_07.jpg)
+  // Feature 1: Adaptive Auto-Scroll Engine Loop
+  useEffect(() => {
+    if (!isAutoscrollActive) return
+
+    let cancelled = false
+    let timerId: any = null
+
+    const schedulePageTurn = () => {
+      if (cancelled) return
+      const iframeDoc = (renditionRef.current?.getContents()?.[0] as any)?.document
+      const bodyText = iframeDoc?.body?.innerText || ''
+      const wordCount = bodyText.split(/\s+/).filter(Boolean).length || 180
+
+      const durationMs = adaptiveScrollEngine.calculateBlockDurationMs(wordCount)
+      const hasBreak = !!iframeDoc?.querySelector('hr, .section-break, .break')
+
+      timerId = setTimeout(() => {
+        if (cancelled) return
+        if (hasBreak) {
+          adaptiveScrollEngine.triggerMicroPause(() => {
+            if (!cancelled) handleNext()
+          })
+        } else {
+          handleNext()
+        }
+      }, durationMs)
+    }
+
+    schedulePageTurn()
+
+    return () => {
+      cancelled = true
+      if (timerId) clearTimeout(timerId)
+    }
+  }, [isAutoscrollActive, currentCfi, handleNext])
+
+  // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -309,13 +435,19 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         toggleBookmarksDrawer(true)
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        onBack()
+        if (activeFootnote) {
+          setActiveFootnote(null)
+        } else if (isAutoscrollActive) {
+          setAutoscrollActive(false)
+        } else {
+          onBack()
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleNext, handlePrev, settings.theme, settings.pageSpread, updateSettings, toggleBookmarksDrawer, onBack])
+  }, [handleNext, handlePrev, settings.theme, settings.pageSpread, updateSettings, toggleBookmarksDrawer, activeFootnote, isAutoscrollActive, setAutoscrollActive, setActiveFootnote, onBack])
 
   const handleSelectChapter = (href: string) => {
     renditionRef.current?.display(href)
@@ -335,7 +467,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       color,
       createdAt: Date.now()
     })
-    // Highlight in rendition
     renditionRef.current?.annotations?.highlight(
       selectedCfiRange,
       {},
@@ -415,7 +546,25 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         />
       )}
 
-      {/* Bottom Floating Progress Area (1:1 Icecream Reader rec_19.jpg & rec_21.jpg) */}
+      {/* Feature 5: Warm Blue Light Night Filter Overlay (isEnableBlueFilterNight) */}
+      {warmFilter && (
+        <div
+          style={{
+            backgroundColor: warmFilter.backgroundColor,
+            opacity: warmFilter.opacity
+          }}
+          className="fixed inset-0 pointer-events-none z-30 transition-opacity duration-300 mix-blend-multiply"
+        />
+      )}
+
+      {/* Feature 1: Adaptive Auto-Scroll HUD Overlay */}
+      <AdaptiveScrollOverlay
+        isActive={isAutoscrollActive}
+        onToggle={() => adaptiveScrollEngine.setPaused(!adaptiveScrollEngine.getMetrics().isPaused)}
+        onClose={() => setAutoscrollActive(false)}
+      />
+
+      {/* Bottom Floating Progress Area */}
       <footer
         onMouseEnter={() => setIsBottomHovered(true)}
         onMouseLeave={() => setIsBottomHovered(false)}
@@ -466,6 +615,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         onJumpToCfi={handleJumpToCfi}
       />
       <SettingsDrawer />
+
+      {/* Feature 4: Footnote Popover Modal */}
+      {activeFootnote && (
+        <FootnotePopover
+          footnote={activeFootnote}
+          onClose={() => setActiveFootnote(null)}
+          onJumpToNote={(href) => handleSelectChapter(href)}
+        />
+      )}
+
+      {/* Feature 3: RSVP Speed Reading Modal (Optimal Recognition Point) */}
+      <RSVPSpeedReaderModal
+        isOpen={isRSVPActive}
+        onClose={() => toggleRSVP(false)}
+        initialText={chapterFullText || book.title}
+        title={currentChapter || book.title}
+      />
 
       {/* Inline Selection & Dictionary Popup */}
       {selectedText && (

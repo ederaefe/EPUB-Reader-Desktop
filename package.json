@@ -1,7 +1,7 @@
 {
-  "name": "epub-reader-desktop",
+  "name": "semply-ebook-reader",
   "version": "1.0.0",
-  "description": "Clean, open cross-platform EPUB and document reader with Obsidian Glassmorphism",
+  "description": "Semply Ebook Reader - Clean, open cross-platform EPUB and document reader",
   "main": "out/main/index.js",
   "author": "ederaefe",
   "scripts": {

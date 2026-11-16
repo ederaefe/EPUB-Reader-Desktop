@@ -59,6 +59,13 @@ export interface UserSettings {
   ttsPitch: number
   ttsVoice: string | null
   autoscrollSpeed: number
+  autoscrollAdaptive?: boolean
+  targetWpm?: number
+  observedWpm?: number
+  warmFilterEnabled?: boolean
+  warmFilterTemp?: number
+  warmFilterIntensity?: number
+  rsvpWpm?: number
 }
 
 class ReaderDatabase extends Dexie {

@@ -13,7 +13,7 @@ interface AppState {
   activeBook: Book | null
   activeBookBuffer: ArrayBuffer | null
 
-  // Reader drawers & modal state
+  // Modals & drawers
   isTOCDrawerOpen: boolean
   isNotesDrawerOpen: boolean
   isBookmarksDrawerOpen: boolean
@@ -21,13 +21,16 @@ interface AppState {
   isSettingsDrawerOpen: boolean
   isFullSettingsModalOpen: boolean
   isHelpModalOpen: boolean
+  isRSVPActive: boolean
+  activeFootnote: { id: string; index?: string; text: string; href?: string } | null
 
   // TTS & Autoscroll
   isTTSActive: boolean
   isAutoscrollActive: boolean
   activeTTSWord: string | null
+  adaptiveWpm: number
 
-  // User Settings (aligned with Icecream settings defaults)
+  // User Settings (aligned with Semply Reader defaults)
   settings: UserSettings
 
   // Actions
@@ -44,9 +47,12 @@ interface AppState {
   toggleSettingsDrawer: (open?: boolean) => void
   toggleFullSettingsModal: (open?: boolean) => void
   toggleHelpModal: (open?: boolean) => void
+  toggleRSVP: (open?: boolean) => void
+  setActiveFootnote: (fn: { id: string; index?: string; text: string; href?: string } | null) => void
   setTTSActive: (active: boolean) => void
   setAutoscrollActive: (active: boolean) => void
   setActiveTTSWord: (word: string | null) => void
+  setAdaptiveWpm: (wpm: number) => void
   updateSettings: (newSettings: Partial<UserSettings>) => void
 }
 
@@ -67,10 +73,13 @@ export const useAppStore = create<AppState>((set) => ({
   isSettingsDrawerOpen: false,
   isFullSettingsModalOpen: false,
   isHelpModalOpen: false,
+  isRSVPActive: false,
+  activeFootnote: null,
 
   isTTSActive: false,
   isAutoscrollActive: false,
   activeTTSWord: null,
+  adaptiveWpm: 250,
 
   settings: {
     theme: 'night',
@@ -83,7 +92,14 @@ export const useAppStore = create<AppState>((set) => ({
     ttsSpeed: 1.0,
     ttsPitch: 1.0,
     ttsVoice: null,
-    autoscrollSpeed: 40
+    autoscrollSpeed: 40,
+    autoscrollAdaptive: true,
+    targetWpm: 250,
+    observedWpm: 250,
+    warmFilterEnabled: false,
+    warmFilterTemp: 3200,
+    warmFilterIntensity: 40,
+    rsvpWpm: 350
   },
 
   setView: (view) => set({ currentView: view }),
@@ -133,9 +149,15 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => ({
       isHelpModalOpen: open ?? !s.isHelpModalOpen
     })),
+  toggleRSVP: (open) =>
+    set((s) => ({
+      isRSVPActive: open ?? !s.isRSVPActive
+    })),
+  setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),
   setAutoscrollActive: (active) => set({ isAutoscrollActive: active }),
   setActiveTTSWord: (word) => set({ activeTTSWord: word }),
+  setAdaptiveWpm: (wpm) => set({ adaptiveWpm: wpm }),
   updateSettings: (newSettings) =>
     set((s) => ({ settings: { ...s.settings, ...newSettings } }))
 }))

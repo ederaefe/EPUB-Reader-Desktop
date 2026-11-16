@@ -9,10 +9,14 @@ import {
   Trash2,
   ChevronRight,
   Check,
-  ShieldCheck,
-  Key
+  Archive,
+  Database,
+  Info,
+  BookOpen
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
+import { backupService } from '../../services/backupService'
+import { db } from '../../db'
 
 export const FullSettingsModal: React.FC = () => {
   const {
@@ -23,21 +27,55 @@ export const FullSettingsModal: React.FC = () => {
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<
-    'system' | 'reading' | 'tts' | 'hotkeys' | 'license'
+    'system' | 'reading' | 'tts' | 'hotkeys' | 'backup' | 'about'
   >('system')
 
   const [autoUpdate, setAutoUpdate] = useState(true)
   const [copyExternal, setCopyExternal] = useState(false)
   const [sendStats, setSendStats] = useState(false)
-  const [licenseKey, setLicenseKey] = useState('ICR-PRO-UNLOCKED-PERMANENT-2026')
-  const [isActivated, setIsActivated] = useState(true)
+  const [backupStatus, setBackupStatus] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   if (!isFullSettingsModalOpen) return null
+
+  const handleExportJson = async () => {
+    setIsProcessing(true)
+    const res = await backupService.exportToJson()
+    setIsProcessing(false)
+    if (res.success) {
+      setBackupStatus('Library metadata exported successfully.')
+    }
+  }
+
+  const handleExportZip = async () => {
+    setIsProcessing(true)
+    const res = await backupService.exportToZip()
+    setIsProcessing(false)
+    if (res.success) {
+      setBackupStatus('Complete archive with cover art exported successfully.')
+    }
+  }
+
+  const handleImportBackup = async () => {
+    setIsProcessing(true)
+    const res = await backupService.promptImport()
+    setIsProcessing(false)
+    setBackupStatus(res.message)
+  }
+
+  const handleEmptyLibrary = async () => {
+    if (window.confirm('Are you sure you want to empty the library? All imported books will be cleared.')) {
+      await db.books.clear()
+      await db.annotations.clear()
+      await db.bookmarks.clear()
+      setBackupStatus('Library emptied.')
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] select-none p-4">
       <div className="w-[820px] max-h-[90vh] bg-[#171a21] border border-[#2d323f] rounded-[3px] shadow-2xl flex flex-col overflow-hidden text-xs text-[#c9d1d9] animate-in fade-in zoom-in-95 duration-100">
-        {/* Top Header & Tabs (1:1 Icecream rec_05.jpg) */}
+        {/* Top Header & Tabs */}
         <div className="h-10 bg-[#14161c] border-b border-[#232732] flex items-center justify-between px-3 shrink-0">
           <div className="flex items-center h-full">
             <button
@@ -81,14 +119,24 @@ export const FullSettingsModal: React.FC = () => {
               Hotkeys
             </button>
             <button
-              onClick={() => setActiveTab('license')}
+              onClick={() => setActiveTab('backup')}
               className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
-                activeTab === 'license'
+                activeTab === 'backup'
                   ? 'border-[#2a69df] text-white'
                   : 'border-transparent text-[#8b949e] hover:text-white'
               }`}
             >
-              License
+              Backup & Sync
+            </button>
+            <button
+              onClick={() => setActiveTab('about')}
+              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+                activeTab === 'about'
+                  ? 'border-[#2a69df] text-white'
+                  : 'border-transparent text-[#8b949e] hover:text-white'
+              }`}
+            >
+              About
             </button>
           </div>
 
@@ -102,7 +150,19 @@ export const FullSettingsModal: React.FC = () => {
 
         {/* Tab Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
-          {/* 1. SYSTEM TAB (1:1 rec_05.jpg) */}
+          {backupStatus && (
+            <div className="mb-4 px-3 py-2 bg-[#1f232d] border border-[#2a69df]/50 text-[#79c0ff] text-xs rounded-[2px] flex items-center justify-between">
+              <span>{backupStatus}</span>
+              <button
+                onClick={() => setBackupStatus(null)}
+                className="text-[#8b949e] hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* 1. SYSTEM TAB */}
           {activeTab === 'system' && (
             <div className="grid grid-cols-2 gap-8">
               {/* Left Column */}
@@ -115,14 +175,6 @@ export const FullSettingsModal: React.FC = () => {
                     <option value="fr">Français</option>
                     <option value="de">Deutsch</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Path to Local Library</label>
-                  <div className="flex items-center gap-1.5 ice-input h-8 px-2.5 bg-[#12141a] border-[#2d323f] rounded-[2px] text-xs text-[#8b949e] cursor-pointer hover:border-[#3c404d]">
-                    <span className="truncate flex-1">C:\Users\USER\.Icecream Ebook Reader\Bookshelf</span>
-                    <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                  </div>
                 </div>
 
                 <div>
@@ -207,16 +259,7 @@ export const FullSettingsModal: React.FC = () => {
                       onChange={(e) => setAutoUpdate(e.target.checked)}
                       className="accent-[#2a69df] rounded-[2px] w-3.5 h-3.5"
                     />
-                    <span>Check for the updates automatically</span>
-                  </label>
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={sendStats}
-                      onChange={(e) => setSendStats(e.target.checked)}
-                      className="accent-[#2a69df] rounded-[2px] w-3.5 h-3.5"
-                    />
-                    <span>Send anonymous usage stats</span>
+                    <span>Check for updates automatically</span>
                   </label>
                 </div>
               </div>
@@ -224,26 +267,29 @@ export const FullSettingsModal: React.FC = () => {
               {/* Right Column */}
               <div className="space-y-4">
                 <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Library path</label>
-                  <div className="flex items-center gap-1.5 ice-input h-8 px-2.5 bg-[#12141a] border-[#2d323f] rounded-[2px] text-xs text-[#8b949e] cursor-pointer hover:border-[#3c404d]">
-                    <span className="truncate flex-1">C:\Users\USER\.Icecream Ebook Reader\Import</span>
-                    <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Manage Library</label>
+                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Quick Backup Actions</label>
                   <div className="grid grid-cols-2 gap-2 mb-2">
-                    <button className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]">
+                    <button
+                      onClick={handleExportJson}
+                      disabled={isProcessing}
+                      className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]"
+                    >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Export</span>
+                      <span>Export JSON</span>
                     </button>
-                    <button className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]">
+                    <button
+                      onClick={handleImportBackup}
+                      disabled={isProcessing}
+                      className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]"
+                    >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Import</span>
+                      <span>Import Additive</span>
                     </button>
                   </div>
-                  <button className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#f85149] hover:bg-[#332225] rounded-[2px]">
+                  <button
+                    onClick={handleEmptyLibrary}
+                    className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#f85149] hover:bg-[#332225] rounded-[2px]"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Empty Library</span>
                   </button>
@@ -254,7 +300,7 @@ export const FullSettingsModal: React.FC = () => {
 
           {/* 2. READING SETTINGS TAB */}
           {activeTab === 'reading' && (
-            <div className="space-y-4 max-w-md">
+            <div className="space-y-5 max-w-lg">
               <div>
                 <label className="text-[11px] text-[#8b949e] block mb-1.5">Default Font</label>
                 <select
@@ -299,6 +345,60 @@ export const FullSettingsModal: React.FC = () => {
                   className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
                 />
               </div>
+
+              {/* Warm Blue Light Night Filter Section */}
+              <div className="p-3 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white">Warm Blue Light Night Filter</span>
+                    <span className="text-[10px] text-[#f59e0b] font-mono">Candlelight - Daylight</span>
+                  </div>
+                  <button
+                    onClick={() => updateSettings({ warmFilterEnabled: !settings.warmFilterEnabled })}
+                    className={`w-9 h-5 rounded-[2px] transition-colors p-0.5 flex items-center ${
+                      settings.warmFilterEnabled ? 'bg-[#f59e0b] justify-end' : 'bg-[#282c37] justify-start'
+                    }`}
+                  >
+                    <span className="w-4 h-4 bg-white rounded-[1px] shadow-sm block" />
+                  </button>
+                </div>
+
+                {settings.warmFilterEnabled && (
+                  <div className="space-y-3 pt-1">
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1">
+                        <span>Color Temperature</span>
+                        <span className="font-mono text-[#f59e0b]">{settings.warmFilterTemp || 3200}K</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="2000"
+                        max="4500"
+                        step="100"
+                        value={settings.warmFilterTemp || 3200}
+                        onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
+                        className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1">
+                        <span>Filter Intensity</span>
+                        <span className="font-mono text-white">{settings.warmFilterIntensity || 40}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="10"
+                        max="90"
+                        step="5"
+                        value={settings.warmFilterIntensity || 40}
+                        onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
+                        className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -336,128 +436,56 @@ export const FullSettingsModal: React.FC = () => {
                   className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
                 />
               </div>
+
+              <div className="p-3 bg-[#14161c] border border-[#232732] rounded-[3px] text-[11px] text-[#8b949e] space-y-1">
+                <p className="font-medium text-white">Smart Pronunciation Normalization</p>
+                <p>
+                  Automatic translation for decimals (3.14 &rarr; 3 point 14), abbreviations (Dr., Mr., etc., e.g., i.e.), and Roman numerals (Chapter IV &rarr; Chapter 4).
+                </p>
+              </div>
             </div>
           )}
 
-          {/* 4. HOTKEYS TAB (1:1 rec_07.jpg) */}
+          {/* 4. HOTKEYS TAB */}
           {activeTab === 'hotkeys' && (
             <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-xs">
-              {/* Left Column */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Show hotkeys</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] text-[#c8d1dc] font-mono text-[11px]">F1</span>
+                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F1</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Go to previous page</span>
                   <div className="flex gap-1">
                     <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Left</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Up</span>
                     <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">PgUp</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Backspace</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Go to next page</span>
                   <div className="flex gap-1">
                     <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Right</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Down</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">PgDown</span>
                     <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Space</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Go to the first page</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Home</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Go to the last page</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">End</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Start/pause reading aloud</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F7</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Media Play</span>
-                  </div>
+                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F7</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Stop reading aloud</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F8</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Media Stop</span>
-                  </div>
+                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F8</span>
                 </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Decrease volume</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + Down</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Increase volume</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + Up</span>
-                </div>
+              </div>
+
+              <div className="space-y-2">
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Add bookmark</span>
                   <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + B</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Search</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + F</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F3</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Zoom in/ increase font size</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">+</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">=</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Zoom out/ decrease font size</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">-</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Reset zoom to 100%</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + 0</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Shift + 0</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Fit to page</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + 1</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Shift + 1</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Fit to width</span>
-                  <div className="flex gap-1">
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + 2</span>
-                    <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Shift + 2</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Back to library</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">~</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Show Table of contents</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">1</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Show notes list</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">2</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Show bookmarks list</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">3</span>
+                  <span>Search in book</span>
+                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + F</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-[#232732]">
                   <span>Switch theme</span>
@@ -475,31 +503,101 @@ export const FullSettingsModal: React.FC = () => {
             </div>
           )}
 
-          {/* 5. LICENSE TAB */}
-          {activeTab === 'license' && (
-            <div className="space-y-4 max-w-md">
+          {/* 5. BACKUP & SYNC TAB (Feature 6: Additive Universal Library Backup) */}
+          {activeTab === 'backup' && (
+            <div className="space-y-5 max-w-xl">
               <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
-                <div className="flex items-center gap-2 text-[#4cd964]">
-                  <ShieldCheck className="w-5 h-5" />
-                  <span className="text-sm font-semibold">Icecream PRO Status</span>
+                <div className="flex items-center gap-2 text-white">
+                  <Database className="w-4 h-4 text-[#2a69df]" />
+                  <span className="text-sm font-semibold">Universal Additive Library Backup</span>
                 </div>
-                <p className="text-xs text-[#8b949e]">
-                  All PRO capabilities unlocked: full screen reading, unlimited notes and bookmarks, high-quality audio synthesis, multi-format conversion, and zero ads.
+                <p className="text-xs text-[#8b949e] leading-relaxed">
+                  Export your complete library, custom shelves, notes, highlights, and bookmarks into portable format. When importing, the engine performs a non-destructive additive merge that preserves all local data.
                 </p>
-                <div className="flex items-center gap-2 pt-2">
-                  <Key className="w-4 h-4 text-[#8b949e]" />
-                  <input
-                    type="text"
-                    value={licenseKey}
-                    onChange={(e) => setLicenseKey(e.target.value)}
-                    className="ice-input flex-1 h-8 px-2 text-xs font-mono rounded-[2px]"
-                  />
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
-                    onClick={() => setIsActivated(true)}
-                    className="ice-btn-blue h-8 px-3 rounded-[2px]"
+                    onClick={handleExportJson}
+                    disabled={isProcessing}
+                    className="ice-btn-dark h-9 flex items-center justify-center gap-2 rounded-[2px]"
                   >
-                    Activate
+                    <Upload className="w-3.5 h-3.5 text-[#2a69df]" />
+                    <span>Export Metadata (JSON)</span>
                   </button>
+
+                  <button
+                    onClick={handleExportZip}
+                    disabled={isProcessing}
+                    className="ice-btn-dark h-9 flex items-center justify-center gap-2 rounded-[2px]"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-[#f59e0b]" />
+                    <span>Export Archive with Covers (ZIP)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
+                <div className="flex items-center gap-2 text-white">
+                  <Download className="w-4 h-4 text-[#4cd964]" />
+                  <span className="text-sm font-semibold">Additive Import & Restore</span>
+                </div>
+                <p className="text-xs text-[#8b949e] leading-relaxed">
+                  Select a previously exported .json or .zip backup. Existing reading progress is retained, books are deduplicated, and new categories and annotations are appended.
+                </p>
+
+                <button
+                  onClick={handleImportBackup}
+                  disabled={isProcessing}
+                  className="ice-btn-blue h-9 px-4 flex items-center justify-center gap-2 rounded-[2px]"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Choose Backup File to Import</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 6. ABOUT TAB */}
+          {activeTab === 'about' && (
+            <div className="space-y-4 max-w-lg">
+              <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
+                <div className="flex items-center gap-2 text-white">
+                  <BookOpen className="w-5 h-5 text-[#2a69df]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Semply Ebook Reader</h3>
+                    <p className="text-[11px] text-[#8b949e]">Version 1.0.0 (Native Desktop Edition)</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-[#c9d1d9] leading-relaxed">
+                  Semply Ebook Reader is a modern, high-performance desktop reading workstation engineered with native Windows design principles, free from generic web rounded pill buttons or paywalled feature gates.
+                </p>
+
+                <div className="pt-2 border-t border-[#232732] space-y-1.5 text-[11px] text-[#8b949e]">
+                  <div className="flex items-center justify-between">
+                    <span>Adaptive Auto-Scroll Engine</span>
+                    <span className="text-[#4cd964]">Active (EMA &alpha; = 0.15)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Speech Normalization</span>
+                    <span className="text-[#4cd964]">Librera Regex Matrix</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Speed Reading (RSVP)</span>
+                    <span className="text-[#4cd964]">Optimal Recognition Point</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Footnote Handling</span>
+                    <span className="text-[#4cd964]">Non-Destructive Popover</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Night Filter</span>
+                    <span className="text-[#4cd964]">Chromatic Warm Amber (2000K-4500K)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Universal Backup</span>
+                    <span className="text-[#4cd964]">Additive JSON &amp; ZIP Sync</span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -206,6 +206,98 @@ export const SettingsDrawer: React.FC = () => {
               </button>
             </div>
           </div>
+
+          <div className="h-px bg-[#232732] my-2" />
+
+          {/* 7. Warm Blue Light Night Filter (Feature 5: isEnableBlueFilterNight) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-medium text-white flex items-center gap-1.5">
+                <span>Warm Night Light</span>
+              </label>
+              <button
+                onClick={() => updateSettings({ warmFilterEnabled: !settings.warmFilterEnabled })}
+                className={`w-9 h-5 rounded-[2px] transition-colors p-0.5 flex items-center ${
+                  settings.warmFilterEnabled ? 'bg-[#f59e0b] justify-end' : 'bg-[#282c37] justify-start'
+                }`}
+              >
+                <span className="w-4 h-4 bg-white rounded-[1px] shadow-sm block" />
+              </button>
+            </div>
+
+            {settings.warmFilterEnabled && (
+              <div className="space-y-2.5 pt-1 bg-[#12141a] p-2.5 rounded-[2px] border border-[#232732]">
+                <div>
+                  <div className="flex items-center justify-between text-[10px] text-[#8b949e] mb-1">
+                    <span>Temperature</span>
+                    <span className="font-mono text-[#f59e0b]">{settings.warmFilterTemp || 3200}K</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="2000"
+                    max="4500"
+                    step="100"
+                    value={settings.warmFilterTemp || 3200}
+                    onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
+                    className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[9px] text-[#6e7681] mt-0.5">
+                    <span>2000K Candle</span>
+                    <span>4500K Mild</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[10px] text-[#8b949e] mb-1">
+                    <span>Intensity</span>
+                    <span className="font-mono text-white">{settings.warmFilterIntensity || 40}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="90"
+                    step="5"
+                    value={settings.warmFilterIntensity || 40}
+                    onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
+                    className="w-full accent-[#f59e0b] h-1 bg-[#323744] rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-[#232732] my-2" />
+
+          {/* 8. Adaptive Cadence Reading Speed (WPM Profiler) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white">Adaptive Auto-Scroll</span>
+              <button
+                onClick={() => updateSettings({ autoscrollAdaptive: !settings.autoscrollAdaptive })}
+                className={`w-9 h-5 rounded-[2px] transition-colors p-0.5 flex items-center ${
+                  settings.autoscrollAdaptive ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
+                }`}
+              >
+                <span className="w-4 h-4 bg-white rounded-[1px] shadow-sm block" />
+              </button>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between text-[10px] text-[#8b949e] mb-1">
+                <span>Target Reading Pace</span>
+                <span className="font-mono text-white">{settings.targetWpm || 250} WPM</span>
+              </div>
+              <input
+                type="range"
+                min="100"
+                max="800"
+                step="25"
+                value={settings.targetWpm || 250}
+                onChange={(e) => updateSettings({ targetWpm: Number(e.target.value) })}
+                className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Bottom Docked Action Links (1:1 Icecream rec_14.jpg) */}

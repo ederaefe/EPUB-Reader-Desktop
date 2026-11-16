@@ -27,10 +27,23 @@ interface SidebarProps {
     other: number
   }
   categories: Category[]
+  categoryCounts?: Record<number, number>
   onRefresh: () => void
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh }) => {
+const COLOR_PALETTE = [
+  '#2a69df', // Classic Blue
+  '#8b5cf6', // Violet
+  '#10b981', // Emerald
+  '#f59e0b', // Amber
+  '#f97316', // Orange
+  '#ef4444', // Red
+  '#ec4899', // Pink
+  '#06b6d4', // Cyan
+  '#64748b'  // Slate
+]
+
+export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCounts, onRefresh }) => {
   const {
     selectedCategory,
     setSelectedCategory,
@@ -44,17 +57,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
   const [formatsExpanded, setFormatsExpanded] = useState(false)
   const [showAddCat, setShowAddCat] = useState(false)
   const [newCatName, setNewCatName] = useState('')
+  const [newCatColor, setNewCatColor] = useState('#2a69df')
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newCatName.trim()) return
     await db.categories.add({
       name: newCatName.trim(),
-      color: '#2a69df',
+      color: newCatColor,
       createdAt: Date.now()
     })
     setNewCatName('')
+    setNewCatColor('#2a69df')
     setShowAddCat(false)
+    onRefresh()
+  }
+
+  const handleDeleteCategory = async (e: React.MouseEvent, catId: number) => {
+    e.stopPropagation()
+    await db.categories.delete(catId)
+    await db.books.where('categoryId').equals(catId).modify({ categoryId: null })
+    if (selectedCategory === String(catId)) {
+      setSelectedCategory('all')
+    }
     onRefresh()
   }
 
@@ -73,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
           <BookOpen className="w-3 h-3" />
         </div>
         <div className="flex items-center">
-          <span className="text-[13px] font-semibold text-white leading-tight">Ebook Reader</span>
+          <span className="text-[13px] font-semibold text-white leading-tight">Semply Ebook Reader</span>
         </div>
       </div>
 
@@ -192,47 +217,120 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
             )}
           </div>
 
-          {/* Custom Categories */}
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                setSelectedCategory(String(cat.id))
-                setFormatFilter(null)
-              }}
-              className={`w-full h-8 flex items-center justify-between px-2.5 rounded transition-colors relative ${
-                selectedCategory === String(cat.id)
-                  ? 'bg-[#232732] text-white font-medium'
-                  : 'text-[#9da7b3] hover:bg-[#1f232c] hover:text-white'
-              }`}
-            >
-              {selectedCategory === String(cat.id) && (
-                <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#2a69df] rounded-r" />
-              )}
-              <span className="flex items-center gap-2 truncate">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                <span className="truncate">{cat.name}</span>
-              </span>
-            </button>
-          ))}
+          {/* Custom Categories created by user */}
+          {categories.map((cat) => {
+            const count = categoryCounts?.[cat.id!] ?? 0
+            const isSelected = selectedCategory === String(cat.id)
+            return (
+              <div
+                key={cat.id}
+                onClick={() => {
+                  setSelectedCategory(String(cat.id))
+                  setFormatFilter(null)
+                }}
+                className={`group w-full h-8 flex items-center justify-between px-2.5 rounded-[2px] transition-colors cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-[#232732] text-white font-medium'
+                    : 'text-[#9da7b3] hover:bg-[#1f232c] hover:text-white'
+                }`}
+              >
+                {isSelected && (
+                  <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#2a69df] rounded-r" />
+                )}
+                <span className="flex items-center gap-2 truncate">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="truncate">{cat.name}</span>
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] text-[#6e7681] group-hover:hidden">{count}</span>
+                  <button
+                    onClick={(e) => handleDeleteCategory(e, cat.id!)}
+                    className="hidden group-hover:flex w-4 h-4 items-center justify-center text-[#8b949e] hover:text-[#f85149] rounded transition-colors"
+                    title="Delete category"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
 
-          {/* Add new category */}
+          {/* Add new category form with color picker */}
           {showAddCat ? (
-            <form onSubmit={handleCreateCategory} className="px-2 pt-1 pb-2">
+            <form onSubmit={handleCreateCategory} className="p-2 bg-[#1c1f26] border border-[#2d323f] rounded-[2px] space-y-2 my-1.5">
+              <div className="text-[11px] font-medium text-[#c8d1dc]">New Category</div>
               <input
                 type="text"
                 autoFocus
                 placeholder="Category name..."
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
-                onBlur={() => setShowAddCat(false)}
-                className="ice-input w-full px-2 py-1 text-xs"
+                className="ice-input w-full px-2 py-1 text-xs rounded-[2px]"
               />
+              <div>
+                <div className="text-[10px] text-[#8b949e] mb-1">Color:</div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {COLOR_PALETTE.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewCatColor(c)}
+                      className={`w-3.5 h-3.5 rounded-full transition-transform ${
+                        newCatColor === c ? 'ring-2 ring-white scale-110' : 'hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  ))}
+                  <label className="relative cursor-pointer" title="Custom color">
+                    <input
+                      type="color"
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value)}
+                      className="w-3.5 h-3.5 opacity-0 absolute inset-0 cursor-pointer"
+                    />
+                    <div
+                      className="w-3.5 h-3.5 rounded-full border border-dashed border-[#8b949e] flex items-center justify-center text-[8px] text-[#8b949e] hover:border-white hover:text-white"
+                      style={{ backgroundColor: COLOR_PALETTE.includes(newCatColor) ? 'transparent' : newCatColor }}
+                    >
+                      +
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="flex items-center gap-1.5 pt-1 border-t border-[#232732]">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: newCatColor }} />
+                <span className="text-[11px] text-[#9da7b3] truncate">{newCatName.trim() || 'Preview'}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddCat(false)
+                    setNewCatName('')
+                    setNewCatColor('#2a69df')
+                  }}
+                  className="px-2 py-0.5 text-[11px] bg-[#282c37] hover:bg-[#323744] text-[#8b949e] hover:text-white rounded-[2px] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newCatName.trim()}
+                  className="px-2.5 py-0.5 text-[11px] bg-[#2a69df] hover:bg-[#387bf0] disabled:opacity-50 text-white font-medium rounded-[2px] transition-colors"
+                >
+                  Add
+                </button>
+              </div>
             </form>
           ) : (
             <button
               onClick={() => setShowAddCat(true)}
-              className="w-full h-7 flex items-center gap-2 px-2.5 text-[11px] text-[#6e7681] hover:text-[#9da7b3] transition-colors"
+              className="w-full h-7 flex items-center gap-2 px-2.5 text-[11px] text-[#6e7681] hover:text-[#9da7b3] transition-colors rounded-[2px]"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add new category</span>
@@ -302,13 +400,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
         >
           <HelpCircle className="w-4 h-4 text-[#8b949e]" />
           <span>Help</span>
-        </button>
-        <button
-          onClick={() => toggleFullSettingsModal(true)}
-          className="w-full h-8 flex items-center justify-center gap-1.5 px-2.5 rounded-[2px] bg-[#2a69df] hover:bg-[#387bf0] text-white text-[12px] font-medium transition-colors shadow-sm mt-1"
-        >
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span>Upgrade to PRO</span>
         </button>
       </div>
     </aside>

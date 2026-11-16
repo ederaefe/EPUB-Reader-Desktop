@@ -8,7 +8,7 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    title: 'Ebook Reader',
+    title: 'Semply Ebook Reader',
     width: 1280,
     height: 820,
     minWidth: 960,
@@ -38,18 +38,20 @@ function createWindow(): void {
       if (input.key === '=' || input.key === '+' || input.code === 'Equal' || input.code === 'NumpadAdd') {
         event.preventDefault()
         if (mainWindow) {
-          const currentZoom = mainWindow.webContents.getZoomLevel()
-          mainWindow.webContents.setZoomLevel(Math.min(3, currentZoom + 0.5))
+          const currentFactor = mainWindow.webContents.getZoomFactor()
+          const nextFactor = Math.min(3.0, Math.round((currentFactor + 0.1) * 10) / 10)
+          mainWindow.webContents.setZoomFactor(nextFactor)
         }
       } else if (input.key === '-' || input.key === '_' || input.code === 'Minus' || input.code === 'NumpadSubtract') {
         event.preventDefault()
         if (mainWindow) {
-          const currentZoom = mainWindow.webContents.getZoomLevel()
-          mainWindow.webContents.setZoomLevel(Math.max(-3, currentZoom - 0.5))
+          const currentFactor = mainWindow.webContents.getZoomFactor()
+          const nextFactor = Math.max(0.5, Math.round((currentFactor - 0.1) * 10) / 10)
+          mainWindow.webContents.setZoomFactor(nextFactor)
         }
       } else if (input.key === '0' || input.code === 'Digit0' || input.code === 'Numpad0') {
         event.preventDefault()
-        mainWindow?.webContents.setZoomLevel(0)
+        mainWindow?.webContents.setZoomFactor(1.0)
       }
     }
   })
@@ -81,6 +83,12 @@ ipcMain.handle('window:toggleFullscreen', () => {
   if (mainWindow) {
     mainWindow.setFullScreen(!mainWindow.isFullScreen())
   }
+})
+ipcMain.handle('window:setZoomFactor', (_, factor: number) => {
+  mainWindow?.webContents.setZoomFactor(factor)
+})
+ipcMain.handle('window:getZoomFactor', () => {
+  return mainWindow?.webContents.getZoomFactor() ?? 1.0
 })
 
 // File System & Dialogs
@@ -137,6 +145,40 @@ ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
 ipcMain.handle('fs:readFileBuffer', async (_, filePath: string) => {
   const buffer = await readFile(filePath)
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+})
+
+// Read text file
+ipcMain.handle('fs:readFileText', async (_, filePath: string) => {
+  return await readFile(filePath, 'utf-8')
+})
+
+// Write text file
+ipcMain.handle('fs:writeFileText', async (_, filePath: string, content: string) => {
+  await writeFile(filePath, content, 'utf-8')
+  return true
+})
+
+// Write binary buffer
+ipcMain.handle('fs:writeFileBuffer', async (_, filePath: string, buffer: ArrayBuffer) => {
+  await writeFile(filePath, Buffer.from(buffer))
+  return true
+})
+
+// Dialog to save file
+ipcMain.handle('dialog:showSaveDialog', async (_, options: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => {
+  if (!mainWindow) return null
+  const result = await dialog.showSaveDialog(mainWindow, options)
+  return result.canceled ? null : result.filePath
+})
+
+// Dialog to open backup file
+ipcMain.handle('dialog:showOpenDialog', async (_, options: { title?: string; filters?: Array<{ name: string; extensions: string[] }> }) => {
+  if (!mainWindow) return null
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    ...options
+  })
+  return result.canceled ? null : result.filePaths[0]
 })
 
 // PDF to EPUB Conversion Engine

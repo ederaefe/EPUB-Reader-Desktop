@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 
 export interface DesktopAPI {
   minimize: () => Promise<void>
@@ -10,7 +10,14 @@ export interface DesktopAPI {
   openFolder: () => Promise<string | null>
   scanFolder: (folderPath: string) => Promise<string[]>
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
+  readFileText: (filePath: string) => Promise<string>
+  writeFileText: (filePath: string, content: string) => Promise<boolean>
+  writeFileBuffer: (filePath: string, buffer: ArrayBuffer) => Promise<boolean>
+  showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>
+  showOpenDialog: (options: { title?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>
   convertToEpub: (pdfPath: string) => Promise<{ success: boolean; epubPath?: string; error?: string }>
+  setZoomFactor: (factor: number) => void
+  getZoomFactor: () => number
 }
 
 const api: DesktopAPI = {
@@ -23,7 +30,27 @@ const api: DesktopAPI = {
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   scanFolder: (p) => ipcRenderer.invoke('fs:scanFolder', p),
   readFileBuffer: (p) => ipcRenderer.invoke('fs:readFileBuffer', p),
-  convertToEpub: (p) => ipcRenderer.invoke('pdf:convertToEpub', p)
+  readFileText: (p) => ipcRenderer.invoke('fs:readFileText', p),
+  writeFileText: (p, content) => ipcRenderer.invoke('fs:writeFileText', p, content),
+  writeFileBuffer: (p, buffer) => ipcRenderer.invoke('fs:writeFileBuffer', p, buffer),
+  showSaveDialog: (opts) => ipcRenderer.invoke('dialog:showSaveDialog', opts),
+  showOpenDialog: (opts) => ipcRenderer.invoke('dialog:showOpenDialog', opts),
+  convertToEpub: (p) => ipcRenderer.invoke('pdf:convertToEpub', p),
+  setZoomFactor: (factor: number) => {
+    try {
+      webFrame.setZoomFactor(factor)
+      ipcRenderer.invoke('window:setZoomFactor', factor)
+    } catch (e) {
+      console.error('Zoom error', e)
+    }
+  },
+  getZoomFactor: () => {
+    try {
+      return webFrame.getZoomFactor()
+    } catch {
+      return 1.0
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

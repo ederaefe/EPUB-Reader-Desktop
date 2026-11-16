@@ -36,6 +36,17 @@ export const LibraryView: React.FC = () => {
     loadData()
   }, [])
 
+  // Calculate per-category book counts
+  const categoryCounts = useMemo(() => {
+    const countsMap: Record<number, number> = {}
+    for (const b of books) {
+      if (!b.isDeleted && b.categoryId) {
+        countsMap[b.categoryId] = (countsMap[b.categoryId] || 0) + 1
+      }
+    }
+    return countsMap
+  }, [books])
+
   // Calculate shelf counts
   const counts = useMemo(() => {
     return {
@@ -252,7 +263,7 @@ export const LibraryView: React.FC = () => {
   return (
     <div className="flex-1 flex overflow-hidden bg-[#1c1f26]">
       {/* Left Sidebar */}
-      <Sidebar counts={counts} categories={categories} onRefresh={loadData} />
+      <Sidebar counts={counts} categories={categories} categoryCounts={categoryCounts} onRefresh={loadData} />
 
       {/* Main Catalog View */}
       <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#1c1f26]">
@@ -292,11 +303,11 @@ export const LibraryView: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-0.5 border border-[#2d323f] rounded-[2px] p-0.5 bg-[#171a21]">
+            <div className="flex items-center gap-0.5 border border-[#232732] rounded-[2px] p-0.5 bg-[#171a21]">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                  viewMode === 'grid' ? 'bg-[#282c37] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                  viewMode === 'grid' ? 'bg-[#232732] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
                 }`}
                 title="Grid view"
               >
@@ -305,7 +316,7 @@ export const LibraryView: React.FC = () => {
               <button
                 onClick={() => setViewMode('list')}
                 className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                  viewMode === 'list' ? 'bg-[#282c37] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                  viewMode === 'list' ? 'bg-[#232732] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
                 }`}
                 title="List view"
               >
@@ -360,6 +371,7 @@ export const LibraryView: React.FC = () => {
                 <BookCard
                   key={book.id}
                   book={book}
+                  categories={categories}
                   onOpen={handleOpenBook}
                   onUpdate={loadData}
                   viewMode="grid"
@@ -372,6 +384,7 @@ export const LibraryView: React.FC = () => {
                 <BookCard
                   key={book.id}
                   book={book}
+                  categories={categories}
                   onOpen={handleOpenBook}
                   onUpdate={loadData}
                   viewMode="list"

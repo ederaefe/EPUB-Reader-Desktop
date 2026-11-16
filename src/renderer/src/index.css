@@ -25,8 +25,8 @@ body {
 
 /* 1:1 Icecream Desktop Button Classes */
 .ice-btn-dark {
-  background-color: #282c37;
-  border: 1px solid #3c404d;
+  background-color: #232732;
+  border: 1px solid #282c38;
   color: #e6edf3;
   border-radius: 4px;
   font-size: 12px;
@@ -38,12 +38,13 @@ body {
 }
 
 .ice-btn-dark:hover {
-  background-color: #333846;
-  border-color: #4e5363;
+  background-color: #2b303d;
+  border-color: #313746;
 }
 
 .ice-btn-dark:active {
-  background-color: #22252e;
+  background-color: #1a1d26;
+  border-color: #20242e;
 }
 
 .ice-btn-blue {
@@ -80,13 +81,13 @@ body {
 }
 
 .ice-icon-btn:hover {
-  background-color: #282c37;
-  border-color: #3c404d;
+  background-color: #232732;
+  border-color: #282c38;
   color: #ffffff;
 }
 
 .ice-icon-btn.active {
-  background-color: #282c37;
+  background-color: #232732;
   border-color: #2a69df;
   color: #ffffff;
 }
@@ -94,7 +95,7 @@ body {
 /* Rectangular desktop input */
 .ice-input {
   background-color: #12141a;
-  border: 1px solid #2d323f;
+  border: 1px solid #232732;
   color: #e6edf3;
   border-radius: 4px;
   font-size: 12px;
