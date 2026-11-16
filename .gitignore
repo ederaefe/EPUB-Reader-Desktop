@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-electron/
+out/
+release/
+.vite/
+*.mp4
+*.apk
+*.exe
+.DS_Store
+Thumbs.db
