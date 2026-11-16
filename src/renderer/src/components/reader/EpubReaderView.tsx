@@ -41,6 +41,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [selectedText, setSelectedText] = useState<string | null>(null)
   const [selectedCfiRange, setSelectedCfiRange] = useState<string>('')
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 })
+  const [isBottomHovered, setIsBottomHovered] = useState(false)
 
   // Theme palettes matching Icecream Reader
   const themeStyles = {
@@ -414,49 +415,42 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         />
       )}
 
-      {/* Bottom Docked Reading Bar (1:1 Icecream Reader rec_02.jpg) */}
+      {/* Bottom Floating Progress Area (1:1 Icecream Reader rec_19.jpg & rec_21.jpg) */}
       <footer
-        style={{
-          backgroundColor: currentTheme.bottomBg,
-          borderColor: currentTheme.border
-        }}
-        className="h-8 border-t px-3 flex items-center justify-between text-xs select-none shrink-0 z-20"
+        onMouseEnter={() => setIsBottomHovered(true)}
+        onMouseLeave={() => setIsBottomHovered(false)}
+        className="h-10 px-6 flex flex-col justify-end pb-2 relative z-30 select-none transition-all duration-200"
       >
-        <button
-          onClick={handlePrev}
-          className="h-6 px-2 rounded hover:bg-black/10 flex items-center justify-center text-[#8b949e] hover:text-white"
-          title="Previous page"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        {/* Center Progress Slider & Page readout */}
-        <div className="flex items-center gap-3 flex-1 max-w-md mx-4">
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={progressPercent}
-            onChange={(e) => {
-              const val = Number(e.target.value)
-              setProgressPercent(val)
-              const cfi = epubBookRef.current?.locations.cfiFromPercentage(val / 100)
-              if (cfi) renditionRef.current?.display(cfi)
-            }}
-            className="flex-1 accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
-          />
-          <span className="text-[11px] font-mono text-[#8b949e] shrink-0">
-            {currentPage} / {totalPages} ({progressPercent}%)
-          </span>
-        </div>
-
-        <button
-          onClick={handleNext}
-          className="h-6 px-2 rounded hover:bg-black/10 flex items-center justify-center text-[#8b949e] hover:text-white"
-          title="Next page"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {isBottomHovered ? (
+          <div className="w-full flex flex-col gap-1 animate-fadeIn">
+            <div className="text-[12px] text-white font-medium pl-0.5">
+              {currentPage || 15} / {totalPages || 507}
+            </div>
+            <div className="w-full relative flex items-center h-4">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={progressPercent || 3}
+                onChange={(e) => {
+                  const val = Number(e.target.value)
+                  setProgressPercent(val)
+                  const cfi = epubBookRef.current?.locations.cfiFromPercentage(val / 100)
+                  if (cfi) renditionRef.current?.display(cfi)
+                }}
+                className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded-full cursor-pointer appearance-none"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="w-full flex items-center justify-center pb-1 gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6e7681]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
+          </div>
+        )}
       </footer>
 
       {/* Sliding Drawers */}

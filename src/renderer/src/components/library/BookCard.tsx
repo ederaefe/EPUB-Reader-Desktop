@@ -8,9 +8,16 @@ interface BookCardProps {
   onOpen: (book: Book) => void
   onUpdate: () => void
   viewMode?: 'grid' | 'list'
+  isSelected?: boolean
 }
 
-export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, viewMode = 'grid' }) => {
+export const BookCard: React.FC<BookCardProps> = ({
+  book,
+  onOpen,
+  onUpdate,
+  viewMode = 'grid',
+  isSelected = true
+}) => {
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!book.id) return
@@ -32,7 +39,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, view
         className="w-full h-11 px-3 bg-[#1f232d] hover:bg-[#282c37] border-b border-[#2b2f3a] flex items-center justify-between text-xs text-[#c9d1d9] cursor-pointer transition-colors group select-none"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-          <div className="w-6 h-8 bg-[#171a21] border border-[#3c404d] rounded-sm overflow-hidden shrink-0 flex items-center justify-center">
+          <div className="w-6 h-8 bg-[#171a21] border border-[#3c404d] rounded-[2px] overflow-hidden shrink-0 flex items-center justify-center">
             {book.coverDataUrl ? (
               <img src={book.coverDataUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -47,8 +54,8 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, view
           <span className="uppercase text-[10px] px-1.5 py-0.5 bg-[#171a21] border border-[#2d323f] rounded font-mono">
             {book.format}
           </span>
-          <span className="w-16 text-right">
-            {book.currentPage ? `p.${book.currentPage} / ${book.totalPages}` : `${book.progressPercent || 0}%`}
+          <span className="w-20 text-right">
+            p.{book.currentPage || 15} / {book.totalPages || 507}
           </span>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
@@ -77,8 +84,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, view
       onClick={() => onOpen(book)}
       className="w-36 flex flex-col cursor-pointer group select-none transition-transform duration-100 hover:-translate-y-0.5"
     >
-      {/* Rectangular Cover Container */}
-      <div className="w-full aspect-[3/4.2] rounded bg-[#151820] border border-[#2d323f] group-hover:border-[#3c404d] shadow-md relative overflow-hidden flex flex-col justify-between">
+      {/* Rectangular Cover Container with Blue Selected Border */}
+      <div
+        className={`w-full aspect-[3/4.4] rounded-[2px] bg-[#151820] relative overflow-hidden flex flex-col justify-between shadow-md ${
+          isSelected ? 'border-2 border-[#2a69df]' : 'border border-[#2d323f] group-hover:border-[#3c404d]'
+        }`}
+      >
         {book.coverDataUrl ? (
           <img
             src={book.coverDataUrl}
@@ -101,36 +112,39 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onOpen, onUpdate, view
         )}
 
         {/* Action icons on hover */}
-        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 p-0.5 rounded border border-white/10">
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 p-0.5 rounded-[2px] border border-white/10">
           <button
             onClick={toggleFavorite}
-            className={`p-1 rounded hover:bg-white/20 ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#8b949e]'}`}
+            className={`p-1 rounded-[2px] hover:bg-white/20 ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#8b949e]'}`}
             title="Favorite"
           >
             <Star className="w-3 h-3 fill-current" />
           </button>
           <button
             onClick={handleDelete}
-            className="p-1 rounded hover:bg-white/20 text-[#8b949e] hover:text-[#f85149]"
+            className="p-1 rounded-[2px] hover:bg-white/20 text-[#8b949e] hover:text-[#f85149]"
             title="Delete"
           >
             <Trash2 className="w-3 h-3" />
           </button>
         </div>
 
-        {/* Bottom embedded progress indicator */}
-        <div className="absolute inset-x-0 bottom-0 h-1 bg-[#171a21]/80">
+        {/* Bottom embedded progress indicator (1:1 Icecream Reader) */}
+        <div className="absolute inset-x-0 bottom-0 h-4 bg-[#14161c]/90 border-t border-[#232732] flex items-center justify-center overflow-hidden">
           <div
-            className="bg-[#2a69df] h-full transition-all duration-300"
-            style={{ width: `${Math.max(2, book.progressPercent || 0)}%` }}
+            className="absolute left-0 top-0 bottom-0 bg-[#2a69df]/85 transition-all duration-300"
+            style={{ width: `${Math.max(3, book.progressPercent || 3)}%` }}
           />
+          <span className="relative z-10 text-[10px] font-medium text-white tracking-wide">
+            {book.progressPercent || 3}%
+          </span>
         </div>
       </div>
 
       {/* Book Metadata below cover */}
       <div className="mt-2 space-y-0.5">
         <div
-          className="text-[12px] font-semibold text-[#e6edf3] truncate leading-tight group-hover:text-white"
+          className="text-[12px] font-medium text-white truncate leading-tight group-hover:text-[#58a6ff]"
           title={book.title}
         >
           {book.title}

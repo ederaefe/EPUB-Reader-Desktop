@@ -262,7 +262,7 @@ export const LibraryView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={handleImportFiles}
-              className="ice-btn-dark px-3 py-1 text-xs gap-1.5"
+              className="ice-btn-dark px-3 h-7 text-xs flex items-center gap-1.5 rounded-[2px]"
               title="Add book from computer (Ctrl+O)"
             >
               <Plus className="w-3.5 h-3.5 text-[#2a69df]" />
@@ -271,39 +271,42 @@ export const LibraryView: React.FC = () => {
 
             <button
               onClick={handleImportFolder}
-              className="ice-btn-dark w-7 h-7"
+              className="ice-btn-dark px-3 h-7 text-xs flex items-center gap-1.5 rounded-[2px]"
               title="Add books from folder"
             >
               <FolderPlus className="w-3.5 h-3.5 text-[#8b949e]" />
+              <span>Add folder</span>
             </button>
           </div>
 
           {/* Right Controls: Search & View Toggle */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-[#6e7681] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search title, author, or tags..."
-                className="ice-input h-7 pl-8 pr-2.5 w-52 text-xs"
+                placeholder="Search in Library"
+                className="ice-input h-7 pl-8 pr-2.5 w-60 text-xs rounded-[2px]"
               />
             </div>
 
-            <div className="h-4 w-px bg-[#2d323f]" />
-
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5 border border-[#2d323f] rounded-[2px] p-0.5 bg-[#171a21]">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`w-7 h-7 ice-icon-btn ${viewMode === 'grid' ? 'active text-white' : ''}`}
+                className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
+                  viewMode === 'grid' ? 'bg-[#282c37] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                }`}
                 title="Grid view"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`w-7 h-7 ice-icon-btn ${viewMode === 'list' ? 'active text-white' : ''}`}
+                className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
+                  viewMode === 'list' ? 'bg-[#282c37] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                }`}
                 title="List view"
               >
                 <List className="w-3.5 h-3.5" />
@@ -311,6 +314,15 @@ export const LibraryView: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Table sorting column headers (1:1 Icecream Reader) */}
+        <div className="h-7 px-5 border-b border-[#232732] flex items-center text-[11px] text-[#6e7681] select-none bg-[#171a21]/50 shrink-0">
+          <div className="w-[38%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Title</div>
+          <div className="w-[24%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Author</div>
+          <div className="w-[14%] flex items-center gap-1 cursor-pointer text-[#c8d1dc]">Date ▼</div>
+          <div className="w-[12%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Notes</div>
+          <div className="w-[12%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3] text-right pr-4">Progress</div>
+        </div>
 
         {/* Catalog Body */}
         <div
@@ -325,12 +337,22 @@ export const LibraryView: React.FC = () => {
           )}
 
           {filteredBooks.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-[#8b949e]">
-              <BookOpen className="w-12 h-12 text-[#2d323f] mb-3" />
-              <p className="text-sm font-medium text-[#c9d1d9]">No books in this view</p>
-              <p className="text-xs text-[#6e7681] mt-1 max-w-sm">
-                Click "+ Add book" to import EPUB, MOBI, or PDF books, or drag and drop files directly here.
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 select-none">
+              <p className="text-[13px] text-[#8b949e] mb-6">
+                No books found in &quot;{selectedCategory === 'recent' ? 'Recently Read' : selectedCategory === 'favorites' ? 'Favorites' : selectedCategory === 'read' ? 'Read' : selectedCategory === 'deleted' ? 'Deleted' : 'All'}&quot;.
               </p>
+              <div className="opacity-20 flex items-center justify-center relative w-24 h-24">
+                <div className="flex gap-1.5 items-end">
+                  <div className="w-5 h-16 bg-[#6e7681] rounded-sm" />
+                  <div className="w-5 h-18 bg-[#6e7681] rounded-sm" />
+                  <div className="w-5 h-14 bg-[#6e7681] rounded-sm" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full border-2 border-[#6e7681] flex items-center justify-center">
+                    <span className="text-lg font-bold text-[#6e7681]">?</span>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : viewMode === 'grid' ? (
             <div className="flex flex-wrap gap-5">

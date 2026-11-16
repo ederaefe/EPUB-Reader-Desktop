@@ -5,6 +5,7 @@ import { TitleBar } from './components/ui/TitleBar'
 import { LibraryView } from './components/library/LibraryView'
 import { EpubReaderView } from './components/reader/EpubReaderView'
 import { HelpModal } from './components/ui/HelpModal'
+import { FullSettingsModal } from './components/modals/FullSettingsModal'
 
 // Bundled authentic assets
 import fifthSeasonCover from './assets/covers/the_fifth_season.jpg'
@@ -83,6 +84,7 @@ export const App: React.FC = () => {
       </main>
 
       <HelpModal />
+      <FullSettingsModal />
     </div>
   )
 }

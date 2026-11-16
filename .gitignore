@@ -9,3 +9,5 @@ release/
 *.exe
 .DS_Store
 Thumbs.db
+
+scratch/

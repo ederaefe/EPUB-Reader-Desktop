@@ -19,6 +19,7 @@ interface AppState {
   isBookmarksDrawerOpen: boolean
   isSearchDrawerOpen: boolean
   isSettingsDrawerOpen: boolean
+  isFullSettingsModalOpen: boolean
   isHelpModalOpen: boolean
 
   // TTS & Autoscroll
@@ -41,6 +42,7 @@ interface AppState {
   toggleBookmarksDrawer: (open?: boolean) => void
   toggleSearchDrawer: (open?: boolean) => void
   toggleSettingsDrawer: (open?: boolean) => void
+  toggleFullSettingsModal: (open?: boolean) => void
   toggleHelpModal: (open?: boolean) => void
   setTTSActive: (active: boolean) => void
   setAutoscrollActive: (active: boolean) => void
@@ -63,6 +65,7 @@ export const useAppStore = create<AppState>((set) => ({
   isBookmarksDrawerOpen: false,
   isSearchDrawerOpen: false,
   isSettingsDrawerOpen: false,
+  isFullSettingsModalOpen: false,
   isHelpModalOpen: false,
 
   isTTSActive: false,
@@ -120,6 +123,11 @@ export const useAppStore = create<AppState>((set) => ({
       isTOCDrawerOpen: false,
       isNotesDrawerOpen: false,
       isBookmarksDrawerOpen: false
+    })),
+  toggleFullSettingsModal: (open) =>
+    set((s) => ({
+      isFullSettingsModalOpen: open ?? !s.isFullSettingsModalOpen,
+      isSettingsDrawerOpen: false
     })),
   toggleHelpModal: (open) =>
     set((s) => ({

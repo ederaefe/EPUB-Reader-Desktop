@@ -37,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
     formatFilter,
     setFormatFilter,
     toggleSettingsDrawer,
+    toggleFullSettingsModal,
     toggleHelpModal
   } = useAppStore()
 
@@ -66,6 +67,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
 
   return (
     <aside className="w-56 h-full bg-[#171a21] border-r border-[#232732] flex flex-col justify-between select-none shrink-0">
+      {/* Top Header */}
+      <div className="h-11 px-3 flex items-center gap-2.5 border-b border-[#232732] shrink-0">
+        <div className="w-5 h-5 rounded-[2px] bg-[#2a69df] flex items-center justify-center text-white shrink-0">
+          <BookOpen className="w-3 h-3" />
+        </div>
+        <div className="flex items-center">
+          <span className="text-[13px] font-semibold text-white leading-tight">Ebook Reader</span>
+        </div>
+      </div>
+
       {/* Top Section */}
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Navigation list */}
@@ -277,9 +288,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
       </div>
 
       {/* Bottom Docked Settings & Help */}
-      <div className="p-2 border-t border-[#232732] space-y-0.5 text-[12px]">
+      <div className="p-2 border-t border-[#232732] space-y-1 text-[12px]">
         <button
-          onClick={() => toggleSettingsDrawer(true)}
+          onClick={() => toggleFullSettingsModal(true)}
           className="w-full h-8 flex items-center gap-2 px-2.5 rounded text-[#9da7b3] hover:bg-[#1f232c] hover:text-white transition-colors"
         >
           <Settings className="w-4 h-4 text-[#8b949e]" />
@@ -291,6 +302,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, onRefresh 
         >
           <HelpCircle className="w-4 h-4 text-[#8b949e]" />
           <span>Help</span>
+        </button>
+        <button
+          onClick={() => toggleFullSettingsModal(true)}
+          className="w-full h-8 flex items-center justify-center gap-1.5 px-2.5 rounded-[2px] bg-[#2a69df] hover:bg-[#387bf0] text-white text-[12px] font-medium transition-colors shadow-sm mt-1"
+        >
+          <Star className="w-3.5 h-3.5 fill-current" />
+          <span>Upgrade to PRO</span>
         </button>
       </div>
     </aside>

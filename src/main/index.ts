@@ -8,6 +8,7 @@ let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
+    title: 'Ebook Reader',
     width: 1280,
     height: 820,
     minWidth: 960,
@@ -27,6 +28,30 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // Global zoom hotkeys: handles Ctrl + - (shrink) and Ctrl + = / Ctrl + + (unshrink) reliably
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+
+    if (input.control || input.meta) {
+      if (input.key === '=' || input.key === '+' || input.code === 'Equal' || input.code === 'NumpadAdd') {
+        event.preventDefault()
+        if (mainWindow) {
+          const currentZoom = mainWindow.webContents.getZoomLevel()
+          mainWindow.webContents.setZoomLevel(Math.min(3, currentZoom + 0.5))
+        }
+      } else if (input.key === '-' || input.key === '_' || input.code === 'Minus' || input.code === 'NumpadSubtract') {
+        event.preventDefault()
+        if (mainWindow) {
+          const currentZoom = mainWindow.webContents.getZoomLevel()
+          mainWindow.webContents.setZoomLevel(Math.max(-3, currentZoom - 0.5))
+        }
+      } else if (input.key === '0' || input.code === 'Digit0' || input.code === 'Numpad0') {
+        event.preventDefault()
+        mainWindow?.webContents.setZoomLevel(0)
+      }
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

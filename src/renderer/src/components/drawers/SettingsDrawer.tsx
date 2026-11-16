@@ -1,9 +1,25 @@
 import React from 'react'
-import { X, Columns, Square, AlignJustify, Minus, Plus } from 'lucide-react'
+import {
+  X,
+  Columns,
+  Square,
+  Sun,
+  Moon,
+  Coffee,
+  AlignJustify,
+  ArrowRight
+} from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 
 export const SettingsDrawer: React.FC = () => {
-  const { isSettingsDrawerOpen, toggleSettingsDrawer, settings, updateSettings } = useAppStore()
+  const {
+    isSettingsDrawerOpen,
+    toggleSettingsDrawer,
+    toggleFullSettingsModal,
+    toggleHelpModal,
+    settings,
+    updateSettings
+  } = useAppStore()
 
   if (!isSettingsDrawerOpen) return null
 
@@ -15,75 +31,75 @@ export const SettingsDrawer: React.FC = () => {
   return (
     <aside className="fixed inset-y-0 right-0 w-80 bg-[#171a21] border-l border-[#232732] z-50 flex flex-col justify-between shadow-2xl select-none animate-in slide-in-from-right duration-150">
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3 flex items-center justify-between">
+        {/* Header (1:1 Icecream Reader rec_12.jpg) */}
+        <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3.5 flex items-center justify-between shrink-0">
           <span className="text-[13px] font-semibold text-white">Settings</span>
           <button
             onClick={() => toggleSettingsDrawer(false)}
-            className="w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded"
+            className="w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded-[2px]"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Settings Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs text-[#c9d1d9]">
-          {/* 1. Theme Tiles (4 in a row, matching Icecream rec_05.jpg) */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-[#c9d1d9]">
+          {/* 1. Theme (2x2 grid with authentic icons, 1:1 rec_12.jpg) */}
           <div>
             <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
-              Color profile
+              Theme
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {/* Day */}
               <button
                 onClick={() => updateSettings({ theme: 'day' })}
-                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.theme === 'day'
-                    ? 'border-[#2a69df] bg-white ring-1 ring-[#2a69df]'
-                    : 'border-[#3c404d] bg-white/90 hover:bg-white'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
                 }`}
               >
-                <span className="text-sm font-serif font-bold text-[#111111]">A</span>
-                <span className="text-[10px] text-[#444444] font-medium">Day</span>
+                <Sun className="w-3.5 h-3.5" />
+                <span>Day</span>
               </button>
 
               {/* Night */}
               <button
                 onClick={() => updateSettings({ theme: 'night' })}
-                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.theme === 'night'
-                    ? 'border-[#2a69df] bg-[#1c1f26] ring-1 ring-[#2a69df]'
-                    : 'border-[#3c404d] bg-[#1c1f26] hover:bg-[#232732]'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
                 }`}
               >
-                <span className="text-sm font-serif font-bold text-white">A</span>
-                <span className="text-[10px] text-[#8b949e] font-medium">Night</span>
+                <Moon className="w-3.5 h-3.5" />
+                <span>Night</span>
               </button>
 
               {/* Light Sepia */}
               <button
                 onClick={() => updateSettings({ theme: 'light-sepia' })}
-                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.theme === 'light-sepia'
-                    ? 'border-[#2a69df] bg-[#fbf0d9] ring-1 ring-[#2a69df]'
-                    : 'border-[#3c404d] bg-[#f5e7c8] hover:bg-[#fbf0d9]'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
                 }`}
               >
-                <span className="text-sm font-serif font-bold text-[#5f4b32]">A</span>
-                <span className="text-[10px] text-[#5f4b32] font-medium">Sepia</span>
+                <Coffee className="w-3.5 h-3.5" />
+                <span>Light sepia</span>
               </button>
 
               {/* Dark Sepia */}
               <button
                 onClick={() => updateSettings({ theme: 'dark-sepia' })}
-                className={`h-14 rounded flex flex-col items-center justify-center gap-1 border transition-all ${
+                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.theme === 'dark-sepia'
-                    ? 'border-[#2a69df] bg-[#2d261e] ring-1 ring-[#2a69df]'
-                    : 'border-[#3c404d] bg-[#201c18] hover:bg-[#2d261e]'
+                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
                 }`}
               >
-                <span className="text-sm font-serif font-bold text-[#d5c7b3]">A</span>
-                <span className="text-[10px] text-[#d5c7b3] font-medium">D-Sepia</span>
+                <Coffee className="w-3.5 h-3.5" />
+                <span>Dark sepia</span>
               </button>
             </div>
           </div>
@@ -92,7 +108,6 @@ export const SettingsDrawer: React.FC = () => {
           <div>
             <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
               <span>Dimming</span>
-              <span className="font-mono text-white">{settings.dimming}%</span>
             </div>
             <input
               type="range"
@@ -100,21 +115,19 @@ export const SettingsDrawer: React.FC = () => {
               max="75"
               value={settings.dimming}
               onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-              className="w-full accent-[#2a69df] h-1.5 bg-[#232732] rounded cursor-pointer"
+              className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
             />
           </div>
 
-          <div className="h-px bg-[#232732]" />
-
-          {/* 3. Page view (Single vs Double, 1:1 Icecream rec_05.jpg) */}
+          {/* 3. Page view (Single vs Double, 1:1 Icecream rec_12.jpg) */}
           <div>
-            <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
+            <label className="text-[11px] font-medium text-[#8b949e] block mb-1.5">
               Page view
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => updateSettings({ pageSpread: 'double' })}
-                className={`h-8 rounded flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
+                className={`h-8 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.pageSpread === 'double'
                     ? 'bg-[#2a69df] border-[#2a69df] text-white'
                     : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
@@ -126,7 +139,7 @@ export const SettingsDrawer: React.FC = () => {
 
               <button
                 onClick={() => updateSettings({ pageSpread: 'single' })}
-                className={`h-8 rounded flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
+                className={`h-8 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
                   settings.pageSpread === 'single'
                     ? 'bg-[#2a69df] border-[#2a69df] text-white'
                     : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
@@ -138,30 +151,28 @@ export const SettingsDrawer: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-px bg-[#232732]" />
-
-          {/* 4. Text Font Dropdown (rec_05.jpg shows 'Original font') */}
+          {/* 4. Text Font Dropdown (rec_12.jpg shows 'Original font') */}
           <div>
             <label className="text-[11px] font-medium text-[#8b949e] block mb-1.5">
-              Text font
+              Text Font
             </label>
             <select
               value={settings.fontFamily}
               onChange={(e) => updateSettings({ fontFamily: e.target.value as any })}
-              className="ice-input w-full h-8 px-2 text-xs bg-[#12141a] border-[#2d323f] text-white rounded cursor-pointer"
+              className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px] cursor-pointer"
             >
               <option value="original">Original font</option>
-              <option value="sans-serif">Segoe UI (Sans)</option>
-              <option value="serif">Georgia (Serif)</option>
-              <option value="monospace">Consolas (Monospace)</option>
+              <option value="sans-serif">Segoe UI</option>
+              <option value="serif">Georgia</option>
+              <option value="monospace">Consolas</option>
             </select>
           </div>
 
-          {/* 5. Font size Slider (rec_05.jpg shows 21px) */}
+          {/* 5. Font size Slider (rec_12.jpg shows 21px) */}
           <div>
             <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
               <span>Font size</span>
-              <span className="font-mono text-white">{settings.fontSize}px</span>
+              <span className="font-mono text-white text-[11px]">{settings.fontSize}px</span>
             </div>
             <input
               type="range"
@@ -170,35 +181,55 @@ export const SettingsDrawer: React.FC = () => {
               step="1"
               value={settings.fontSize}
               onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-              className="w-full accent-[#2a69df] h-1.5 bg-[#232732] rounded cursor-pointer"
+              className="w-full accent-[#2a69df] h-1 bg-[#323744] rounded cursor-pointer"
             />
           </div>
 
-          {/* 6. Line Spacing buttons */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-              <span>Line spacing</span>
-              <span className="font-mono text-white">{Math.round(settings.lineHeight * 100)}%</span>
-            </div>
-            <div className="flex items-center gap-2">
+          {/* 6. Line Spacing buttons (1:1 Icecream rec_12.jpg / rec_14.jpg) */}
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleLineSpacingChange(-0.1)}
-                className="ice-btn-dark flex-1 h-8 gap-1.5 text-xs"
+                className="ice-btn-dark h-9 flex flex-col items-center justify-center text-[10px] rounded-[2px]"
                 title="Decrease line spacing"
               >
-                <Minus className="w-3.5 h-3.5" />
-                <span>Decrease</span>
+                <AlignJustify className="w-3.5 h-3.5 mb-0.5" />
+                <span>Decrease line spacing</span>
               </button>
               <button
                 onClick={() => handleLineSpacingChange(0.1)}
-                className="ice-btn-dark flex-1 h-8 gap-1.5 text-xs"
+                className="ice-btn-dark h-9 flex flex-col items-center justify-center text-[10px] rounded-[2px]"
                 title="Increase line spacing"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Increase</span>
+                <AlignJustify className="w-3.5 h-3.5 mb-0.5" />
+                <span>Increase line spacing</span>
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Bottom Docked Action Links (1:1 Icecream rec_14.jpg) */}
+        <div className="p-3 border-t border-[#232732] space-y-2 shrink-0 bg-[#14161c]">
+          <button
+            onClick={() => {
+              toggleSettingsDrawer(false)
+              toggleFullSettingsModal(true)
+            }}
+            className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#c9d1d9] rounded-[2px]"
+          >
+            <span>Open All Settings</span>
+            <ArrowRight className="w-3.5 h-3.5 text-[#8b949e]" />
+          </button>
+          <button
+            onClick={() => {
+              toggleSettingsDrawer(false)
+              toggleHelpModal(true)
+            }}
+            className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#c9d1d9] rounded-[2px]"
+          >
+            <span>Show hotkeys</span>
+            <ArrowRight className="w-3.5 h-3.5 text-[#8b949e]" />
+          </button>
         </div>
       </div>
     </aside>
