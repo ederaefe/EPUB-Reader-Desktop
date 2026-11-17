@@ -27,7 +27,9 @@ import { AnnotationPopover } from './AnnotationPopover'
 import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
+import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
 import { SideNavigation } from './SideNavigation'
+import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
@@ -106,6 +108,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [currentPage, setCurrentPage] = useState<number>(book.currentPage || 1)
   const [totalPages, setTotalPages] = useState<number>(book.totalPages || 1)
   const [progressPercent, setProgressPercent] = useState<number>(book.progressPercent || 0)
+
+  const {
+    climaxTarget,
+    activeEffect: climaxEffect,
+    stopEffect: stopClimaxEffect
+  } = useClimaxEasterEgg({
+    book,
+    progressPercent: progressPercent || 0,
+    currentPage,
+    totalPages,
+    isImmersiveFullscreen
+  })
 
   // Keep book identity & metadata synced in refs so initReader only re-mounts when the actual
   // book identity or layout mode changes — never when DB progress updates re-render the parent.
@@ -2471,9 +2485,20 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}
+          climaxTarget={climaxTarget}
+          isSaberGlowing={climaxEffect === 'bar-saber'}
+          onSaberGlowEnd={stopClimaxEffect}
           onSeek={handleSeek}
         />
       )}
+
+      {/* Subtle Theme-Adaptive Fullscreen Climax Crimson Wave (3 sweeps, stops immediately on exit) */}
+      <FullscreenClimaxWaveOverlay
+        active={climaxEffect === 'fullscreen-wave'}
+        isImmersiveFullscreen={isImmersiveFullscreen}
+        theme={settings.theme}
+        onComplete={stopClimaxEffect}
+      />
 
       {/* Sliding Drawers */}
       <TOCDrawer

@@ -24,6 +24,8 @@ import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { syncBookNotesCount } from '../../services/annotationService'
 import { buildPdfToc, findActivePdfTocItem } from '../../services/tocService'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
+import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
+import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
@@ -81,6 +83,21 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(Math.max(1, book.currentPage || 1))
   const [totalPages, setTotalPages] = useState<number>(Math.max(1, book.totalPages || 1))
   const [pdfBookmarks, setPdfBookmarks] = useState<BookmarkItem[]>([])
+
+  const pdfProgressPercent =
+    totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 100
+
+  const {
+    climaxTarget,
+    activeEffect: climaxEffect,
+    stopEffect: stopClimaxEffect
+  } = useClimaxEasterEgg({
+    book,
+    progressPercent: pdfProgressPercent,
+    currentPage,
+    totalPages,
+    isImmersiveFullscreen
+  })
 
   // Keep book identity in stable refs so DB progress updates never tear down and reload the PDF
   const bookKey = `${book.id ?? ''}::${book.filePath}`
@@ -606,12 +623,15 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
         <FluidClimaxProgressBar
-          progressPercent={totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 100}
+          progressPercent={pdfProgressPercent}
           currentPage={currentPage}
           totalPages={totalPages}
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}
+          climaxTarget={climaxTarget}
+          isSaberGlowing={climaxEffect === 'bar-saber'}
+          onSaberGlowEnd={stopClimaxEffect}
           onSeek={(val) => {
             const targetPage =
               totalPages <= 1
@@ -626,6 +646,14 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           }}
         />
       )}
+
+      {/* Subtle Theme-Adaptive Fullscreen Climax Crimson Wave (3 sweeps, stops immediately on exit) */}
+      <FullscreenClimaxWaveOverlay
+        active={climaxEffect === 'fullscreen-wave'}
+        isImmersiveFullscreen={isImmersiveFullscreen}
+        theme={settings.theme}
+        onComplete={stopClimaxEffect}
+      />
 
       {/* Drawers */}
       <TOCDrawer

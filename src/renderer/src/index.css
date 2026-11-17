@@ -1223,6 +1223,147 @@ html[data-theme="dark-sepia"] .settings-btn-danger,
   will-change: filter;
 }
 
+/* ============================================================================
+   One-Time Fullscreen Climax Subtle Theme-Adaptive Crimson Wave (3 Sweeps)
+   ============================================================================ */
+@keyframes climax-fullscreen-wave {
+  0% {
+    transform: translate3d(0, -62vh, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(0, 108vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes climax-fullscreen-top-glow {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  58% {
+    opacity: 0.35;
+  }
+}
+
+/* Obsidian (night): clean deep ruby embers over dark charcoal */
+.climax-wave-night {
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    to bottom,
+    rgba(220, 28, 48, 0) 0%,
+    rgba(220, 28, 48, 0.045) 28%,
+    rgba(232, 34, 54, 0.14) 64%,
+    rgba(245, 62, 78, 0.09) 82%,
+    rgba(220, 28, 48, 0) 100%
+  );
+  animation: climax-fullscreen-wave 1500ms cubic-bezier(0.37, 0, 0.63, 1) 3 forwards;
+  will-change: transform, opacity;
+}
+
+.climax-top-glow-night {
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 0%,
+    rgba(228, 32, 52, 0.14) 0%,
+    rgba(220, 28, 48, 0.04) 55%,
+    rgba(220, 28, 48, 0) 100%
+  );
+  animation: climax-fullscreen-top-glow 1500ms ease-in-out 3 forwards;
+  will-change: opacity;
+}
+
+/* Dusk (dark-sepia / brown): warm ember carmine avoids muddy magenta clash on umber */
+.climax-wave-dark-sepia {
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    to bottom,
+    rgba(218, 56, 38, 0) 0%,
+    rgba(218, 56, 38, 0.05) 28%,
+    rgba(224, 62, 42, 0.15) 64%,
+    rgba(236, 90, 58, 0.085) 82%,
+    rgba(218, 56, 38, 0) 100%
+  );
+  animation: climax-fullscreen-wave 1500ms cubic-bezier(0.37, 0, 0.63, 1) 3 forwards;
+  will-change: transform, opacity;
+}
+
+.climax-top-glow-dark-sepia {
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 0%,
+    rgba(224, 62, 42, 0.15) 0%,
+    rgba(218, 56, 38, 0.045) 55%,
+    rgba(218, 56, 38, 0) 100%
+  );
+  animation: climax-fullscreen-top-glow 1500ms ease-in-out 3 forwards;
+  will-change: opacity;
+}
+
+/* Paper (light-sepia): translucent garnet watercolor wash via multiply preserves dark ink */
+.climax-wave-light-sepia {
+  mix-blend-mode: multiply;
+  background: linear-gradient(
+    to bottom,
+    rgba(186, 42, 34, 0) 0%,
+    rgba(186, 42, 34, 0.035) 28%,
+    rgba(186, 42, 34, 0.105) 64%,
+    rgba(196, 56, 44, 0.065) 82%,
+    rgba(186, 42, 34, 0) 100%
+  );
+  animation: climax-fullscreen-wave 1500ms cubic-bezier(0.37, 0, 0.63, 1) 3 forwards;
+  will-change: transform, opacity;
+}
+
+.climax-top-glow-light-sepia {
+  mix-blend-mode: multiply;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 0%,
+    rgba(186, 42, 34, 0.095) 0%,
+    rgba(186, 42, 34, 0.03) 55%,
+    rgba(186, 42, 34, 0) 100%
+  );
+  animation: climax-fullscreen-top-glow 1500ms ease-in-out 3 forwards;
+  will-change: opacity;
+}
+
+/* Light (day): crisp translucent rose-crimson tint via multiply keeps black text sharp */
+.climax-wave-day {
+  mix-blend-mode: multiply;
+  background: linear-gradient(
+    to bottom,
+    rgba(215, 32, 48, 0) 0%,
+    rgba(215, 32, 48, 0.03) 28%,
+    rgba(215, 32, 48, 0.09) 64%,
+    rgba(225, 48, 64, 0.055) 82%,
+    rgba(215, 32, 48, 0) 100%
+  );
+  animation: climax-fullscreen-wave 1500ms cubic-bezier(0.37, 0, 0.63, 1) 3 forwards;
+  will-change: transform, opacity;
+}
+
+.climax-top-glow-day {
+  mix-blend-mode: multiply;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 0%,
+    rgba(215, 32, 48, 0.085) 0%,
+    rgba(215, 32, 48, 0.025) 55%,
+    rgba(215, 32, 48, 0) 100%
+  );
+  animation: climax-fullscreen-top-glow 1500ms ease-in-out 3 forwards;
+  will-change: opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
   .animate-fadeIn {
@@ -1231,6 +1372,13 @@ html[data-theme="dark-sepia"] .settings-btn-danger,
   .climax-saber-aura,
   .climax-saber-aura-light {
     animation-duration: 900ms;
+    transform: none !important;
+  }
+  .climax-wave-night,
+  .climax-wave-dark-sepia,
+  .climax-wave-light-sepia,
+  .climax-wave-day {
+    animation: climax-fullscreen-top-glow 1400ms ease-in-out 3 forwards;
     transform: none !important;
   }
   * {
