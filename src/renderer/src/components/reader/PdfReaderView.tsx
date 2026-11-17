@@ -464,7 +464,11 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
   const handleExitFullscreen = () => {
     setImmersiveFullscreen(false)
-    window.desktopAPI?.setFullscreen?.(false)
+    if (window.desktopAPI?.setFullscreen) {
+      window.desktopAPI.setFullscreen(false)
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    }
   }
 
   return (
@@ -480,12 +484,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       {/* Floating Exit Fullscreen Control */}
       {isImmersiveFullscreen && (
         <button
+          type="button"
           onClick={handleExitFullscreen}
-          className="fixed top-3 right-3 z-50 h-8 px-2.5 flex items-center gap-1.5 rounded-[2px] bg-[#14161c]/80 hover:bg-[#1f232d] border border-[#2d323f] text-[#c8d1dc] hover:text-white text-[11px] shadow-lg opacity-30 hover:opacity-100 transition-opacity duration-150 app-no-drag"
+          className="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-md bg-[#14161c]/80 hover:bg-[#1f232d] border border-[#2d323f] text-[#c8d1dc] hover:text-white shadow-lg opacity-40 hover:opacity-100 transition-all duration-150 app-no-drag cursor-pointer"
           title="Exit Fullscreen (Esc / F11)"
+          aria-label="Exit Fullscreen"
         >
-          <Minimize2 className="w-3.5 h-3.5" />
-          <span>Exit Fullscreen</span>
+          <Minimize2 className="w-4 h-4" />
         </button>
       )}
 

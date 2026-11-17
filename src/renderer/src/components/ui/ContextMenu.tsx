@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 
 export interface ContextMenuItem {
   id: string
@@ -8,6 +9,7 @@ export interface ContextMenuItem {
   danger?: boolean
   disabled?: boolean
   divider?: boolean
+  children?: ContextMenuItem[]
   swatches?: Array<{ color: string; hex: string; title: string; onClick: () => void }>
   onClick?: () => void
 }
@@ -22,6 +24,8 @@ interface ContextMenuProps {
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null)
   const [coords, setCoords] = useState({ left: x, top: y })
+  const [activeSubmenuId, setActiveSubmenuId] = useState<string | null>(null)
+  const [openLeft, setOpenLeft] = useState(false)
 
   // Clamp coordinates so the menu stays strictly inside the window viewport
   useLayoutEffect(() => {
@@ -39,6 +43,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       nextTop = Math.max(pad, window.innerHeight - rect.height - pad)
     }
     setCoords({ left: nextLeft, top: nextTop })
+    // If opening near right window edge, flip submenus to the left
+    setOpenLeft(nextLeft + rect.width + 180 > window.innerWidth)
   }, [x, y, items])
 
   useEffect(() => {
@@ -69,7 +75,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       ref={menuRef}
       style={{ left: coords.left, top: coords.top }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[#111111] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.75)] p-1 text-[12px] text-[#ededed] select-none app-no-drag animate-in fade-in duration-75"
+      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[#111111] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.85)] p-1 text-[12px] text-[#ededed] select-none app-no-drag animate-in fade-in duration-75"
     >
       {items.map((item) => {
         if (item.divider) {
@@ -99,32 +105,94 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
           )
         }
 
+        const hasSubmenu = item.children && item.children.length > 0
+        const isSubmenuOpen = activeSubmenuId === item.id
+
         return (
-          <button
+          <div
             key={item.id}
-            type="button"
-            disabled={item.disabled}
-            onClick={() => {
-              if (item.disabled) return
-              item.onClick?.()
-              onClose()
+            className="relative"
+            onMouseEnter={() => {
+              if (hasSubmenu) setActiveSubmenuId(item.id)
+              else setActiveSubmenuId(null)
             }}
-            className={`w-full h-7 px-2 rounded-[5px] flex items-center justify-between gap-3 text-left transition-colors ${
-              item.disabled
-                ? 'opacity-40 cursor-not-allowed'
-                : item.danger
-                ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
-                : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
-            }`}
           >
-            <span className="flex items-center gap-2 truncate">
-              {item.icon && <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-90">{item.icon}</span>}
-              <span className="truncate">{item.label}</span>
-            </span>
-            {item.shortcut && (
-              <span className="text-[10px] text-[#8b949e] shrink-0 font-mono">{item.shortcut}</span>
+            <button
+              type="button"
+              disabled={item.disabled}
+              onClick={() => {
+                if (item.disabled) return
+                if (!hasSubmenu) {
+                  item.onClick?.()
+                  onClose()
+                }
+              }}
+              className={`w-full h-7 px-2 rounded-[5px] flex items-center justify-between gap-3 text-left transition-colors ${
+                item.disabled
+                  ? 'opacity-40 cursor-not-allowed'
+                  : item.danger
+                  ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
+                  : isSubmenuOpen
+                  ? 'bg-white/[0.08] text-white cursor-pointer'
+                  : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
+              }`}
+            >
+              <span className="flex items-center gap-2 truncate">
+                {item.icon && (
+                  <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-90">
+                    {item.icon}
+                  </span>
+                )}
+                <span className="truncate">{item.label}</span>
+              </span>
+
+              {hasSubmenu ? (
+                <ChevronRight className="w-3.5 h-3.5 text-[#888888] shrink-0" />
+              ) : item.shortcut ? (
+                <span className="text-[10px] text-[#8b949e] shrink-0 font-mono">
+                  {item.shortcut}
+                </span>
+              ) : null}
+            </button>
+
+            {/* Hover Submenu */}
+            {hasSubmenu && isSubmenuOpen && (
+              <div
+                style={{
+                  top: -4,
+                  [openLeft ? 'right' : 'left']: 'calc(100% + 4px)'
+                }}
+                className="absolute z-[101] min-w-[150px] bg-[#141414] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.85)] p-1 text-[12px] text-[#ededed] select-none animate-in fade-in zoom-in-95 duration-75"
+              >
+                {item.children!.map((subItem) => (
+                  <button
+                    key={subItem.id}
+                    type="button"
+                    disabled={subItem.disabled}
+                    onClick={() => {
+                      if (subItem.disabled) return
+                      subItem.onClick?.()
+                      onClose()
+                    }}
+                    className={`w-full h-7 px-2 rounded-[5px] flex items-center gap-2 text-left transition-colors ${
+                      subItem.disabled
+                        ? 'opacity-40 cursor-not-allowed'
+                        : subItem.danger
+                        ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
+                        : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                    }`}
+                  >
+                    {subItem.icon && (
+                      <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-90">
+                        {subItem.icon}
+                      </span>
+                    )}
+                    <span className="truncate">{subItem.label}</span>
+                  </button>
+                ))}
+              </div>
             )}
-          </button>
+          </div>
         )
       })}
     </div>

@@ -7,11 +7,9 @@ import {
   FolderOpen,
   CheckCircle2,
   Circle,
-  Pin,
-  PinOff,
   FileCode2,
-  Image as ImageIcon,
-  Check
+  Check,
+  CheckSquare
 } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
@@ -29,6 +27,7 @@ interface BookCardProps {
   isSelected?: boolean
   selectedCount?: number
   onToggleSelect?: (bookId: number, shiftKey: boolean) => void
+  onSelectThis?: (book: Book) => void
   onPinAction?: (book: Book, nextPinned: boolean) => void
   onFavoriteAction?: (book: Book, nextFavorite: boolean) => void
   onMarkReadAction?: (book: Book) => void
@@ -47,6 +46,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   isSelected = false,
   selectedCount = 0,
   onToggleSelect,
+  onSelectThis,
   onPinAction,
   onFavoriteAction,
   onMarkReadAction,

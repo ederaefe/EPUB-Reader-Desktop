@@ -236,4 +236,39 @@ document.addEventListener('DOMContentLoaded', () => {
       lastScrollY = currentScrollY;
     }, { passive: true });
   }
+
+  // --------------------------------------------------------------------------
+  // 6. Terminal Code Copy Button
+  // --------------------------------------------------------------------------
+  const copyBtn = document.getElementById('btn-copy-quickstart');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      const codeSnippet = [
+        'git clone https://github.com/ederaefe/EPUB-Reader-Desktop.git',
+        'cd EPUB-Reader-Desktop',
+        'npm install',
+        'npm run dev'
+      ].join('\n');
+
+      navigator.clipboard.writeText(codeSnippet).then(() => {
+        const originalText = copyBtn.innerHTML;
+        copyBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Copied!</span>
+        `;
+        copyBtn.style.borderColor = 'var(--accent-emerald)';
+        copyBtn.style.color = 'var(--accent-emerald)';
+
+        setTimeout(() => {
+          copyBtn.innerHTML = originalText;
+          copyBtn.style.borderColor = '';
+          copyBtn.style.color = '';
+        }, 2200);
+      }).catch(() => {
+        // Fallback if clipboard permission is denied
+      });
+    });
+  }
 });

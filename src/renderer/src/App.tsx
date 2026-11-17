@@ -224,10 +224,16 @@ export const App: React.FC = () => {
         const next = !useAppStore.getState().isImmersiveFullscreen
         setImmersiveFullscreen(next)
         window.desktopAPI?.setFullscreen?.(next)
-      } else if (e.key === 'Escape' && useAppStore.getState().isImmersiveFullscreen) {
-        e.preventDefault()
-        setImmersiveFullscreen(false)
-        window.desktopAPI?.setFullscreen?.(false)
+      } else if (e.key === 'Escape') {
+        const isFs = useAppStore.getState().isImmersiveFullscreen || Boolean(document.fullscreenElement)
+        if (isFs) {
+          e.preventDefault()
+          setImmersiveFullscreen(false)
+          window.desktopAPI?.setFullscreen?.(false)
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {})
+          }
+        }
       } else if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase()
         if (k === 'o') {
