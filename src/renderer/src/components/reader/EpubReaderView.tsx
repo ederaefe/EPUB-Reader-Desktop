@@ -476,13 +476,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         const baseRules = {
           'html, body': {
-            'font-family': `${fontFam} !important`,
-            'font-size': `${settings.fontSize}px !important`,
             margin: '0 auto !important',
             padding: '24px 32px !important'
           },
           p: {
-            'line-height': `${Math.round(settings.lineHeight * 100)}% !important`,
             'margin-bottom': '1em !important'
           },
           'span.bluenote': { 'background-color': '#aed9f1 !important', color: '#111 !important' },
@@ -781,13 +778,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     if (!renditionRef.current) return
     const fontFam = getFontCssFamily(settings.fontFamily)
 
-    // Inject @font-face CSS into any currently mounted EPUB iframes before applying font-family
+    // Inject @font-face CSS and dynamic typography rules into any currently mounted EPUB iframes
     const applyFontAndTheme = async () => {
       try {
         const contentsList = (renditionRef.current?.getContents() as unknown as any[]) || []
         for (const c of contentsList) {
           if (c?.document) {
             await injectFontIntoDocument(c.document, settings.fontFamily)
+            applyDynamicStylesToDoc(c.document)
           }
         }
       } catch {
@@ -796,18 +794,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (!renditionRef.current) return
       renditionRef.current.themes.select(settings.theme)
       renditionRef.current.themes.fontSize(`${settings.fontSize}px`)
-      renditionRef.current.themes.default({
-        'html, body': {
-          'font-family': fontFam === 'inherit' ? 'inherit' : `${fontFam} !important`
-        },
-        p: {
-          'line-height': `${Math.round(settings.lineHeight * 100)}% !important`
-        }
-      })
     }
 
     applyFontAndTheme()
-  }, [settings.theme, settings.fontSize, settings.lineHeight, settings.fontFamily])
+  }, [settings.theme, settings.fontSize, settings.lineHeight, settings.fontFamily, applyDynamicStylesToDoc])
 
   const handleNext = useCallback(() => renditionRef.current?.next(), [])
   const handlePrev = useCallback(() => renditionRef.current?.prev(), [])
