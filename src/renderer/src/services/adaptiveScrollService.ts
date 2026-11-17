@@ -26,6 +26,7 @@ export interface PacingMetrics {
   remainingSec: number
   progress: number // 1.0 -> 0.0
   fixedCountdownSec: number
+  adaptiveBaseSec: number
   currentWpm: number
   targetWpm: number
   observedWpm: number
@@ -37,20 +38,23 @@ export type PacingListener = (metrics: PacingMetrics) => void
 export interface AdaptiveScrollOptions {
   initialWpm?: number
   initialCountdownSec?: number
+  initialAdaptiveSec?: number
   initialMode?: AutoscrollMode
   inactivityTimeoutMs?: number
   nowFn?: () => number
 }
 
+const REFERENCE_PAGE_WORDS = 180
 const DEFAULT_WPM = 250
-const MIN_WPM = 80
-const MAX_WPM = 1200
+const MIN_WPM = 18
+const MAX_WPM = 3600
 const DEFAULT_COUNTDOWN_SEC = 20
-const MIN_COUNTDOWN_SEC = 5
-const MAX_COUNTDOWN_SEC = 120
+const DEFAULT_ADAPTIVE_SEC = 25
+const MIN_COUNTDOWN_SEC = 3
+const MAX_COUNTDOWN_SEC = 600
 const MIN_ADAPTIVE_MS = 3_000
-const MAX_ADAPTIVE_MS = 180_000
-const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes
+const MAX_ADAPTIVE_MS = 600_000
+const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes away from app
 const TICK_INTERVAL_MS = 100
 
 export class AdaptiveScrollEngine {
@@ -60,6 +64,7 @@ export class AdaptiveScrollEngine {
 
   private mode: AutoscrollMode
   private fixedCountdownSec: number
+  private adaptiveBaseSec: number
   private microPauseEnabled = true
 
   private currentWpm: number
@@ -103,7 +108,11 @@ export class AdaptiveScrollEngine {
     this.fixedCountdownSec = this.clampCountdownSec(
       options.initialCountdownSec ?? DEFAULT_COUNTDOWN_SEC
     )
-    this.totalDurationMs = this.fixedCountdownSec * 1000
+    this.adaptiveBaseSec = this.clampCountdownSec(
+      options.initialAdaptiveSec ?? DEFAULT_ADAPTIVE_SEC
+    )
+    this.totalDurationMs =
+      (this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec) * 1000
     this.remainingMs = this.totalDurationMs
     this.lastUserActivityAt = this.nowFn()
   }
@@ -136,6 +145,7 @@ export class AdaptiveScrollEngine {
   public configure(params: {
     mode?: AutoscrollMode
     fixedCountdownSec?: number
+    adaptiveBaseSec?: number
     targetWpm?: number
     microPauseEnabled?: boolean
   }): void {
@@ -154,7 +164,16 @@ export class AdaptiveScrollEngine {
       }
     }
 
-    if (params.targetWpm !== undefined) {
+    if (params.adaptiveBaseSec !== undefined) {
+      const clamped = this.clampCountdownSec(params.adaptiveBaseSec)
+      if (clamped !== this.adaptiveBaseSec) {
+        this.adaptiveBaseSec = clamped
+        const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
+        this.targetWpm = derivedWpm
+        this.currentWpm = derivedWpm
+        if (this.mode === 'adaptive') shouldRecalibrate = true
+      }
+    } else if (params.targetWpm !== undefined) {
       const clamped = this.clampWpm(params.targetWpm)
       if (clamped !== Math.round(this.targetWpm)) {
         this.targetWpm = clamped
@@ -184,11 +203,12 @@ export class AdaptiveScrollEngine {
     return this.calculateBlockDurationMs(visibleWords)
   }
 
-  // Calculate dynamic duration for visible on-screen words in Adaptive mode
+  // Calculate dynamic duration for visible on-screen words in Smart/Adaptive mode
+  // Scales proportionally around the user's manual adaptiveBaseSec for a reference 180-word page
   public calculateBlockDurationMs(wordsOnScreen: number): number {
-    const effectiveWords = Math.max(10, wordsOnScreen)
-    const minutesNeeded = effectiveWords / Math.max(MIN_WPM, this.currentWpm)
-    const rawMs = Math.round(minutesNeeded * 60 * 1000)
+    const effectiveWords = Math.max(20, wordsOnScreen)
+    const densityRatio = effectiveWords / REFERENCE_PAGE_WORDS
+    const rawMs = Math.round(this.adaptiveBaseSec * 1000 * densityRatio)
     return Math.max(MIN_ADAPTIVE_MS, Math.min(MAX_ADAPTIVE_MS, rawMs))
   }
 
@@ -263,20 +283,13 @@ export class AdaptiveScrollEngine {
     // Freeze countdown while paused, suspended, or micro-pausing
     if (this.isPausedState() || this.isMicroPausing) return
 
-    // 5-minute inactivity watchdog: auto-pause if the reader appears abandoned
-    if (now - this.lastUserActivityAt >= this.inactivityTimeoutMs) {
-      this.isUserPaused = true
-      this.pauseReason = 'inactivity'
-      this.notify()
-      return
-    }
-
     this.remainingMs = Math.max(0, this.remainingMs - deltaMs)
     const nextSec = Math.ceil(this.remainingMs / 1000)
 
     if (this.remainingMs <= 0) {
       const cb = this.onExpireCallback
       this.onExpireCallback = null
+      this.lastUserActivityAt = now
       this.notify()
 
       if (this.mode === 'adaptive' && this.microPauseEnabled && this.hasBreakOnPage) {
@@ -321,7 +334,19 @@ export class AdaptiveScrollEngine {
     this.lastTickAt = now
     if (!paused) {
       this.lastUserActivityAt = now
+      // Clear any stale transient hover/blur locks when user explicitly resumes
+      this.suspensionReasons.delete('blur')
+      this.suspensionReasons.delete('footnote')
     }
+    this.notify()
+  }
+
+  // Clear stale transient suspensions when explicitly starting Auto-Scroll
+  public clearTransientSuspensions(): void {
+    this.suspensionReasons.delete('blur')
+    this.suspensionReasons.delete('hidden')
+    this.suspensionReasons.delete('footnote')
+    this.lastTickAt = this.nowFn()
     this.notify()
   }
 
@@ -372,12 +397,14 @@ export class AdaptiveScrollEngine {
     this.notify()
   }
 
-  // Behavioral Heuristic 1: Back-Scroll Detection (-15% WPM in Adaptive mode)
+  // Behavioral Heuristic 1: Back-Scroll Detection (+15% slower in Adaptive mode)
   public onBackScrollDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
-    this.targetWpm = this.clampWpm(this.targetWpm * 0.85)
-    this.currentWpm = this.alpha * this.targetWpm + (1 - this.alpha) * this.currentWpm
+    this.adaptiveBaseSec = this.clampCountdownSec(this.adaptiveBaseSec * 1.15)
+    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
+    this.targetWpm = derivedWpm
+    this.currentWpm = derivedWpm
     if (this.isActive) {
       this.recalibrateActiveDuration()
     } else {
@@ -385,12 +412,14 @@ export class AdaptiveScrollEngine {
     }
   }
 
-  // Behavioral Heuristic 2: Forward Nudge Detection (+10% WPM in Adaptive mode)
+  // Behavioral Heuristic 2: Forward Nudge Detection (-10% faster in Adaptive mode)
   public onForwardNudgeDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
-    this.targetWpm = this.clampWpm(this.targetWpm * 1.1)
-    this.currentWpm = this.alpha * this.targetWpm + (1 - this.alpha) * this.currentWpm
+    this.adaptiveBaseSec = this.clampCountdownSec(this.adaptiveBaseSec * 0.9)
+    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
+    this.targetWpm = derivedWpm
+    this.currentWpm = derivedWpm
     if (this.isActive) {
       this.recalibrateActiveDuration()
     } else {
@@ -423,11 +452,12 @@ export class AdaptiveScrollEngine {
     }, durationMs)
   }
 
-  public reset(wpm = DEFAULT_WPM): void {
-    const clamped = this.clampWpm(wpm)
-    this.currentWpm = clamped
-    this.targetWpm = clamped
-    this.observedWpm = clamped
+  public reset(baseSec = DEFAULT_ADAPTIVE_SEC): void {
+    this.adaptiveBaseSec = this.clampCountdownSec(baseSec)
+    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
+    this.currentWpm = derivedWpm
+    this.targetWpm = derivedWpm
+    this.observedWpm = derivedWpm
     this.isMicroPausing = false
     if (this.isActive && this.mode === 'adaptive') {
       this.recalibrateActiveDuration()
@@ -440,6 +470,7 @@ export class AdaptiveScrollEngine {
     const clamped = this.clampWpm(wpm)
     this.targetWpm = clamped
     this.currentWpm = clamped
+    this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / clamped) * 60)
     if (this.isActive && this.mode === 'adaptive') {
       this.recalibrateActiveDuration()
     } else {
@@ -468,6 +499,7 @@ export class AdaptiveScrollEngine {
       remainingSec,
       progress,
       fixedCountdownSec: this.fixedCountdownSec,
+      adaptiveBaseSec: this.adaptiveBaseSec,
       currentWpm: Math.round(this.currentWpm),
       targetWpm: Math.round(this.targetWpm),
       observedWpm: Math.round(this.observedWpm),

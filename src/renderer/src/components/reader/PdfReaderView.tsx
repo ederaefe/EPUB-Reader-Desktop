@@ -98,6 +98,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
 
+  const viewportRef = useRef<HTMLDivElement>(null)
   const canvasLeftRef = useRef<HTMLCanvasElement>(null)
   const canvasRightRef = useRef<HTMLCanvasElement>(null)
   const textLayerLeftRef = useRef<HTMLDivElement>(null)
@@ -316,16 +317,36 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     setCurrentPage((p) => Math.max(1, p - step))
   }, [step])
 
-  // Keyboard navigation
+  // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        const vp = viewportRef.current
+        if (vp && vp.scrollHeight - vp.clientHeight > 8 && vp.scrollTop + vp.clientHeight < vp.scrollHeight - 4) {
+          vp.scrollBy({ top: 160, behavior: 'smooth' })
+        } else {
+          handleNext()
+          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        const vp = viewportRef.current
+        if (vp && vp.scrollHeight - vp.clientHeight > 8 && vp.scrollTop > 4) {
+          vp.scrollBy({ top: -160, behavior: 'smooth' })
+        } else {
+          handlePrev()
+          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault()
         handleNext()
+        viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
         e.preventDefault()
         handlePrev()
+        viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
       } else if (e.key === 'Home') {
         e.preventDefault()
         setCurrentPage(1)
@@ -463,8 +484,9 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
       {/* Main PDF Scroll / Page Viewport */}
       <div
+        ref={viewportRef}
         onContextMenu={handleContextMenu}
-        className="flex-1 relative overflow-auto flex items-start justify-center p-6"
+        className="flex-1 relative overflow-auto flex items-start justify-center p-6 scroll-smooth"
       >
         {loadError ? (
           <div className="my-auto text-center max-w-md bg-[#171a21] border border-[#2d323f] p-5 rounded-[2px]">

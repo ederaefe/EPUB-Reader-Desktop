@@ -9,9 +9,6 @@ import { ResumeBar } from './ResumeBar'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ImportBooksModal } from '../modals/ImportBooksModal'
 import {
-  extractEpubCover,
-  extractPdfCover,
-  generateCoverCanvas,
   extractBookMetadata,
   parseBookTitleAndAuthor
 } from '../../services/coverService'
@@ -33,6 +30,7 @@ export const LibraryView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const catalogScrollRef = useRef<HTMLDivElement>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const toastTimerRef = useRef<number | null>(null)
 
@@ -211,20 +209,40 @@ export const LibraryView: React.FC = () => {
     return 'All Books'
   }, [selectedCategory, activeCustomCategory])
 
-  // Keyboard shortcut: Ctrl+O opens the unified Import modal in Library View
+  // Keyboard shortcuts: Ctrl+O opens Import modal; Up/Down/PageUp/PageDown smoothly scroll the library catalog
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        const tag = (e.target as HTMLElement | null)?.tagName
-        if (tag === 'INPUT' || tag === 'TEXTAREA') return
         if (selectedCategory === 'deleted') return
         e.preventDefault()
         setIsImportModalOpen(true)
+        return
+      }
+
+      if (isImportModalOpen) return
+      const scroller = catalogScrollRef.current
+      if (!scroller) return
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        scroller.scrollBy({ top: 180, behavior: 'smooth' })
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        scroller.scrollBy({ top: -180, behavior: 'smooth' })
+      } else if (e.key === 'PageDown') {
+        e.preventDefault()
+        scroller.scrollBy({ top: Math.round(scroller.clientHeight * 0.8), behavior: 'smooth' })
+      } else if (e.key === 'PageUp') {
+        e.preventDefault()
+        scroller.scrollBy({ top: -Math.round(scroller.clientHeight * 0.8), behavior: 'smooth' })
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selectedCategory])
+  }, [selectedCategory, isImportModalOpen])
 
   // Active book for Quick-Resume bar
   const resumeBook = useMemo(() => {
@@ -379,66 +397,63 @@ export const LibraryView: React.FC = () => {
       const targetCatName = activeCustomCategory?.name ?? null
       setIsLoading(true)
       const count = e.dataTransfer.files.length
+      let importedCount = 0
       for (let i = 0; i < count; i++) {
         const file = e.dataTransfer.files[i]
-        const buffer = await file.arrayBuffer()
         const ext = file.name.split('.').pop()?.toLowerCase() || 'epub'
-        let coverDataUrl: string | null = null
+        let format: 'epub' | 'pdf' | 'mobi' | 'txt' = 'epub'
+        if (ext === 'pdf') format = 'pdf'
+        else if (ext === 'mobi' || ext === 'azw' || ext === 'azw3') format = 'mobi'
+        else if (ext === 'txt') format = 'txt'
 
-        if (ext === 'epub') {
-          coverDataUrl = await extractEpubCover(buffer)
-        } else if (ext === 'pdf') {
-          coverDataUrl = await extractPdfCover(buffer)
-        }
-
-        const title = file.name.replace(/\.[^/.]+$/, '')
-        const author = 'Imported Book'
-
-        if (!coverDataUrl) {
-          coverDataUrl = generateCoverCanvas(title, author)
-        }
+        const buffer = await file.arrayBuffer()
+        const rawName = file.name.replace(/\.[^/.]+$/, '')
+        const meta = await extractBookMetadata(buffer, ext, rawName)
 
         await db.books.add({
           filePath: (file as any).path || file.name,
-          title,
-          author,
-          coverDataUrl,
-          format: (ext === 'pdf' ? 'pdf' : 'epub') as any,
+          title: meta.title,
+          author: meta.author,
+          coverDataUrl: meta.coverDataUrl,
+          format,
           fileSize: file.size,
           addedAt: Date.now(),
           lastOpenedAt: null,
           progressCfi: null,
           progressPercent: 0,
           currentPage: 1,
-          totalPages: 100,
+          totalPages: meta.totalPages || 100,
           categoryId: targetCatId,
           isFavorite: false,
           isRead: false,
           isDeleted: false
         })
+        importedCount++
       }
       await loadData()
       setIsLoading(false)
-      const noun = count === 1 ? 'book' : 'books'
-      showToast(
-        targetCatName
-          ? `Added ${count} ${noun} to "${targetCatName}"`
-          : `Imported ${count} ${noun}`
-      )
+      if (importedCount > 0) {
+        const noun = importedCount === 1 ? 'book' : 'books'
+        showToast(
+          targetCatName
+            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
+            : `Imported ${importedCount} ${noun}`
+        )
+      }
     }
   }
 
   const canShowAddCard = selectedCategory !== 'deleted' && searchQuery.trim() === ''
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-[#1c1f26] relative">
+    <div className="flex-1 flex overflow-hidden bg-[#0a0a0a] relative">
       {/* Left Sidebar */}
       <Sidebar counts={counts} categories={categories} categoryCounts={categoryCounts} onRefresh={loadData} />
 
       {/* Main Catalog View */}
-      <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#1c1f26]">
-        {/* Decluttered Top Docked Action Strip */}
-        <header className="h-10 bg-[#171a21] border-b border-[#232732] px-4 flex items-center justify-between select-none shrink-0">
+      <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#0a0a0a]">
+        {/* Geist Top Action Strip */}
+        <header className="h-11 bg-[#0d0d0d] border-b border-white/[0.07] px-5 flex items-center justify-between select-none shrink-0">
           {/* Left Context: Active Shelf Label */}
           <div className="flex items-center gap-2 min-w-0">
             {activeCustomCategory && (
@@ -447,15 +462,15 @@ export const LibraryView: React.FC = () => {
                 style={{ backgroundColor: activeCustomCategory.color }}
               />
             )}
-            <span className="text-[12px] font-semibold text-[#c8d1dc] truncate">
+            <span className="text-[13px] font-semibold tracking-[-0.015em] text-[#ededed] truncate">
               {shelfTitle}
             </span>
             {formatFilter && (
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-[#1c1f26] border border-[#2d323f] text-[#8b949e] rounded-[2px]">
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-[#161616] border border-white/[0.08] text-[#888888] rounded">
                 {formatFilter}
               </span>
             )}
-            <span className="text-[11px] text-[#6e7681]">
+            <span className="text-[11px] font-mono tabular-nums text-[#666666]">
               {filteredBooks.length}
             </span>
           </div>
@@ -463,21 +478,21 @@ export const LibraryView: React.FC = () => {
           {/* Right Controls: Search & View Toggle */}
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#6e7681] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-[#555555] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search in Library"
-                className="ice-input h-7 pl-8 pr-2.5 w-60 text-xs rounded-[2px]"
+                placeholder="Search library..."
+                className="ice-input h-7 pl-8 pr-2.5 w-60 text-xs"
               />
             </div>
 
-            <div className="flex items-center gap-0.5 border border-[#232732] rounded-[2px] p-0.5 bg-[#171a21]">
+            <div className="flex items-center gap-0.5 border border-white/[0.08] rounded-md p-0.5 bg-[#0a0a0a]">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                  viewMode === 'grid' ? 'bg-[#232732] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                className={`w-6 h-6 flex items-center justify-center rounded-[4px] transition-colors cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'
                 }`}
                 title="Grid view"
               >
@@ -485,8 +500,8 @@ export const LibraryView: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                  viewMode === 'list' ? 'bg-[#232732] text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+                className={`w-6 h-6 flex items-center justify-center rounded-[4px] transition-colors cursor-pointer ${
+                  viewMode === 'list' ? 'bg-[#1f1f1f] text-white' : 'text-[#666666] hover:text-white'
                 }`}
                 title="List view"
               >
@@ -496,8 +511,8 @@ export const LibraryView: React.FC = () => {
           </div>
         </header>
 
-        {/* Table sorting column headers (1:1 Icecream Reader) */}
-        <div className="h-7 px-5 border-b border-[#232732] flex items-center text-[11px] text-[#6e7681] select-none bg-[#171a21]/50 shrink-0">
+        {/* Minimal Sort Strip */}
+        <div className="h-8 px-5 border-b border-white/[0.06] flex items-center text-[11px] text-[#666666] select-none bg-[#0a0a0a] shrink-0">
           <button
             type="button"
             onClick={() => handleSortClick('title')}
@@ -537,9 +552,10 @@ export const LibraryView: React.FC = () => {
 
         {/* Catalog Body */}
         <div
+          ref={catalogScrollRef}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
-          className="flex-1 overflow-y-auto p-5"
+          className="flex-1 overflow-y-auto p-5 scroll-smooth"
         >
           {statusMessage && (
             <div className="mb-4 px-3 py-2 bg-[#232732] border border-[#2a69df]/40 text-[#79c0ff] text-xs rounded-[2px]">

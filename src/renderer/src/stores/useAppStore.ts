@@ -26,7 +26,6 @@ interface AppState {
   isSettingsDrawerOpen: boolean
   isFullSettingsModalOpen: boolean
   isHelpModalOpen: boolean
-  isRSVPActive: boolean
   activeFootnote: { id: string; index?: string; text: string; href?: string } | null
 
   // TTS & Autoscroll
@@ -66,7 +65,6 @@ interface AppState {
   toggleSettingsDrawer: (open?: boolean) => void
   toggleFullSettingsModal: (open?: boolean) => void
   toggleHelpModal: (open?: boolean) => void
-  toggleRSVP: (open?: boolean) => void
   setActiveFootnote: (fn: { id: string; index?: string; text: string; href?: string } | null) => void
   setTTSActive: (active: boolean) => void
   setTTSMuted: (muted: boolean) => void
@@ -102,7 +100,6 @@ export const useAppStore = create<AppState>((set) => ({
   isSettingsDrawerOpen: false,
   isFullSettingsModalOpen: false,
   isHelpModalOpen: false,
-  isRSVPActive: false,
   activeFootnote: null,
 
   isTTSActive: false,
@@ -129,14 +126,14 @@ export const useAppStore = create<AppState>((set) => ({
     autoscrollSpeed: 40,
     autoscrollMode: 'adaptive',
     autoscrollCountdownSec: 20,
+    autoscrollAdaptiveSec: 25,
     autoscrollMicroPause: true,
     autoscrollAdaptive: true,
     targetWpm: 250,
     observedWpm: 250,
     warmFilterEnabled: false,
     warmFilterTemp: 3200,
-    warmFilterIntensity: 40,
-    rsvpWpm: 350
+    warmFilterIntensity: 40
   },
 
   setView: (view) => set({ currentView: view }),
@@ -204,10 +201,6 @@ export const useAppStore = create<AppState>((set) => ({
   toggleHelpModal: (open) =>
     set((s) => ({
       isHelpModalOpen: open ?? !s.isHelpModalOpen
-    })),
-  toggleRSVP: (open) =>
-    set((s) => ({
-      isRSVPActive: open ?? !s.isRSVPActive
     })),
   setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),

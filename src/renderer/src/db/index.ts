@@ -84,6 +84,7 @@ export interface UserSettings {
   autoscrollSpeed: number
   autoscrollMode?: AutoscrollMode
   autoscrollCountdownSec?: number
+  autoscrollAdaptiveSec?: number
   autoscrollMicroPause?: boolean
   autoscrollAdaptive?: boolean
   targetWpm?: number
@@ -91,7 +92,6 @@ export interface UserSettings {
   warmFilterEnabled?: boolean
   warmFilterTemp?: number
   warmFilterIntensity?: number
-  rsvpWpm?: number
 }
 
 class ReaderDatabase extends Dexie {

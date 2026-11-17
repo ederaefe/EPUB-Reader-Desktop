@@ -4,18 +4,15 @@ import {
   Pause,
   Timer,
   Zap,
-  Minus,
-  Plus,
   RotateCcw,
   Power,
   X,
-  Clock,
-  Gauge,
-  Pilcrow
+  Clock
 } from 'lucide-react'
 import { adaptiveScrollEngine, type PacingMetrics } from '../../services/adaptiveScrollService'
 import { useAppStore } from '../../stores/useAppStore'
 import type { AutoscrollMode } from '../../db'
+import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 
 interface AdaptiveScrollOverlayProps {
   isActive: boolean
@@ -66,7 +63,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const effectiveMode: AutoscrollMode = settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
   const countdownSec = settings.autoscrollCountdownSec ?? 20
-  const targetWpm = settings.targetWpm ?? 250
+  const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
   const microPauseEnabled = settings.autoscrollMicroPause ?? true
 
   const handleModeChange = (mode: AutoscrollMode) => {
@@ -76,17 +73,17 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   }
 
   const handleCountdownChange = (nextSec: number) => {
-    const clamped = Math.max(5, Math.min(120, Math.round(nextSec)))
+    const clamped = Math.max(3, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
     updateSettings({ autoscrollCountdownSec: clamped })
     adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
   }
 
-  const handleWpmChange = (nextWpm: number) => {
-    const clamped = Math.max(100, Math.min(800, Math.round(nextWpm)))
+  const handleAdaptiveSecChange = (nextSec: number) => {
+    const clamped = Math.max(3, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
-    updateSettings({ targetWpm: clamped })
-    adaptiveScrollEngine.configure({ targetWpm: clamped })
+    updateSettings({ autoscrollAdaptiveSec: clamped })
+    adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
   }
 
   const handleToggleMicroPause = () => {
@@ -101,8 +98,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     if (effectiveMode === 'countdown') {
       handleCountdownChange(20)
     } else {
-      updateSettings({ targetWpm: 250 })
-      adaptiveScrollEngine.reset(250)
+      handleAdaptiveSecChange(25)
     }
   }
 
@@ -118,12 +114,12 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const triggerTooltip =
     metrics.pauseReason === 'inactivity'
-      ? `Auto-Scroll auto-paused after 5 min inactivity (${metrics.remainingSec}s left) — Click to resume or configure`
+      ? `Auto-Scroll paused while away (${metrics.remainingSec}s left) — Click to resume or configure`
       : metrics.isUserPaused
       ? `Auto-Scroll paused (${metrics.remainingSec}s left) — Click to resume or configure`
       : effectiveMode === 'adaptive'
-      ? `Adaptive Auto-Scroll: ${metrics.remainingSec}s left (${metrics.currentWpm} WPM) — Click to pause or configure`
-      : `Auto-Scroll Countdown: ${metrics.remainingSec}s left (${countdownSec}s interval) — Click to pause or configure`
+      ? `Smart Auto-Scroll: ${metrics.remainingSec}s left (${adaptiveSec}s base) — Click to pause or configure`
+      : `Fixed Auto-Scroll: ${metrics.remainingSec}s left (${countdownSec}s interval) — Click to pause or configure`
 
   return (
     <>
@@ -142,32 +138,31 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           aria-label="Auto-Scroll Settings"
           className={`fixed ${
             isImmersiveFullscreen ? 'bottom-14' : 'bottom-20'
-          } right-5 z-50 w-56 bg-[#171a21]/95 backdrop-blur-md border border-[#2d323f] rounded-[2px] shadow-2xl p-2.5 space-y-2.5 select-none animate-in fade-in slide-in-from-bottom-2 duration-120`}
+          } right-5 z-50 w-60 bg-[#111111]/95 backdrop-blur-md border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.75)] p-3 space-y-2.5 select-none animate-in fade-in slide-in-from-bottom-2 duration-120`}
         >
-          {/* Row 1: Playback & Lifecycle Controls (Icons Only) */}
-          <div className="flex items-center justify-between pb-2 border-b border-[#232732]">
-            <div className="flex items-center gap-1">
+          {/* Row 1: Playback & Lifecycle Controls */}
+          <div className="flex items-center justify-between pb-2 border-b border-white/[0.07]">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={handleTogglePause}
                 aria-label={metrics.isUserPaused ? 'Resume Auto-Scroll' : 'Pause Auto-Scroll'}
-                title={
-                  metrics.pauseReason === 'inactivity'
-                    ? 'Resume Auto-Scroll (was paused due to 5 min inactivity)'
-                    : metrics.isUserPaused
-                    ? 'Resume Auto-Scroll countdown'
-                    : 'Pause Auto-Scroll countdown'
-                }
-                className={`w-7 h-7 flex items-center justify-center rounded-[2px] transition-colors ${
+                className={`h-7 px-2.5 flex items-center justify-center gap-1.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                   metrics.isUserPaused
-                    ? 'bg-[#2a69df] text-white hover:bg-[#3574e8]'
-                    : 'bg-[#282c37] text-white hover:bg-[#323745]'
+                    ? 'bg-white text-black hover:bg-[#ededed]'
+                    : 'bg-[#1f1f1f] text-white hover:bg-[#2a2a2a]'
                 }`}
               >
                 {metrics.isUserPaused ? (
-                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <>
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>Resume</span>
+                  </>
                 ) : (
-                  <Pause className="w-3.5 h-3.5 fill-current" />
+                  <>
+                    <Pause className="w-3 h-3 fill-current" />
+                    <span>Pause</span>
+                  </>
                 )}
               </button>
 
@@ -188,8 +183,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 aria-label="Reset Auto-Scroll parameters"
                 title={
                   effectiveMode === 'countdown'
-                    ? 'Reset fixed countdown interval to 20s'
-                    : 'Reset adaptive reading pace to 250 WPM'
+                    ? 'Reset fixed timer to 20s'
+                    : 'Reset smart base timer to 25s'
                 }
                 className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
               >
@@ -247,84 +242,38 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </button>
           </div>
 
-          {/* Row 3: Mode-Specific Speed / Parameter Controls */}
+          {/* Row 3: Mode-Specific Manual Seconds Controls */}
           {effectiveMode === 'countdown' ? (
             <div className="space-y-1.5 pt-0.5">
               <div className="flex items-center justify-between px-0.5 text-[11px]">
-                <span className="text-[#8b949e]">Timer</span>
-                <span className="font-mono text-white">{countdownSec}s</span>
+                <span className="text-[#8b949e]">Seconds per page</span>
+                <span className="font-mono text-[#6e7681] text-[10px]">3–600s</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleCountdownChange(countdownSec - 5)}
-                  aria-label="Decrease countdown seconds"
-                  title="-5s"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-
-                <input
-                  type="range"
-                  min="5"
-                  max="120"
-                  step="5"
-                  value={countdownSec}
-                  onChange={(e) => handleCountdownChange(Number(e.target.value))}
-                  aria-label="Fixed countdown seconds per page"
-                  className="ice-slider flex-1"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => handleCountdownChange(countdownSec + 5)}
-                  aria-label="Increase countdown seconds"
-                  title="+5s"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
+              <SecondsNumberInput
+                value={countdownSec}
+                min={3}
+                max={600}
+                step={5}
+                compact
+                onChange={handleCountdownChange}
+                ariaLabel="Fixed seconds per page"
+              />
             </div>
           ) : (
             <div className="space-y-2 pt-0.5">
               <div className="flex items-center justify-between px-0.5 text-[11px]">
-                <span className="text-[#8b949e]">Pace</span>
-                <span className="font-mono text-white">{metrics.currentWpm} WPM</span>
+                <span className="text-[#8b949e]">Base seconds / page</span>
+                <span className="font-mono text-[#6e7681] text-[10px]">Scales by words</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleWpmChange(targetWpm - 25)}
-                  aria-label="Slower reading speed"
-                  title="-25 WPM"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-
-                <input
-                  type="range"
-                  min="100"
-                  max="800"
-                  step="25"
-                  value={targetWpm}
-                  onChange={(e) => handleWpmChange(Number(e.target.value))}
-                  aria-label="Target adaptive reading speed"
-                  className="ice-slider flex-1"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => handleWpmChange(targetWpm + 25)}
-                  aria-label="Faster reading speed"
-                  title="+25 WPM"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
+              <SecondsNumberInput
+                value={adaptiveSec}
+                min={3}
+                max={600}
+                step={5}
+                compact
+                onChange={handleAdaptiveSecChange}
+                ariaLabel="Smart base seconds per page"
+              />
 
               <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c] px-0.5">
                 <span className="text-[10px] text-[#8b949e]">Pause at breaks</span>

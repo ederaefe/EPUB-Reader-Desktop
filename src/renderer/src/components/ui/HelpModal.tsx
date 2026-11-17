@@ -8,8 +8,8 @@ export const HelpModal: React.FC = () => {
   if (!isHelpModalOpen) return null
 
   const shortcuts = [
-    { key: 'Left / Page Up / Backspace', desc: 'Previous page' },
-    { key: 'Right / Page Down / Space', desc: 'Next page' },
+    { key: 'Up / Left / Page Up / Backspace', desc: 'Previous page (or scroll up)' },
+    { key: 'Down / Right / Page Down / Space', desc: 'Next page (or scroll down)' },
     { key: 'Home', desc: 'First page of chapter' },
     { key: 'End', desc: 'Last page of chapter' },
     { key: 'F7', desc: 'Play / Pause Read Aloud (TTS)' },

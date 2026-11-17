@@ -74,9 +74,13 @@ export const App: React.FC = () => {
     }
   }, [setImmersiveFullscreen, setPdfConversionState])
 
-  // Global hotkeys listener
+  // Global hotkeys listener (Ctrl reload/zoom/reset intentionally disabled so Ctrl never resets the app)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'F5') {
+        e.preventDefault()
+        return
+      }
       if (e.key === 'F1') {
         e.preventDefault()
         toggleHelpModal()
@@ -90,23 +94,41 @@ export const App: React.FC = () => {
         setImmersiveFullscreen(false)
         window.desktopAPI?.setFullscreen?.(false)
       } else if (e.ctrlKey || e.metaKey) {
-        if (e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+        const k = e.key.toLowerCase()
+        if (
+          k === 'r' ||
+          k === 'w' ||
+          k === '0' ||
+          k === '=' ||
+          k === '+' ||
+          k === '-' ||
+          k === '_' ||
+          e.code === 'Equal' ||
+          e.code === 'Minus' ||
+          e.code === 'Digit0' ||
+          e.code === 'NumpadAdd' ||
+          e.code === 'NumpadSubtract' ||
+          e.code === 'Numpad0'
+        ) {
           e.preventDefault()
-          const current = window.desktopAPI?.getZoomFactor?.() ?? 1.0
-          window.desktopAPI?.setZoomFactor?.(Math.min(3.0, Math.round((current + 0.1) * 10) / 10))
-        } else if (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
-          e.preventDefault()
-          const current = window.desktopAPI?.getZoomFactor?.() ?? 1.0
-          window.desktopAPI?.setZoomFactor?.(Math.max(0.5, Math.round((current - 0.1) * 10) / 10))
-        } else if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
-          e.preventDefault()
-          window.desktopAPI?.setZoomFactor?.(1.0)
         }
       }
     }
+
+    // Block Chromium native Ctrl+Wheel zoom
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [toggleHelpModal])
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('wheel', handleWheel)
+    }
+  }, [toggleHelpModal, setImmersiveFullscreen])
 
   const handleActivatePdfReflow = async () => {
     if (!activeBook || activeBook.format !== 'pdf') return
@@ -173,7 +195,7 @@ export const App: React.FC = () => {
   const hideTitleBar = isImmersiveFullscreen && currentView === 'reader' && !!activeBook
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#171a21] text-[#e6edf3] font-sans select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0a0a] text-[#ededed] font-sans select-none">
       {!hideTitleBar && <TitleBar />}
 
       <main className="flex-1 flex overflow-hidden">

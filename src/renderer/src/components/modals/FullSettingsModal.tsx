@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   X,
   Upload,
@@ -22,6 +22,7 @@ import { backupService } from '../../services/backupService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { db, type AutoscrollMode } from '../../db'
 import { ThemePickerGrid } from '../ui/ThemePickerGrid'
+import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 
 export const FullSettingsModal: React.FC = () => {
   const {
@@ -42,6 +43,15 @@ export const FullSettingsModal: React.FC = () => {
   const [sendStats, setSendStats] = useState(false)
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+
+  useEffect(() => {
+    if (!isFullSettingsModalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') toggleFullSettingsModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isFullSettingsModalOpen, toggleFullSettingsModal])
 
   if (!isFullSettingsModalOpen) return null
 
@@ -80,67 +90,73 @@ export const FullSettingsModal: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] select-none p-4">
-      <div className="w-[820px] max-h-[90vh] bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl flex flex-col overflow-hidden text-xs text-[#c9d1d9] animate-in fade-in zoom-in-95 duration-100">
+    <div
+      onClick={() => toggleFullSettingsModal(false)}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-[2px] select-none p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-[780px] max-w-[92vw] h-[580px] max-h-[85vh] bg-[#111111] border border-white/[0.1] rounded-xl shadow-[0_24px_72px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden text-xs text-[#d4d4d4] animate-in fade-in zoom-in-95 duration-100"
+      >
         {/* Top Header & Tabs */}
-        <div className="h-10 bg-[#14161c] border-b border-[#232732] flex items-center justify-between px-3 shrink-0">
-          <div className="flex items-center h-full">
+        <div className="h-11 bg-[#0a0a0a] border-b border-white/[0.08] flex items-center justify-between px-3 shrink-0">
+          <div className="flex items-center h-full gap-0.5">
             <button
               onClick={() => setActiveTab('system')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'system'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               System
             </button>
             <button
               onClick={() => setActiveTab('reading')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'reading'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               Reading settings
             </button>
             <button
               onClick={() => setActiveTab('tts')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'tts'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               Text to speech
             </button>
             <button
               onClick={() => setActiveTab('hotkeys')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'hotkeys'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               Hotkeys
             </button>
             <button
               onClick={() => setActiveTab('backup')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'backup'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               Backup & Sync
             </button>
             <button
               onClick={() => setActiveTab('about')}
-              className={`h-full px-4 text-xs font-medium border-b-2 transition-colors flex items-center ${
+              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
                 activeTab === 'about'
-                  ? 'border-[#2a69df] text-white'
-                  : 'border-transparent text-[#8b949e] hover:text-white'
+                  ? 'border-white text-white'
+                  : 'border-transparent text-[#888888] hover:text-white'
               }`}
             >
               About
@@ -149,14 +165,15 @@ export const FullSettingsModal: React.FC = () => {
 
           <button
             onClick={() => toggleFullSettingsModal(false)}
-            className="w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded-[2px]"
+            className="w-7 h-7 flex items-center justify-center text-[#777777] hover:text-white hover:bg-white/[0.08] rounded-md transition-colors cursor-pointer"
+            title="Close (Esc)"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tab Content Area */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Fixed-Frame Scrollable Tab Content Area */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {backupStatus && (
             <div className="mb-4 px-3 py-2 bg-[#1f232d] border border-[#2a69df]/50 text-[#79c0ff] text-xs rounded-[2px] flex items-center justify-between">
               <span>{backupStatus}</span>
@@ -375,12 +392,12 @@ export const FullSettingsModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Dual-Mode Auto-Scroll Countdown Section (Icon-Only Controls + Rich Tooltips) */}
+              {/* Dual-Mode Auto-Scroll Countdown Section (Manual Seconds Input in Both Modes) */}
               {(() => {
                 const effectiveMode: AutoscrollMode =
                   settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
                 const countdownSec = settings.autoscrollCountdownSec ?? 20
-                const targetWpm = settings.targetWpm ?? 250
+                const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
                 const microPauseEnabled = settings.autoscrollMicroPause ?? true
 
                 const handleModeChange = (mode: AutoscrollMode) => {
@@ -389,15 +406,15 @@ export const FullSettingsModal: React.FC = () => {
                 }
 
                 const handleCountdownChange = (sec: number) => {
-                  const clamped = Math.max(5, Math.min(120, Math.round(sec)))
+                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
                   updateSettings({ autoscrollCountdownSec: clamped })
                   adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
                 }
 
-                const handleWpmChange = (wpm: number) => {
-                  const clamped = Math.max(100, Math.min(800, Math.round(wpm)))
-                  updateSettings({ targetWpm: clamped })
-                  adaptiveScrollEngine.configure({ targetWpm: clamped })
+                const handleAdaptiveSecChange = (sec: number) => {
+                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+                  updateSettings({ autoscrollAdaptiveSec: clamped })
+                  adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
                 }
 
                 const handleMicroPauseToggle = () => {
@@ -422,7 +439,7 @@ export const FullSettingsModal: React.FC = () => {
                         <p className="text-[11px] text-[#6e7681] mt-0.5">
                           {effectiveMode === 'countdown'
                             ? 'Turns page automatically on a fixed timer'
-                            : 'Adapts page timer to word density & reading speed'}
+                            : 'Scales your base seconds dynamically to each page word count'}
                         </p>
                       </div>
 
@@ -432,7 +449,11 @@ export const FullSettingsModal: React.FC = () => {
                         aria-checked={isAutoscrollActive}
                         onClick={() => {
                           const next = !isAutoscrollActive
-                          if (!next) adaptiveScrollEngine.stop()
+                          if (!next) {
+                            adaptiveScrollEngine.stop()
+                          } else {
+                            adaptiveScrollEngine.clearTransientSuspensions()
+                          }
                           setAutoscrollActive(next)
                         }}
                         className={`w-9 h-5 rounded-[3px] transition-colors p-0.5 flex items-center cursor-pointer shrink-0 ${
@@ -473,74 +494,55 @@ export const FullSettingsModal: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* Mode Controls */}
+                    {/* Mode Controls (Manual Numeric Seconds in Both Modes) */}
                     {effectiveMode === 'countdown' ? (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-[#8b949e]">Page timer</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-white font-medium">{countdownSec}s</span>
-                            {countdownSec !== 20 && (
+                          <span className="text-[#8b949e]">Seconds per page (3–600s)</span>
+                          {countdownSec !== 20 && (
+                            <button
+                              type="button"
+                              onClick={() => handleCountdownChange(20)}
+                              title="Reset to 20s"
+                              className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                        <SecondsNumberInput
+                          value={countdownSec}
+                          min={3}
+                          max={600}
+                          step={5}
+                          onChange={handleCountdownChange}
+                          ariaLabel="Fixed seconds per page"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-[#8b949e]">Base seconds per page (3–600s)</span>
+                            {adaptiveSec !== 25 && (
                               <button
                                 type="button"
-                                onClick={() => handleCountdownChange(20)}
-                                title="Reset to 20s"
+                                onClick={() => handleAdaptiveSecChange(25)}
+                                title="Reset to 25s"
                                 className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
                               >
                                 <RotateCcw className="w-3 h-3" />
                               </button>
                             )}
                           </div>
-                        </div>
-                        <input
-                          type="range"
-                          min="5"
-                          max="120"
-                          step="5"
-                          value={countdownSec}
-                          onChange={(e) => handleCountdownChange(Number(e.target.value))}
-                          className="ice-slider w-full"
-                        />
-                        <div className="flex justify-between text-[9px] text-[#6e7681] font-mono">
-                          <span>5s</span>
-                          <span>120s</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-[#8b949e]">Reading pace</span>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-white font-medium">{targetWpm} WPM</span>
-                              {targetWpm !== 250 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateSettings({ targetWpm: 250 })
-                                    adaptiveScrollEngine.reset(250)
-                                  }}
-                                  title="Reset to 250 WPM"
-                                  className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <input
-                            type="range"
-                            min="100"
-                            max="800"
-                            step="25"
-                            value={targetWpm}
-                            onChange={(e) => handleWpmChange(Number(e.target.value))}
-                            className="ice-slider w-full"
+                          <SecondsNumberInput
+                            value={adaptiveSec}
+                            min={3}
+                            max={600}
+                            step={5}
+                            onChange={handleAdaptiveSecChange}
+                            ariaLabel="Smart base seconds per page"
                           />
-                          <div className="flex justify-between text-[9px] text-[#6e7681]">
-                            <span>Relaxed</span>
-                            <span>Fast</span>
-                          </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-[#1e222c]">
@@ -744,10 +746,6 @@ export const FullSettingsModal: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span>Speech Normalization</span>
                     <span className="text-[#4cd964]">Librera Regex Matrix</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Speed Reading (RSVP)</span>
-                    <span className="text-[#4cd964]">Optimal Recognition Point</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Footnote Handling</span>

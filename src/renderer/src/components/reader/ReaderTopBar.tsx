@@ -46,70 +46,65 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
   }
 
   return (
-    <header className="h-9 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0 z-40 relative">
-      {/* Left Action Group with authentic dividers */}
-      <div className="flex items-center text-[12px]">
-        {/* Back to Library */}
+    <header className="h-10 bg-[#0d0d0d] border-b border-white/[0.07] px-3 flex items-center justify-between select-none shrink-0 z-40 relative">
+      {/* Left Action Group */}
+      <div className="flex items-center gap-0.5 text-[12px]">
         <button
           onClick={onBack}
-          className="h-7 px-2 flex items-center gap-1 text-[#8b949e] hover:text-white transition-colors"
+          className="h-7 px-2 rounded-md flex items-center gap-1 text-[#888888] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
           title="Back to Library (~)"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           <span>Library</span>
         </button>
 
-        <span className="text-[#2d323f] px-1.5 font-light">|</span>
+        <span className="h-3.5 w-px bg-white/[0.08] mx-1.5" />
 
-        {/* Contents (TOC) */}
         <button
           onClick={() => toggleTOCDrawer()}
-          className={`h-7 px-2 flex items-center gap-1.5 transition-colors ${
-            isTOCDrawerOpen ? 'text-[#2a69df] font-medium' : 'text-[#8b949e] hover:text-white'
+          className={`h-7 px-2 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+            isTOCDrawerOpen
+              ? 'bg-white/[0.1] text-white font-medium'
+              : 'text-[#888888] hover:text-white hover:bg-white/[0.06]'
           }`}
-          title="Show Table of contents (1)"
+          title="Table of contents (1)"
         >
           <List className="w-3.5 h-3.5" />
           <span>Contents</span>
         </button>
 
-        <span className="text-[#2d323f] px-1.5 font-light">|</span>
-
-        {/* Notes */}
         <button
           onClick={() => toggleNotesDrawer()}
-          className={`h-7 px-2 flex items-center gap-1.5 transition-colors ${
-            isNotesDrawerOpen ? 'text-[#2a69df] font-medium' : 'text-[#8b949e] hover:text-white'
+          className={`h-7 px-2 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+            isNotesDrawerOpen
+              ? 'bg-white/[0.1] text-white font-medium'
+              : 'text-[#888888] hover:text-white hover:bg-white/[0.06]'
           }`}
-          title="Show notes list (2)"
+          title="Notes & Highlights (2)"
         >
           <FileText className="w-3.5 h-3.5" />
           <span>Notes</span>
         </button>
 
-        <span className="text-[#2d323f] px-1.5 font-light">|</span>
-
-        {/* Bookmarks */}
         <button
           onClick={() => toggleBookmarksDrawer()}
-          className={`h-7 px-2 flex items-center gap-1.5 transition-colors ${
-            isBookmarksDrawerOpen ? 'text-[#2a69df] font-medium' : 'text-[#8b949e] hover:text-white'
+          className={`h-7 px-2 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+            isBookmarksDrawerOpen
+              ? 'bg-white/[0.1] text-white font-medium'
+              : 'text-[#888888] hover:text-white hover:bg-white/[0.06]'
           }`}
-          title="Show bookmarks list (3)"
+          title="Bookmarks (3)"
         >
-          <Bookmark
-            className={`w-3.5 h-3.5 ${isCurrentPageBookmarked ? 'text-[#2a69df] fill-current' : ''}`}
-          />
+          <Bookmark className={`w-3.5 h-3.5 ${isCurrentPageBookmarked ? 'fill-[#0070f3] text-[#0070f3]' : ''}`} />
           <span>Bookmarks</span>
         </button>
 
-        <span className="text-[#2d323f] px-1.5 font-light">|</span>
-
-        {/* Search */}
         <button
           onClick={() => toggleSearchDrawer()}
-          className={`w-7 h-7 flex items-center justify-center transition-colors ${
-            isSearchDrawerOpen ? 'text-[#2a69df]' : 'text-[#8b949e] hover:text-white'
+          className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+            isSearchDrawerOpen
+              ? 'bg-white/[0.1] text-white'
+              : 'text-[#888888] hover:text-white hover:bg-white/[0.06]'
           }`}
           title="Search in book (Ctrl+F)"
         >
@@ -119,22 +114,22 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
 
       {/* Right Controls: Only Immersive Fullscreen & Settings */}
       <div className="flex items-center gap-1 text-[12px]">
-        {/* Immersive Fullscreen Toggle */}
         <button
           onClick={handleToggleFullscreen}
-          className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-md text-[#888888] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
           title="Immersive Fullscreen (F11)"
         >
           {isImmersiveFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Settings Flyout Trigger */}
         <button
           onClick={() => toggleSettingsDrawer()}
-          className={`w-7 h-7 flex items-center justify-center rounded-[2px] transition-colors ${
-            isSettingsDrawerOpen ? 'bg-[#282c37] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#282c37]'
+          className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+            isSettingsDrawerOpen
+              ? 'bg-white text-black'
+              : 'text-[#888888] hover:text-white hover:bg-white/[0.06]'
           }`}
-          title="Settings"
+          title="Reader Settings"
         >
           <Settings className="w-3.5 h-3.5" />
         </button>

@@ -69,17 +69,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       ref={menuRef}
       style={{ left: coords.left, top: coords.top }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-[100] min-w-[200px] max-w-[260px] bg-[#171a21] border border-[#2d323f] rounded-md shadow-2xl py-1 text-[12px] text-[#e6edf3] select-none app-no-drag animate-in fade-in duration-75"
+      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[#111111] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.75)] p-1 text-[12px] text-[#ededed] select-none app-no-drag animate-in fade-in duration-75"
     >
       {items.map((item) => {
         if (item.divider) {
-          return <div key={item.id} className="my-1 border-t border-[#232732]" />
+          return <div key={item.id} className="my-1 border-t border-white/[0.07]" />
         }
 
         if (item.swatches && item.swatches.length > 0) {
           return (
-            <div key={item.id} className="px-2.5 py-1.5 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-[#8b949e]">{item.label || 'Highlight'}</span>
+            <div key={item.id} className="px-2 py-1.5 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-[#888888]">{item.label || 'Highlight'}</span>
               <div className="flex items-center gap-1.5">
                 {item.swatches.map((s) => (
                   <button
@@ -90,7 +90,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
                       s.onClick()
                       onClose()
                     }}
-                    className="w-4 h-4 rounded-full border border-black/40 hover:scale-110 transition-transform"
+                    className="w-4 h-4 rounded-full border border-black/40 hover:scale-110 transition-transform cursor-pointer"
                     style={{ backgroundColor: s.hex }}
                   />
                 ))}
@@ -109,12 +109,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
               item.onClick?.()
               onClose()
             }}
-            className={`w-full h-7 px-2.5 flex items-center justify-between gap-3 text-left transition-colors ${
+            className={`w-full h-7 px-2 rounded-[5px] flex items-center justify-between gap-3 text-left transition-colors ${
               item.disabled
                 ? 'opacity-40 cursor-not-allowed'
                 : item.danger
-                ? 'text-[#f85149] hover:bg-[#3d1c20] hover:text-white'
-                : 'text-[#d8dee9] hover:bg-[#2a69df] hover:text-white'
+                ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
+                : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
             }`}
           >
             <span className="flex items-center gap-2 truncate">

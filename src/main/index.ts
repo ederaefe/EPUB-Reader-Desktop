@@ -41,7 +41,11 @@ function createWindow(): void {
     }
   })
 
+  // Strip Electron's default application menu so Ctrl+R (Reload/Reset), Ctrl+W, and Ctrl+0/+/- accelerators never fire
+  Menu.setApplicationMenu(null)
+
   mainWindow.on('ready-to-show', () => {
+    mainWindow?.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
     mainWindow?.show()
   })
 
@@ -53,28 +57,38 @@ function createWindow(): void {
     mainWindow?.webContents.send('window:fullscreenChanged', false)
   })
 
-  // Global zoom hotkeys: handles Ctrl + - (shrink) and Ctrl + = / Ctrl + + (unshrink) reliably
+  // Guard against accidental page reload, zoom, or state resets from Ctrl / F5 shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
 
+    // Block F5 reload and bare Control key side effects
+    if (input.key === 'F5' || input.key === 'Control') {
+      event.preventDefault()
+      return
+    }
+
     if (input.control || input.meta) {
-      if (input.key === '=' || input.key === '+' || input.code === 'Equal' || input.code === 'NumpadAdd') {
+      const k = input.key.toLowerCase()
+      const blockedCodes = new Set([
+        'Equal',
+        'Minus',
+        'Digit0',
+        'NumpadAdd',
+        'NumpadSubtract',
+        'Numpad0'
+      ])
+      // Prevent reload (Ctrl+R), window close (Ctrl+W), and viewport zoom/reset (Ctrl+0/+/-)
+      if (
+        k === 'r' ||
+        k === 'w' ||
+        k === '0' ||
+        k === '=' ||
+        k === '+' ||
+        k === '-' ||
+        k === '_' ||
+        blockedCodes.has(input.code)
+      ) {
         event.preventDefault()
-        if (mainWindow) {
-          const currentFactor = mainWindow.webContents.getZoomFactor()
-          const nextFactor = Math.min(3.0, Math.round((currentFactor + 0.1) * 10) / 10)
-          mainWindow.webContents.setZoomFactor(nextFactor)
-        }
-      } else if (input.key === '-' || input.key === '_' || input.code === 'Minus' || input.code === 'NumpadSubtract') {
-        event.preventDefault()
-        if (mainWindow) {
-          const currentFactor = mainWindow.webContents.getZoomFactor()
-          const nextFactor = Math.max(0.5, Math.round((currentFactor - 0.1) * 10) / 10)
-          mainWindow.webContents.setZoomFactor(nextFactor)
-        }
-      } else if (input.key === '0' || input.code === 'Digit0' || input.code === 'Numpad0') {
-        event.preventDefault()
-        mainWindow?.webContents.setZoomFactor(1.0)
       }
     }
   })

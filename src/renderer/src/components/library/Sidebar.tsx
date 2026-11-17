@@ -91,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
   }
 
   return (
-    <aside className="w-56 h-full bg-[#171a21] border-r border-[#232732] flex flex-col justify-between select-none shrink-0">
+    <aside className="w-56 h-full bg-[#0d0d0d] border-r border-white/[0.07] flex flex-col justify-between select-none shrink-0">
       {/* Top Section */}
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Navigation list */}

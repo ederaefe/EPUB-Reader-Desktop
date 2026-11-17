@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import { BookOpen, Star, Trash2, Folder, CheckCircle, FileCode2 } from 'lucide-react'
+import { BookOpen, Star, Trash2, Folder, CheckCircle, FileCode2, Image as ImageIcon } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
-import { extractEpubCover, generateCoverCanvas } from '../../services/coverService'
+import { extractBookMetadata, extractEpubCover, generateCoverCanvas } from '../../services/coverService'
 
 interface BookCardProps {
   book: Book
@@ -95,6 +95,35 @@ export const BookCard: React.FC<BookCardProps> = ({
     }
   }
 
+  const handleRefreshCover = async () => {
+    if (!book.id) return
+    try {
+      let buffer: ArrayBuffer | null = null
+      if (
+        book.filePath.startsWith('http') ||
+        book.filePath.startsWith('/src') ||
+        book.filePath.includes('the_fifth_season')
+      ) {
+        const resp = await fetch(book.filePath)
+        buffer = await resp.arrayBuffer()
+      } else if (window.desktopAPI?.readFileBuffer) {
+        buffer = await window.desktopAPI.readFileBuffer(book.filePath)
+      }
+      if (!buffer) return
+      const ext = book.filePath.split('.').pop()?.toLowerCase() || book.format
+      const meta = await extractBookMetadata(buffer, ext, book.title)
+      if (meta.coverDataUrl) {
+        await db.books.update(book.id, {
+          coverDataUrl: meta.coverDataUrl,
+          totalPages: meta.totalPages || book.totalPages
+        })
+        onUpdate()
+      }
+    } catch (err) {
+      console.warn('Refresh cover failed:', err)
+    }
+  }
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -108,6 +137,12 @@ export const BookCard: React.FC<BookCardProps> = ({
         label: book.progressPercent && book.progressPercent > 0 ? 'Continue Reading' : 'Open Book',
         icon: <BookOpen className="w-3.5 h-3.5 text-[#2a69df]" />,
         onClick: () => onOpen(book)
+      },
+      {
+        id: 'refresh-cover',
+        label: 'Refresh Cover / First Page',
+        icon: <ImageIcon className="w-3.5 h-3.5 text-[#79c0ff]" />,
+        onClick: handleRefreshCover
       },
       ...(book.format === 'pdf'
         ? [
@@ -289,19 +324,19 @@ export const BookCard: React.FC<BookCardProps> = ({
       <div
         onClick={() => onOpen(book)}
         onContextMenu={handleContextMenu}
-        className="w-36 flex flex-col cursor-pointer group select-none transition-transform duration-100 hover:-translate-y-0.5 relative"
+        className="w-36 flex flex-col cursor-pointer group select-none transition-all duration-200 ease-out hover:-translate-y-1 active:scale-[0.98] relative"
       >
       {/* Rectangular Cover Container with Blue Selected Border */}
       <div
-        className={`w-full aspect-[3/4.4] rounded-[2px] bg-[#151820] relative overflow-hidden flex flex-col justify-between shadow-md ${
-          isSelected ? 'border-2 border-[#2a69df]' : 'border border-[#2d323f] group-hover:border-[#3c404d]'
+        className={`w-full aspect-[3/4.4] rounded-[4px] bg-[#151820] relative overflow-hidden flex flex-col justify-between shadow-md group-hover:shadow-xl group-hover:shadow-black/50 transition-all duration-200 ${
+          isSelected ? 'border-2 border-[#2a69df]' : 'border border-[#2d323f] group-hover:border-[#4c5568]'
         }`}
       >
         {book.coverDataUrl ? (
           <img
             src={book.coverDataUrl}
             alt={book.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
             loading="lazy"
           />
         ) : (

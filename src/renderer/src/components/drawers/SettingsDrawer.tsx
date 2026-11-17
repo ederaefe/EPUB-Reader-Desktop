@@ -1,29 +1,66 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   X,
   Columns,
   Square,
-  AlignJustify,
   ArrowRight,
   Zap,
-  Gauge,
   Play,
   Pause,
   Volume2,
   VolumeX,
   Timer,
   RotateCcw,
-  Pilcrow,
-  Power,
   FileCode2,
   FileText,
-  Download
+  Download,
+  Minus,
+  Plus,
+  Check,
+  SlidersHorizontal,
+  Keyboard
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import type { AutoscrollMode } from '../../db'
-import { ThemePickerGrid } from '../ui/ThemePickerGrid'
+import { SecondsNumberInput } from '../ui/SecondsNumberInput'
+
+type SettingsTab = 'display' | 'flow' | 'document'
+
+const THEME_SWATCHES: Array<{
+  id: 'day' | 'light-sepia' | 'dark-sepia' | 'night'
+  label: string
+  bg: string
+  ink: string
+  border: string
+}> = [
+  { id: 'day', label: 'Light', bg: '#ffffff', ink: '#111111', border: 'rgba(0,0,0,0.12)' },
+  { id: 'light-sepia', label: 'Paper', bg: '#f6ebd4', ink: '#4a3a26', border: 'rgba(95,75,50,0.2)' },
+  { id: 'dark-sepia', label: 'Dusk', bg: '#26201a', ink: '#d8cbb8', border: 'rgba(255,255,255,0.1)' },
+  { id: 'night', label: 'Obsidian', bg: '#0d0d0e', ink: '#ededed', border: 'rgba(255,255,255,0.12)' }
+]
+
+const FONT_OPTIONS: Array<{
+  id: 'original' | 'sans-serif' | 'serif' | 'monospace'
+  label: string
+  sampleStyle: React.CSSProperties
+}> = [
+  { id: 'original', label: 'Publisher', sampleStyle: { fontFamily: 'inherit' } },
+  { id: 'sans-serif', label: 'Sans', sampleStyle: { fontFamily: '"Geist", "Inter", "Segoe UI", sans-serif' } },
+  { id: 'serif', label: 'Serif', sampleStyle: { fontFamily: 'Georgia, serif' } },
+  { id: 'monospace', label: 'Mono', sampleStyle: { fontFamily: 'Consolas, monospace' } }
+]
+
+const SPACING_PRESETS = [
+  { label: 'Tight', value: 1.2 },
+  { label: 'Normal', value: 1.5 },
+  { label: 'Relaxed', value: 1.9 }
+]
+
+const TIMER_PRESETS = [10, 20, 30, 45]
+const SMART_SEC_PRESETS = [15, 25, 35, 50]
+const TTS_SPEEDS = [0.8, 1.0, 1.2, 1.5, 2.0]
 
 export const SettingsDrawer: React.FC = () => {
   const {
@@ -38,7 +75,6 @@ export const SettingsDrawer: React.FC = () => {
     setTTSMuted,
     isAutoscrollActive,
     setAutoscrollActive,
-    toggleRSVP,
     pdfViewMode,
     setPdfViewMode,
     reflowEpubBuffer,
@@ -50,7 +86,88 @@ export const SettingsDrawer: React.FC = () => {
     updateSettings
   } = useAppStore()
 
+  const [activeTab, setActiveTab] = useState<SettingsTab>('display')
+
+  useEffect(() => {
+    if (!isSettingsDrawerOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') toggleSettingsDrawer(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isSettingsDrawerOpen, toggleSettingsDrawer])
+
   if (!isSettingsDrawerOpen) return null
+
+  const effectiveMode: AutoscrollMode =
+    settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
+  const countdownSec = settings.autoscrollCountdownSec ?? 20
+  const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
+  const microPauseEnabled = settings.autoscrollMicroPause ?? true
+
+  const handleModeChange = (mode: AutoscrollMode) => {
+    updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
+    adaptiveScrollEngine.configure({ mode })
+  }
+
+  const handleCountdownChange = (sec: number) => {
+    const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+    updateSettings({ autoscrollCountdownSec: clamped })
+    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
+  }
+
+  const handleAdaptiveSecChange = (sec: number) => {
+    const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+    updateSettings({ autoscrollAdaptiveSec: clamped })
+    adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
+  }
+
+  const handleMicroPauseToggle = () => {
+    const next = !microPauseEnabled
+    updateSettings({ autoscrollMicroPause: next })
+    adaptiveScrollEngine.configure({ microPauseEnabled: next })
+  }
+
+  const handleToggleAutoScroll = () => {
+    const next = !isAutoscrollActive
+    if (!next) {
+      adaptiveScrollEngine.stop()
+    } else {
+      adaptiveScrollEngine.clearTransientSuspensions()
+    }
+    setAutoscrollActive(next)
+  }
+
+  const handleToggleTTS = () => {
+    if (isTTSActive) {
+      ttsService.stop()
+      setTTSActive(false)
+      setTTSMuted(false)
+    } else {
+      setTTSActive(true)
+      setTTSMuted(false)
+      const readerIframe = document.querySelector('iframe')
+      const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Reading'
+      ttsService.speak(text, {
+        rate: settings.ttsSpeed,
+        pitch: settings.ttsPitch,
+        voiceURI: settings.ttsVoice,
+        onEnd: () => {
+          setTTSActive(false)
+          setTTSMuted(false)
+        }
+      })
+    }
+  }
+
+  const handleToggleMute = () => {
+    const nextMuted = !isTTSMuted
+    setTTSMuted(nextMuted)
+    if (isTTSActive) {
+      if (nextMuted) ttsService.pause()
+      else ttsService.resume()
+    }
+  }
 
   const handleSwitchPdfMode = async (targetMode: 'original' | 'reflow') => {
     if (!activeBook || activeBook.format !== 'pdf') return
@@ -110,601 +227,656 @@ export const SettingsDrawer: React.FC = () => {
     }
   }
 
-  const handleLineSpacingChange = (delta: number) => {
-    const next = Math.max(1.0, Math.min(2.5, Number((settings.lineHeight + delta).toFixed(1))))
-    updateSettings({ lineHeight: next })
-  }
-
-  const handleToggleTTS = () => {
-    if (isTTSActive) {
-      ttsService.stop()
-      setTTSActive(false)
-      setTTSMuted(false)
-    } else {
-      setTTSActive(true)
-      setTTSMuted(false)
-      const readerIframe = document.querySelector('iframe')
-      const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Reading'
-      ttsService.speak(text, {
-        rate: settings.ttsSpeed,
-        pitch: settings.ttsPitch,
-        voiceURI: settings.ttsVoice,
-        onEnd: () => {
-          setTTSActive(false)
-          setTTSMuted(false)
-        }
-      })
-    }
-  }
-
-  const handleToggleMute = () => {
-    const nextMuted = !isTTSMuted
-    setTTSMuted(nextMuted)
-    if (isTTSActive) {
-      if (nextMuted) {
-        ttsService.pause()
-      } else {
-        ttsService.resume()
-      }
-    }
-  }
-
-  const cycleTTSSpeed = () => {
-    const speeds = [0.8, 1.0, 1.2, 1.5, 2.0]
-    const nextIdx = (speeds.indexOf(settings.ttsSpeed) + 1) % speeds.length
-    updateSettings({ ttsSpeed: speeds[nextIdx] })
-  }
+  const isPdf = activeBook?.format === 'pdf'
 
   return (
     <>
-      {/* Backdrop for click-outside dismissal */}
+      {/* Subtle Geist backdrop */}
       <div
-        className="fixed inset-0 top-8 bg-black/40 z-40 transition-opacity"
+        className="fixed inset-0 top-8 bg-black/50 backdrop-blur-[1px] z-40 transition-opacity"
         onClick={() => toggleSettingsDrawer(false)}
       />
 
-      <aside className="fixed top-8 bottom-0 right-0 w-80 bg-[#171a21] border-l border-[#232732] z-50 flex flex-col justify-between shadow-2xl select-none app-no-drag animate-in slide-in-from-right duration-150">
-        <div className="flex flex-col h-full overflow-hidden">
-          {/* Header (1:1 Icecream Reader rec_12.jpg) */}
-          <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3.5 flex items-center justify-between shrink-0 app-no-drag">
-            <span className="text-[13px] font-semibold text-white">Settings</span>
+      {/* Elevated Geist Obsidian Panel */}
+      <aside className="fixed top-10 right-3 bottom-3 w-[328px] bg-[#111111] border border-white/[0.09] rounded-[10px] z-50 flex flex-col justify-between shadow-[0_24px_64px_rgba(0,0,0,0.75)] select-none app-no-drag overflow-hidden animate-in slide-in-from-right-2 fade-in duration-150">
+        {/* Top Bar + Segmented 3-Tab Switcher */}
+        <div className="px-3.5 pt-3 pb-2.5 border-b border-white/[0.07] space-y-2.5 shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold tracking-[-0.015em] text-[#ededed]">
+              Reader Settings
+            </span>
             <button
               type="button"
               onClick={() => toggleSettingsDrawer(false)}
-              className="app-no-drag w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded-[2px] cursor-pointer"
-              title="Close"
+              className="app-no-drag w-6 h-6 flex items-center justify-center text-[#777777] hover:text-white hover:bg-white/[0.07] rounded-md transition-colors cursor-pointer"
+              title="Close (Esc)"
             >
-              <X className="w-4 h-4 pointer-events-none" />
+              <X className="w-3.5 h-3.5 pointer-events-none" />
             </button>
           </div>
 
-        {/* Settings Body */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-[#c9d1d9]">
-          {/* PDF Reflow Mode & Offline EPUB Export (effective one-click switch in Settings) */}
-          {activeBook?.format === 'pdf' && (
-            <div className="p-2.5 bg-[#12141a] border border-[#2d323f] rounded-[2px] space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-white">PDF Reflow Mode</span>
-                <span className="text-[10px] font-mono text-[#2a69df]">
-                  {pdfViewMode === 'reflow' ? 'Reflow EPUB' : 'Original PDF'}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  disabled={isConvertingPdf}
-                  onClick={() => handleSwitchPdfMode('original')}
-                  className={`h-8 rounded-[2px] flex items-center justify-center gap-1.5 border text-[11px] font-medium transition-colors ${
-                    pdfViewMode === 'original'
-                      ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                      : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Original PDF</span>
-                </button>
-                <button
-                  disabled={isConvertingPdf}
-                  onClick={() => handleSwitchPdfMode('reflow')}
-                  className={`h-8 rounded-[2px] flex items-center justify-center gap-1.5 border text-[11px] font-medium transition-colors ${
-                    pdfViewMode === 'reflow'
-                      ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                      : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                  }`}
-                  title="Reflow PDF into clean customizable EPUB text with images preserved"
-                >
-                  <FileCode2 className="w-3.5 h-3.5" />
-                  <span>{isConvertingPdf ? 'Reflowing...' : 'Reflow EPUB'}</span>
-                </button>
-              </div>
-
-              {isConvertingPdf && pdfConvertProgress && (
-                <div className="space-y-1">
-                  <div className="w-full h-1 bg-[#232732] rounded overflow-hidden">
-                    <div
-                      className="h-full bg-[#2a69df] transition-all duration-150"
-                      style={{ width: `${pdfConvertProgress.percent}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-[#8b949e]">
-                    <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
-                    <span className="font-mono shrink-0">{pdfConvertProgress.percent}%</span>
-                  </div>
-                </div>
-              )}
-
-              <button
-                disabled={isConvertingPdf}
-                onClick={handleExportPdfAsEpub}
-                className="ice-btn-dark w-full h-7 flex items-center justify-center gap-1.5 text-[11px] rounded-[2px] disabled:opacity-50"
-              >
-                <Download className="w-3 h-3 text-[#4cd964]" />
-                <span>Convert &amp; Export as EPUB (Offline)</span>
-              </button>
-            </div>
-          )}
-
-          {/* 1. Theme (2x2 curved live-preview cards) */}
-          <div>
-            <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
-              Theme
-            </label>
-            <ThemePickerGrid
-              activeTheme={settings.theme}
-              onSelect={(theme) => updateSettings({ theme })}
-              compact
-            />
-          </div>
-
-          {/* 2. Dimming Slider */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-              <span>Dimming</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="75"
-              value={settings.dimming}
-              onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-              className="ice-slider w-full"
-            />
-          </div>
-
-          {/* 3. Page view (Single vs Double, 1:1 Icecream rec_12.jpg) */}
-          <div>
-            <label className="text-[11px] font-medium text-[#8b949e] block mb-1.5">
-              Page view
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => updateSettings({ pageSpread: 'double' })}
-                className={`h-8 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.pageSpread === 'double'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
-                }`}
-              >
-                <Columns className="w-3.5 h-3.5" />
-                <span>Double</span>
-              </button>
-
-              <button
-                onClick={() => updateSettings({ pageSpread: 'single' })}
-                className={`h-8 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.pageSpread === 'single'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
-                }`}
-              >
-                <Square className="w-3.5 h-3.5" />
-                <span>Single</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 4. Text Font Dropdown (rec_12.jpg shows 'Original font') */}
-          <div>
-            <label className="text-[11px] font-medium text-[#8b949e] block mb-1.5">
-              Text Font
-            </label>
-            <select
-              value={settings.fontFamily}
-              onChange={(e) => updateSettings({ fontFamily: e.target.value as any })}
-              className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px] cursor-pointer"
-            >
-              <option value="original">Original font</option>
-              <option value="sans-serif">Segoe UI</option>
-              <option value="serif">Georgia</option>
-              <option value="monospace">Consolas</option>
-            </select>
-          </div>
-
-          {/* 5. Font size Slider (rec_12.jpg shows 21px) */}
-          <div>
-            <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-              <span>Font size</span>
-              <span className="font-mono text-white text-[11px]">{settings.fontSize}px</span>
-            </div>
-            <input
-              type="range"
-              min="12"
-              max="42"
-              step="1"
-              value={settings.fontSize}
-              onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-              className="ice-slider w-full"
-            />
-          </div>
-
-          {/* 6. Line Spacing buttons (1:1 Icecream rec_12.jpg / rec_14.jpg) */}
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleLineSpacingChange(-0.1)}
-                className="ice-btn-dark h-9 flex flex-col items-center justify-center text-[10px] rounded-[2px]"
-                title="Decrease line spacing"
-              >
-                <AlignJustify className="w-3.5 h-3.5 mb-0.5" />
-                <span>Decrease line spacing</span>
-              </button>
-              <button
-                onClick={() => handleLineSpacingChange(0.1)}
-                className="ice-btn-dark h-9 flex flex-col items-center justify-center text-[10px] rounded-[2px]"
-                title="Increase line spacing"
-              >
-                <AlignJustify className="w-3.5 h-3.5 mb-0.5" />
-                <span>Increase line spacing</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="h-px bg-[#232732] my-2" />
-
-          {/* 7. Warm Blue Light Night Filter (Feature 5: isEnableBlueFilterNight) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-medium text-white flex items-center gap-1.5">
-                <span>Warm Night Light</span>
-              </label>
-              <button
-                onClick={() => updateSettings({ warmFilterEnabled: !settings.warmFilterEnabled })}
-                className={`w-9 h-5 rounded-[2px] transition-colors p-0.5 flex items-center ${
-                  settings.warmFilterEnabled ? 'bg-[#f59e0b] justify-end' : 'bg-[#282c37] justify-start'
-                }`}
-              >
-                <span className="w-4 h-4 bg-white rounded-[1px] shadow-sm block" />
-              </button>
-            </div>
-
-            {settings.warmFilterEnabled && (
-              <div className="space-y-2.5 pt-1 bg-[#12141a] p-2.5 rounded-[2px] border border-[#232732]">
-                <div>
-                  <div className="flex items-center justify-between text-[10px] text-[#8b949e] mb-1">
-                    <span>Temperature</span>
-                    <span className="font-mono text-[#f59e0b]">{settings.warmFilterTemp || 3200}K</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="2000"
-                    max="4500"
-                    step="100"
-                    value={settings.warmFilterTemp || 3200}
-                    onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
-                    className="ice-slider w-full"
-                  />
-                  <div className="flex justify-between text-[9px] text-[#6e7681] mt-0.5">
-                    <span>2000K Candle</span>
-                    <span>4500K Mild</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-[10px] text-[#8b949e] mb-1">
-                    <span>Intensity</span>
-                    <span className="font-mono text-white">{settings.warmFilterIntensity || 40}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="10"
-                    max="90"
-                    step="5"
-                    value={settings.warmFilterIntensity || 40}
-                    onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
-                    className="ice-slider w-full"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="h-px bg-[#232732] my-2" />
-
-          {/* 8. Reading Tools & Speech (Moved from Top Bar) */}
-          <div className="space-y-2.5">
-            <label className="text-[11px] font-medium text-[#8b949e] block">
-              Reading Tools & Speech
-            </label>
-
-            {/* Read Aloud Row: Play/Stop + Mute + Speed */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleToggleTTS}
-                className={`flex-1 h-8 px-2.5 rounded-[2px] flex items-center justify-center gap-1.5 border text-xs font-medium transition-colors ${
-                  isTTSActive
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-                title="Start/stop reading aloud (F7)"
-              >
-                {isTTSActive ? (
-                  <Pause className="w-3.5 h-3.5 fill-current" />
-                ) : (
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                )}
-                <span>{isTTSActive ? 'Stop Read Aloud' : 'Read Aloud'}</span>
-              </button>
-
-              <button
-                onClick={handleToggleMute}
-                className={`w-8 h-8 rounded-[2px] flex items-center justify-center border transition-colors ${
-                  isTTSMuted
-                    ? 'bg-[#3d1c20] border-[#5c262d] text-[#f85149]'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-                title={isTTSMuted ? 'Unmute speech' : 'Mute / pause speech'}
-              >
-                {isTTSMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-              </button>
-
-              <button
-                onClick={cycleTTSSpeed}
-                className="h-8 px-2 rounded-[2px] border border-[#3c404d] bg-[#282c37] hover:bg-[#323745] text-[#c9d1d9] hover:text-white font-mono text-[11px] transition-colors"
-                title="Cycle speech rate"
-              >
-                {settings.ttsSpeed.toFixed(1)}x
-              </button>
-            </div>
-
-            {/* RSVP Launch Row */}
+          {/* Crisp Vercel Segmented Navigation */}
+          <div className="grid grid-cols-3 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07]">
             <button
               type="button"
-              onClick={() => {
-                toggleSettingsDrawer(false)
-                toggleRSVP(true)
-              }}
-              className="w-full h-8 px-2 rounded-[2px] flex items-center justify-center gap-1.5 border border-[#3c404d] bg-[#282c37] text-[#c9d1d9] hover:bg-[#323745] text-xs font-medium transition-colors"
-              title="Launch RSVP Speed Reader (Optimal Recognition Point)"
+              onClick={() => setActiveTab('display')}
+              className={`h-7 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer ${
+                activeTab === 'display'
+                  ? 'bg-[#1f1f1f] text-white shadow-sm'
+                  : 'text-[#888888] hover:text-[#ededed]'
+              }`}
             >
-              <Gauge className="w-3.5 h-3.5 text-[#2a69df]" />
-              <span>RSVP Reader</span>
+              Display
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('flow')}
+              className={`h-7 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                activeTab === 'flow'
+                  ? 'bg-[#1f1f1f] text-white shadow-sm'
+                  : 'text-[#888888] hover:text-[#ededed]'
+              }`}
+            >
+              <span>Flow</span>
+              {(isAutoscrollActive || isTTSActive) && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('document')}
+              className={`h-7 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer ${
+                activeTab === 'document'
+                  ? 'bg-[#1f1f1f] text-white shadow-sm'
+                  : 'text-[#888888] hover:text-[#ededed]'
+              }`}
+            >
+              {isPdf ? 'PDF' : 'More'}
+            </button>
+          </div>
+        </div>
 
-            <div className="h-px bg-[#232732] my-1.5" />
+        {/* Tab Body */}
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+          {/* ===================== TAB 1: DISPLAY (Aa) ===================== */}
+          {activeTab === 'display' && (
+            <>
+              {/* Visual Theme Swatches */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-medium text-[#888888]">Surface</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {THEME_SWATCHES.map((t) => {
+                    const active = settings.theme === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => updateSettings({ theme: t.id })}
+                        className={`flex flex-col items-center gap-1.5 group cursor-pointer`}
+                      >
+                        <div
+                          style={{ backgroundColor: t.bg, color: t.ink, borderColor: active ? '#ffffff' : t.border }}
+                          className={`w-full h-11 rounded-md border flex items-center justify-center relative transition-all ${
+                            active ? 'ring-2 ring-white/25 scale-[1.02]' : 'opacity-85 group-hover:opacity-100'
+                          }`}
+                        >
+                          <span className="text-[14px] font-serif font-medium">Aa</span>
+                          {active && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center shadow">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[10px] ${active ? 'text-white font-medium' : 'text-[#777777]'}`}>
+                          {t.label}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-            {/* Dual-Mode Auto-Scroll Countdown Controls (Icon-Only + Rich Tooltips) */}
-            {(() => {
-              const effectiveMode: AutoscrollMode =
-                settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
-              const countdownSec = settings.autoscrollCountdownSec ?? 20
-              const targetWpm = settings.targetWpm ?? 250
-              const microPauseEnabled = settings.autoscrollMicroPause ?? true
+              {/* Font Family Preview Grid */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-medium text-[#888888]">Typeface</span>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {FONT_OPTIONS.map((f) => {
+                    const active = settings.fontFamily === f.id
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => updateSettings({ fontFamily: f.id })}
+                        className={`h-9 px-3 rounded-md border flex items-center justify-between transition-all cursor-pointer ${
+                          active
+                            ? 'bg-white text-black border-white font-medium'
+                            : 'bg-[#161616] border-white/[0.08] text-[#cccccc] hover:bg-[#1e1e1e] hover:text-white'
+                        }`}
+                      >
+                        <span className="text-[12px]" style={f.sampleStyle}>
+                          {f.label}
+                        </span>
+                        <span className={`text-[11px] ${active ? 'text-black/60' : 'text-[#666666]'}`} style={f.sampleStyle}>
+                          Aa
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-              const handleModeChange = (mode: AutoscrollMode) => {
-                updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
-                adaptiveScrollEngine.configure({ mode })
-              }
-
-              const handleCountdownChange = (sec: number) => {
-                const clamped = Math.max(5, Math.min(120, Math.round(sec)))
-                updateSettings({ autoscrollCountdownSec: clamped })
-                adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
-              }
-
-              const handleWpmChange = (wpm: number) => {
-                const clamped = Math.max(100, Math.min(800, Math.round(wpm)))
-                updateSettings({ targetWpm: clamped })
-                adaptiveScrollEngine.configure({ targetWpm: clamped })
-              }
-
-              const handleMicroPauseToggle = () => {
-                const next = !microPauseEnabled
-                updateSettings({ autoscrollMicroPause: next })
-                adaptiveScrollEngine.configure({ microPauseEnabled: next })
-              }
-
-              const handleToggleAutoScroll = () => {
-                const next = !isAutoscrollActive
-                if (!next) adaptiveScrollEngine.stop()
-                setAutoscrollActive(next)
-              }
-
-              return (
-                <div className="space-y-2.5 pt-0.5">
-                  {/* Sleek Header + Native Toggle Switch */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      {effectiveMode === 'countdown' ? (
-                        <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
-                      ) : (
-                        <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
-                      )}
-                      <span className="text-[11px] font-medium text-white">Auto-Scroll</span>
-                    </div>
-
+              {/* Font Size Tactile Stepper + Slider */}
+              <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[#888888]">Text size</span>
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      role="switch"
-                      aria-checked={isAutoscrollActive}
-                      onClick={handleToggleAutoScroll}
-                      className={`w-9 h-5 rounded-[3px] transition-colors p-0.5 flex items-center cursor-pointer ${
-                        isAutoscrollActive ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
-                      }`}
-                      title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                      onClick={() => updateSettings({ fontSize: Math.max(12, settings.fontSize - 1) })}
+                      className="w-6 h-6 rounded bg-[#0a0a0a] border border-white/[0.08] flex items-center justify-center text-[#aaaaaa] hover:text-white hover:border-white/20 cursor-pointer"
+                      title="Smaller text"
                     >
-                      <span className="w-4 h-4 bg-white rounded-[2px] shadow-sm block" />
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="w-10 text-center font-mono text-[11px] tabular-nums text-white">
+                      {settings.fontSize}px
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ fontSize: Math.min(42, settings.fontSize + 1) })}
+                      className="w-6 h-6 rounded bg-[#0a0a0a] border border-white/[0.08] flex items-center justify-center text-[#aaaaaa] hover:text-white hover:border-white/20 cursor-pointer"
+                      title="Larger text"
+                    >
+                      <Plus className="w-3 h-3" />
                     </button>
                   </div>
+                </div>
+                <input
+                  type="range"
+                  min="12"
+                  max="42"
+                  step="1"
+                  value={settings.fontSize}
+                  onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
+                  className="ice-slider w-full"
+                />
 
-                  {/* Unified Sleek Card */}
-                  <div className="bg-[#12141a] p-2.5 rounded-[4px] border border-[#232732] space-y-3">
-                    {/* Sleek Segmented Mode Bar */}
-                    <div className="space-y-1.5">
-                      <div className="grid grid-cols-2 p-0.5 bg-[#0d0f14] rounded-[3px] border border-[#1f232d]">
+                {/* Line Spacing 3-way segmented bar */}
+                <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#888888]">Line spacing</span>
+                    <span className="font-mono text-[#ededed] tabular-nums">{settings.lineHeight.toFixed(1)}×</span>
+                  </div>
+                  <div className="grid grid-cols-3 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07]">
+                    {SPACING_PRESETS.map((sp) => {
+                      const active = Math.abs(settings.lineHeight - sp.value) < 0.16
+                      return (
                         <button
+                          key={sp.label}
                           type="button"
-                          onClick={() => handleModeChange('countdown')}
-                          className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                            effectiveMode === 'countdown'
-                              ? 'bg-[#2a69df] text-white shadow-sm'
-                              : 'text-[#8b949e] hover:text-white'
+                          onClick={() => updateSettings({ lineHeight: sp.value })}
+                          className={`h-6 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer ${
+                            active ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-[#cccccc]'
                           }`}
                         >
-                          <Timer className="w-3 h-3" />
-                          <span>Fixed</span>
+                          {sp.label}
                         </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleModeChange('adaptive')}
-                          className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                            effectiveMode === 'adaptive'
-                              ? 'bg-[#2a69df] text-white shadow-sm'
-                              : 'text-[#8b949e] hover:text-white'
-                          }`}
-                        >
-                          <Zap className="w-3 h-3" />
-                          <span>Smart</span>
-                        </button>
+              {/* Page Layout & Lighting */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-[#888888]">Page layout</span>
+                  <div className="grid grid-cols-2 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07] w-40">
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ pageSpread: 'single' })}
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-medium transition-all cursor-pointer ${
+                        settings.pageSpread === 'single' ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-white'
+                      }`}
+                    >
+                      <Square className="w-3 h-3" />
+                      <span>Single</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateSettings({ pageSpread: 'double' })}
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-medium transition-all cursor-pointer ${
+                        settings.pageSpread === 'double' ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-white'
+                      }`}
+                    >
+                      <Columns className="w-3 h-3" />
+                      <span>Spread</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dimming + Warm Light */}
+                <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#888888]">Screen dim</span>
+                      <span className="font-mono text-[#ededed] tabular-nums">{settings.dimming}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="70"
+                      step="5"
+                      value={settings.dimming}
+                      onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
+                      className="ice-slider w-full"
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-white/[0.06] space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[11px] font-medium text-[#ededed]">Warm eye filter</div>
+                        <div className="text-[10px] text-[#666666]">Reduces blue light at night</div>
                       </div>
-
-                      <p className="text-[10px] text-[#6e7681] px-0.5">
-                        {effectiveMode === 'countdown'
-                          ? 'Turns page on a fixed timer'
-                          : 'Adapts pace to word count & speed'}
-                      </p>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!!settings.warmFilterEnabled}
+                        onClick={() => updateSettings({ warmFilterEnabled: !settings.warmFilterEnabled })}
+                        className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
+                          settings.warmFilterEnabled ? 'bg-[#f59e0b] justify-end' : 'bg-[#262626] justify-start'
+                        }`}
+                      >
+                        <span className="w-4 h-4 rounded-full bg-white shadow-sm block" />
+                      </button>
                     </div>
 
-                    {/* Parameter Slider */}
-                    {effectiveMode === 'countdown' ? (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-[#8b949e]">Page timer</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-white font-medium">{countdownSec}s</span>
-                            {countdownSec !== 20 && (
-                              <button
-                                type="button"
-                                onClick={() => handleCountdownChange(20)}
-                                title="Reset to 20s"
-                                className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
+                    {settings.warmFilterEnabled && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-[10px] text-[#888888]">
+                          <span>Warmth</span>
+                          <span className="font-mono text-[#f59e0b] tabular-nums">{settings.warmFilterTemp || 3200}K</span>
                         </div>
                         <input
                           type="range"
-                          min="5"
-                          max="120"
-                          step="5"
-                          value={countdownSec}
-                          onChange={(e) => handleCountdownChange(Number(e.target.value))}
+                          min="2000"
+                          max="4500"
+                          step="100"
+                          value={settings.warmFilterTemp || 3200}
+                          onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
                           className="ice-slider w-full"
                         />
-                        <div className="flex justify-between text-[9px] text-[#6e7681] font-mono">
-                          <span>5s</span>
-                          <span>120s</span>
+                        <div className="flex items-center justify-between text-[10px] text-[#888888]">
+                          <span>Strength</span>
+                          <span className="font-mono text-white tabular-nums">{settings.warmFilterIntensity || 40}%</span>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-[#8b949e]">Reading pace</span>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-white font-medium">{targetWpm} WPM</span>
-                              {targetWpm !== 250 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateSettings({ targetWpm: 250 })
-                                    adaptiveScrollEngine.reset(250)
-                                  }}
-                                  title="Reset to 250 WPM"
-                                  className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <input
-                            type="range"
-                            min="100"
-                            max="800"
-                            step="25"
-                            value={targetWpm}
-                            onChange={(e) => handleWpmChange(Number(e.target.value))}
-                            className="ice-slider w-full"
-                          />
-                          <div className="flex justify-between text-[9px] text-[#6e7681]">
-                            <span>Relaxed</span>
-                            <span>Fast</span>
-                          </div>
-                        </div>
-
-                        {/* Minimal Inline Toggle for Section Breaks */}
-                        <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c]">
-                          <span className="text-[11px] text-[#8b949e]">Pause at breaks</span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={microPauseEnabled}
-                            onClick={handleMicroPauseToggle}
-                            className={`w-7 h-4 rounded-[2px] transition-colors p-0.5 flex items-center cursor-pointer ${
-                              microPauseEnabled ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
-                            }`}
-                            title="Brief pause at chapter & section breaks"
-                          >
-                            <span className="w-3 h-3 bg-white rounded-[1px] block" />
-                          </button>
-                        </div>
+                        <input
+                          type="range"
+                          min="10"
+                          max="90"
+                          step="5"
+                          value={settings.warmFilterIntensity || 40}
+                          onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
+                          className="ice-slider w-full"
+                        />
                       </div>
                     )}
                   </div>
                 </div>
-              )
-            })()}
-          </div>
-        </div>
+              </div>
+            </>
+          )}
 
-        {/* Bottom Docked Action Links (1:1 Icecream rec_14.jpg) */}
-        <div className="p-3 border-t border-[#232732] space-y-2 shrink-0 bg-[#14161c]">
-          <button
-            onClick={() => {
-              toggleSettingsDrawer(false)
-              toggleFullSettingsModal(true)
-            }}
-            className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#c9d1d9] rounded-[2px]"
-          >
-            <span>Open All Settings</span>
-            <ArrowRight className="w-3.5 h-3.5 text-[#8b949e]" />
-          </button>
-          <button
-            onClick={() => {
-              toggleSettingsDrawer(false)
-              toggleHelpModal(true)
-            }}
-            className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#c9d1d9] rounded-[2px]"
-          >
-            <span>Show hotkeys</span>
-            <ArrowRight className="w-3.5 h-3.5 text-[#8b949e]" />
-          </button>
+          {/* ===================== TAB 2: FLOW (Auto-Scroll, Speech) ===================== */}
+          {activeTab === 'flow' && (
+            <>
+              {/* Hero Auto-Scroll Card */}
+              <div className="p-3.5 bg-[#161616] border border-white/[0.08] rounded-lg space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[12px] font-semibold text-white flex items-center gap-1.5">
+                      <span>Auto-Scroll</span>
+                      {isAutoscrollActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0070f3]" />
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#777777]">Hands-free page turning</div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isAutoscrollActive}
+                    onClick={handleToggleAutoScroll}
+                    className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
+                      isAutoscrollActive ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
+                    }`}
+                    title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full shadow-sm block ${
+                        isAutoscrollActive ? 'bg-black' : 'bg-[#888888]'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Clear 2-Card Mode Chooser */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('countdown')}
+                    className={`p-2.5 rounded-md border text-left transition-all cursor-pointer ${
+                      effectiveMode === 'countdown'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                      <Timer className="w-3.5 h-3.5" />
+                      <span>Timer</span>
+                    </div>
+                    <div className={`text-[10px] mt-0.5 ${effectiveMode === 'countdown' ? 'text-black/65' : 'text-[#666666]'}`}>
+                      Fixed seconds per page
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('adaptive')}
+                    className={`p-2.5 rounded-md border text-left transition-all cursor-pointer ${
+                      effectiveMode === 'adaptive'
+                        ? 'bg-white text-black border-white'
+                        : 'bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>Smart</span>
+                    </div>
+                    <div className={`text-[10px] mt-0.5 ${effectiveMode === 'adaptive' ? 'text-black/65' : 'text-[#666666]'}`}>
+                      Matches your speed
+                    </div>
+                  </button>
+                </div>
+
+                {/* One-Tap Presets + Manual Seconds Input */}
+                {effectiveMode === 'countdown' ? (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#888888]">Turn every (seconds)</span>
+                      {countdownSec !== 20 && (
+                        <button
+                          type="button"
+                          onClick={() => handleCountdownChange(20)}
+                          title="Reset to 20s"
+                          className="text-[#666666] hover:text-white cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <SecondsNumberInput
+                      value={countdownSec}
+                      min={3}
+                      max={600}
+                      step={5}
+                      onChange={handleCountdownChange}
+                      ariaLabel="Fixed seconds per page"
+                    />
+
+                    <div className="grid grid-cols-4 gap-1">
+                      {TIMER_PRESETS.map((sec) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => handleCountdownChange(sec)}
+                          className={`h-7 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
+                            countdownSec === sec
+                              ? 'bg-[#262626] border-white/25 text-white font-medium'
+                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#777777] hover:text-white'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#888888]">Base seconds / page</span>
+                      {adaptiveSec !== 25 && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdaptiveSecChange(25)}
+                          title="Reset to 25s"
+                          className="text-[#666666] hover:text-white cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <SecondsNumberInput
+                      value={adaptiveSec}
+                      min={3}
+                      max={600}
+                      step={5}
+                      onChange={handleAdaptiveSecChange}
+                      ariaLabel="Smart base seconds per page"
+                    />
+
+                    <div className="grid grid-cols-4 gap-1">
+                      {SMART_SEC_PRESETS.map((sec) => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => handleAdaptiveSecChange(sec)}
+                          className={`h-7 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
+                            adaptiveSec === sec
+                              ? 'bg-[#262626] border-white/25 text-white font-medium'
+                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#777777] hover:text-white'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                      <span className="text-[11px] text-[#888888]">Pause at breaks</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={microPauseEnabled}
+                        onClick={handleMicroPauseToggle}
+                        className={`w-8 h-4 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
+                          microPauseEnabled ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full block ${microPauseEnabled ? 'bg-black' : 'bg-[#888888]'}`} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Read Aloud Card */}
+              <div className="p-3.5 bg-[#161616] border border-white/[0.08] rounded-lg space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[12px] font-semibold text-white">Read Aloud</div>
+                    <div className="text-[11px] text-[#777777]">Natural voice narration</div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleToggleMute}
+                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+                        isTTSMuted
+                          ? 'bg-[#2a1517] border-[#5c262d] text-[#f85149]'
+                          : 'bg-[#0f0f0f] border-white/[0.08] text-[#888888] hover:text-white'
+                      }`}
+                      title={isTTSMuted ? 'Resume voice' : 'Pause voice'}
+                    >
+                      {isTTSMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleTTS}
+                      className={`h-7 px-3 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        isTTSActive
+                          ? 'bg-[#0070f3] text-white'
+                          : 'bg-[#ededed] text-[#0a0a0a] hover:bg-white'
+                      }`}
+                    >
+                      {isTTSActive ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+                      <span>{isTTSActive ? 'Stop' : 'Play'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* One-tap Speed Chips */}
+                <div className="grid grid-cols-5 gap-1">
+                  {TTS_SPEEDS.map((sp) => (
+                    <button
+                      key={sp}
+                      type="button"
+                      onClick={() => updateSettings({ ttsSpeed: sp })}
+                      className={`h-6 rounded text-[10px] font-mono tabular-nums border transition-colors cursor-pointer ${
+                        Math.abs(settings.ttsSpeed - sp) < 0.05
+                          ? 'bg-[#262626] border-white/25 text-white font-medium'
+                          : 'bg-[#0f0f0f] border-white/[0.06] text-[#777777] hover:text-white'
+                      }`}
+                    >
+                      {sp.toFixed(1)}×
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ===================== TAB 3: PDF & MORE ===================== */}
+          {activeTab === 'document' && (
+            <>
+              {isPdf && (
+                <div className="p-3.5 bg-[#161616] border border-white/[0.08] rounded-lg space-y-3">
+                  <div>
+                    <div className="text-[12px] font-semibold text-white">PDF Reading Mode</div>
+                    <div className="text-[11px] text-[#777777]">Switch between exact layout or fluid text</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      disabled={isConvertingPdf}
+                      onClick={() => handleSwitchPdfMode('original')}
+                      className={`p-2.5 rounded-md border text-left transition-all cursor-pointer ${
+                        pdfViewMode === 'original'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Original</span>
+                      </div>
+                      <div className={`text-[10px] mt-0.5 ${pdfViewMode === 'original' ? 'text-black/65' : 'text-[#666666]'}`}>
+                        Exact PDF pages
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isConvertingPdf}
+                      onClick={() => handleSwitchPdfMode('reflow')}
+                      className={`p-2.5 rounded-md border text-left transition-all cursor-pointer ${
+                        pdfViewMode === 'reflow'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                        <FileCode2 className="w-3.5 h-3.5" />
+                        <span>{isConvertingPdf ? 'Reflowing...' : 'Reflow'}</span>
+                      </div>
+                      <div className={`text-[10px] mt-0.5 ${pdfViewMode === 'reflow' ? 'text-black/65' : 'text-[#666666]'}`}>
+                        Fluid text &amp; fonts
+                      </div>
+                    </button>
+                  </div>
+
+                  {isConvertingPdf && pdfConvertProgress && (
+                    <div className="space-y-1">
+                      <div className="w-full h-1 bg-[#262626] rounded overflow-hidden">
+                        <div
+                          className="h-full bg-white transition-all duration-150"
+                          style={{ width: `${pdfConvertProgress.percent}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-[#888888]">
+                        <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
+                        <span className="font-mono tabular-nums">{pdfConvertProgress.percent}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={isConvertingPdf}
+                    onClick={handleExportPdfAsEpub}
+                    className="ice-btn-dark w-full h-8 gap-1.5 text-[11px] disabled:opacity-50 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#ededed]" />
+                    <span>Export as EPUB (Offline)</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleSettingsDrawer(false)
+                    toggleFullSettingsModal(true)
+                  }}
+                  className="w-full p-3 bg-[#161616] hover:bg-[#1c1c1c] border border-white/[0.08] rounded-lg flex items-center justify-between transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 text-left">
+                    <SlidersHorizontal className="w-4 h-4 text-[#888888] group-hover:text-white" />
+                    <div>
+                      <div className="text-[12px] font-medium text-[#ededed]">All Preferences</div>
+                      <div className="text-[10px] text-[#666666]">Backup, voice, system options</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#666666] group-hover:text-white" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleSettingsDrawer(false)
+                    toggleHelpModal(true)
+                  }}
+                  className="w-full p-3 bg-[#161616] hover:bg-[#1c1c1c] border border-white/[0.08] rounded-lg flex items-center justify-between transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 text-left">
+                    <Keyboard className="w-4 h-4 text-[#888888] group-hover:text-white" />
+                    <div>
+                      <div className="text-[12px] font-medium text-[#ededed]">Keyboard Shortcuts</div>
+                      <div className="text-[10px] text-[#666666]">Navigation &amp; quick commands</div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-[#666666] group-hover:text-white" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    </aside>
-  </>
-)
+      </aside>
+    </>
+  )
 }

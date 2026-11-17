@@ -11,17 +11,17 @@ export const TitleBar: React.FC = () => {
   const handleClose = () => window.desktopAPI?.close()
 
   return (
-    <header className="app-drag-region h-8 w-full bg-[#14161c] border-b border-[#232732] flex items-center justify-between px-3 z-50 select-none">
+    <header className="app-drag-region h-8 w-full bg-[#0a0a0a] border-b border-white/[0.07] flex items-center justify-between px-3 z-50 select-none">
       {/* Left side */}
       <div className="flex items-center gap-2 min-w-[200px]">
         <div className="flex items-center gap-2">
           <img
             src={semplyLogo}
             alt="Semply Ebook Reader"
-            className="w-4 h-4 rounded-[2px] object-cover shrink-0"
+            className="w-4 h-4 rounded-[4px] object-cover shrink-0"
           />
-          <span className="text-[12px] font-medium text-[#c8d1dc]">
-            Semply Ebook Reader
+          <span className="text-[12px] font-medium tracking-[-0.01em] text-[#d4d4d4]">
+            Semply
           </span>
         </div>
       </div>
@@ -29,8 +29,8 @@ export const TitleBar: React.FC = () => {
       {/* Center title in Reader mode */}
       <div className="flex-1 text-center truncate px-4 pointer-events-none">
         {currentView === 'reader' && activeBook && (
-          <span className="text-[12px] text-[#8b949e]">
-            {activeBook.title}{currentChapterTitle ? `: ${currentChapterTitle}` : ''}
+          <span className="text-[11px] text-[#777777]">
+            {activeBook.title}{currentChapterTitle ? ` — ${currentChapterTitle}` : ''}
           </span>
         )}
       </div>
@@ -39,21 +39,21 @@ export const TitleBar: React.FC = () => {
       <div className="app-no-drag flex items-center h-full">
         <button
           onClick={handleMinimize}
-          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#777777] hover:text-white hover:bg-white/[0.06] transition-colors"
           title="Minimize"
         >
           <Minus className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={handleMaximize}
-          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#777777] hover:text-white hover:bg-white/[0.06] transition-colors"
           title="Maximize"
         >
           <Square className="w-3 h-3" />
         </button>
         <button
           onClick={handleClose}
-          className="w-10 h-full flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#c42b1c] transition-colors"
+          className="w-10 h-full flex items-center justify-center text-[#777777] hover:text-white hover:bg-[#e5484d] transition-colors"
           title="Close"
         >
           <X className="w-3.5 h-3.5" />

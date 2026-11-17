@@ -350,3 +350,80 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
 - Softened all sharp `2px–3px` corners across dialogs and floating overlays to a consistent, slightly curved native desktop radius:
   - **`rounded-lg` (`8px`)**: `FullSettingsModal.tsx`, `ImportBooksModal.tsx`, `HelpModal.tsx`, `RSVPSpeedReaderModal.tsx`, `AnnotationPopover.tsx`, `FootnotePopover.tsx`, `SelectionPopup.tsx` (Note Composer, Dictionary, and Wikipedia modals), and `PdfReaderView.tsx` (Offline Reflow progress dialog).
   - **`rounded-md` (`6px`)**: Compact floating surfaces (`SelectionPopup.tsx` action bar, `ContextMenu.tsx`, and `EpubReaderView.tsx` contextual toasts).
+
+
+---
+
+## Increment 16: Vercel Geist-Inspired Modern Minimalist UI Redesign
+
+### Design System & Information Architecture
+- **True Obsidian Monochrome Scale (`index.css`, `TitleBar`, `ReaderTopBar`, `Sidebar`, `LibraryView`, `ResumeBar`, `AdaptiveScrollOverlay`, `EpubReaderView`)**:
+  - Replaced the legacy blue-gray palette (`#171a21`, `#282c37`, `#3c404d`) with Vercel Geist's pure architectural obsidian tokens (`#0a0a0a` canvas, `#111111` elevated floating panels, `#161616` interactive controls, `rgba(255,255,255,0.08)` 1px translucent hairlines, `#ededed` primary ink, `#888888` secondary ink, and pure `#0d0d0e` obsidian Night reading canvas).
+  - Adopted disciplined `6px`–`10px` radius hierarchy, `tabular-nums` alignment on all numeric metrics, and monochrome primary CTAs (`#ededed` on `#0a0a0a`) with Geist Blue (`#0070f3`) reserved exclusively for active status indicators and progress bars.
+- **3-Tab Reading Settings Command Center (`SettingsDrawer.tsx`)**:
+  - Eliminated the 760-line single-column vertical scrolling wall in favor of a floating rounded Geist panel (`rounded-[10px]`) organized into 3 clean, zero-scroll tabs inspired by Vercel Geist, Apple Books, and Readwise Reader:
+    1. **Display**: Live visual `Aa` theme swatch tiles (Light, Paper, Dusk, Obsidian), real-font Typeface preview cards, tactile `A− / px / A+` size stepper + slider, 3-way Line Spacing segmented bar (`Tight` / `Normal` / `Relaxed`), Page Layout switch, and Screen Dim + Warm Eye Filter controls.
+    2. **Flow**: Intuitive Auto-Scroll card with plain-English 2-card mode chooser (**Timer** vs **Smart**), one-tap preset chips (`10s/20s/30s/45s` and `Slow/Normal/Brisk/Fast`), precision slider, clean `Pause at breaks` switch, Read Aloud player with 1-tap speed chips, and RSVP Speed Reader launch card.
+    3. **PDF / More**: Clean **Original** vs **Reflow** PDF mode cards with live progress bar, **Export as EPUB (Offline)**, and direct links to **All Preferences** and **Keyboard Shortcuts**.
+
+
+---
+
+## Increment 16: Complete Removal of RSVP Speed Reader
+
+### Summary
+- Deleted `src/renderer/src/components/reader/RSVPSpeedReaderModal.tsx`.
+- Purged all RSVP state, actions, and schema fields (`isRSVPActive`, `toggleRSVP`, `rsvpWpm`) from `src/renderer/src/stores/useAppStore.ts` and `src/renderer/src/db/index.ts`.
+- Removed the RSVP launch row and unused `Gauge` icon from `SettingsDrawer.tsx`, the RSVP context menu entry / modal mount / `chapterFullText` state from `EpubReaderView.tsx`, the RSVP About row from `FullSettingsModal.tsx`, and the RSVP bullet from `README.md`.
+
+
+---
+
+## Increment 18: Fluid GPU Motion Primitives, `Ctrl` Reset/Zoom Neutralization & Responsive `Up`/`Down` Navigation
+
+### Summary
+- **Neutralized Accidental `Ctrl` Resets, Reloads & Zoom (`src/main/index.ts`, `src/renderer/src/App.tsx`, `EpubReaderView.tsx`)**:
+  - Disabled Electron's default application menu (`Menu.setApplicationMenu(null)`) so built-in accelerators (`Ctrl+R`, `Ctrl+Shift+R`, `Ctrl+W`, `Ctrl+0/+/-`) can never reload the window or reset reading state back to the library.
+  - Locked visual zoom (`setVisualZoomLevelLimits(1, 1)`), removed `Ctrl` + `+`/`-`/`0` viewport zoom bindings, blocked bare `Control` / `F5` / `Ctrl+R` / `Ctrl+W` / `Ctrl+0/+/-` across `before-input-event`, window, and EPUB iframe listeners, and suppressed Chromium `Ctrl + wheel` zoom while preserving intentional shortcuts (`Ctrl+F` Find, `Ctrl+B` Bookmark, `Ctrl+O` Import, `Ctrl+C`/`V` clipboard).
+- **Responsive `ArrowUp` / `ArrowDown` & Iframe Keyboard/Wheel Navigation (`EpubReaderView.tsx`, `PdfReaderView.tsx`, `LibraryView.tsx`, `HelpModal.tsx`)**:
+  - Wired `ArrowUp` / `ArrowDown` alongside `ArrowLeft` / `ArrowRight` / `PageUp` / `PageDown` / `Space` / `Backspace` / `Home` in **both** the outer window and inside the EPUB `<iframe>` `contents.window` so navigation stays responsive even when book text has focus, plus debounced mouse-wheel page turning (220ms cooldown) during manual EPUB reading.
+  - Added smart smooth scrolling with seamless edge page-turning on `ArrowUp` / `ArrowDown` in `PdfReaderView.tsx` and smooth catalog scrolling in `LibraryView.tsx`.
+- **Fluid 60fps UI Motion & Tactile Feedback (`src/renderer/src/index.css`, `BookCard.tsx`)**:
+  - Implemented real GPU-accelerated CSS keyframes (`ui-enter`) and composable animation classes (`.animate-in`, `.fade-in`, `.zoom-in-95`, `.slide-in-from-left`, `.slide-in-from-right`, `.slide-in-from-bottom`, `.animate-fadeIn`) using `cubic-bezier(0.22, 1, 0.36, 1)` so all drawers, modals, popovers, context menus, and toasts animate smoothly instead of snapping abruptly (`tailwindcss-animate` was not installed).
+  - Added tactile press micro-interactions (`scale(0.97)` / `scale(0.94)`), elevated hover transitions on `BookCard` covers, and `@media (prefers-reduced-motion: reduce)` guards.
+
+- **Fixed-Dimension Settings Modal (`FullSettingsModal.tsx`)**: Locked the All Preferences modal to a constant `780px × 580px` frame (capped at `92vw × 85vh`) with `flex-1 min-h-0 overflow-y-auto` internal scrolling, backdrop + `Escape` dismissal, and Geist obsidian chrome so switching tabs never causes layout jumping.
+
+
+---
+
+## Increment 19: Universal Thumbnail & First-Page Book Cover Extraction Pipeline
+
+### Architecture & Fixes (`coverService.ts`, `LibraryView.tsx`, `BookCard.tsx`)
+1. **Offline Bundled PDF.js Worker & Buffer Safety (`coverService.ts`)**:
+   - Replaced the broken external CDN worker URL (`cdnjs...pdf.worker.min.js`, which 404'd on `pdfjs-dist` v4 and failed offline) with the locally bundled `new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)`.
+   - Eliminated the detached `ArrayBuffer` crash by cloning bytes (`new Uint8Array(data.slice(0))`) and extracting Page 1 thumbnail, page count, and PDF metadata in a single `pdfjsLib.getDocument` pass with deterministic `pdf.destroy()` cleanup.
+   - Dynamically scales PDF Page 1 to ~`360px` width on a crisp `#ffffff` paper backdrop so transparent PDFs render cleanly.
+2. **Two-Stage EPUB Cover & First-Page Pipeline**:
+   - **Stage 1 (Embedded Thumbnail Detection)**: Resolves relative/URI-encoded archive paths (`../`, `%20`, case-insensitive lookup) and checks EPUB 3 `properties~="cover-image"`, EPUB 2 `<meta name="cover">` (by id or href), `<guide><reference type="cover">`, XHTML wrapper `<img>` / `<svg><image>` / inline `<svg>`, first spine page artwork, and cover-named manifest images across JPEG, PNG, WebP, GIF, and SVG.
+   - **Stage 2 (Authentic First-Page Render Fallback)**: When an EPUB has no embedded cover image, parses the first non-empty spine XHTML document (`h1`, `h2`, `h3`, `p`, `blockquote`) and typesets a miniature `320×450` warm-paper First Page thumbnail showing the real opening page/title page of the book.
+3. **MOBI / AZW & TXT Support**:
+   - Scans MOBI/AZW PalmDB records for embedded JPEG/PNG covers, falling back to a first-page render; renders opening paragraphs of `.txt` books as a miniature first page.
+4. **Unified Import Paths & One-Click Refresh (`LibraryView.tsx`, `BookCard.tsx`)**:
+   - Unified drag-and-drop import (`handleDrop`) with `processAndAddFile` so file picker, folder scan, and drag-and-drop all share `extractBookMetadata`.
+   - Added **Refresh Cover / First Page** to `BookCard.tsx`'s right-click menu to re-extract covers for any previously imported book on demand.
+
+
+---
+
+## Increment 19: Manual Seconds Input for Both Auto-Scroll Modes & Arbitrary-Stop Reliability Fixes
+
+### Summary
+- **Manual Numeric Seconds Input (`SecondsNumberInput.tsx`) Across Both Modes**:
+  - Replaced all Auto-Scroll range sliders in `SettingsDrawer.tsx`, `FullSettingsModal.tsx`, and `AdaptiveScrollOverlay.tsx` with a dedicated numeric seconds control (`3–600s`, `-`/`+` steppers, direct numeric typing, and `ArrowUp`/`ArrowDown` fine stepping).
+  - Both **Fixed Timer** (`autoscrollCountdownSec`, default `20s`) and **Smart Pace** (`autoscrollAdaptiveSec`, default `25s` base per reference 180-word page, dynamically scaled by visible word density) now accept exact manual seconds directly.
+- **Root-Cause Fixes for Arbitrary Auto-Scroll Stops (`adaptiveScrollService.ts`, `EpubReaderView.tsx`)**:
+  1. **Iframe Focus False-Blur**: Clicking inside the EPUB `<iframe>` fired `window.blur` even while `document.hasFocus()` remained `true`, permanently freezing Auto-Scroll. Deferred blur checks by `60ms` against `document.hasFocus()` and cleared `'blur'` suspension on iframe `focus`.
+  2. **5-Minute Foreground Auto-Pause**: Hands-free reading sessions previously hit the 5-minute inactivity watchdog while the reader was actively reading without touching input. Foreground reading now refreshes activity on every automatic page turn, reserving inactivity auto-pause strictly for backgrounded/away sessions.
+  3. **Premature `atEnd` & Chapter-Boundary `next()` Stalls**: Scoped `atEnd` detection to require both `loc.atEnd` and the final spine index (`endIdx >= spineLength - 1`), and added a `750ms` stall-recovery watchdog after `handleNext()` to retry once and re-arm the countdown if `epub.js` emits an unchanged CFI.
+  4. **Stuck Footnote Hover Suspension**: Automatically clears stale `'footnote'` and `'blur'` transient suspensions on page relocation, explicit Resume, and Auto-Scroll activation.

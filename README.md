@@ -15,16 +15,15 @@ A fast, distraction-free desktop EPUB reader built with Electron, React, TypeScr
 
 ### Minimalist Dual-Mode Auto-Scroll Countdown Engine
 - **Settings-Housed, Icon-Only Controls**: Configured and toggled inside the quick Settings drawer and Full Settings modal (`Reading settings`), keeping the main reader top bar clean.
-- **Two Modes**:
-  - **Countdown Only**: Deterministic fixed per-page timer (default `20s`, configurable `5s–120s`).
-  - **Adaptive Countdown**: Dynamically computes page duration from **visible on-screen word counts** (`epub.js` visible CFI range with proportional fallback, clamped `[3s, 180s]`), rolling Exponential Moving Average reading speed ($\alpha = 0.15$), wheel nudges (`-15%` / `+10%`), and optional `300ms` cognitive micro-pauses on section breaks and blockquotes.
-- **Muted Numeric Bottom-Right Indicator**: Quiet numeric countdown that remains visible even in immersive fullscreen mode. Tapping the number opens an icon-only settings popover and suspends the timer until dismissed.
-- **Abandonment & Inactivity Protection**: Automatically suspends when leaving/minimizing the app or opening panels, and auto-pauses cleanly after 5 minutes of reader inactivity.
+- **Two Modes (Manual Seconds Input `3–600s` in Both)**:
+  - **Fixed Timer**: Deterministic fixed per-page timer (default `20s`, configurable manually in seconds).
+  - **Smart Pace**: Dynamically scales your manual base seconds per page (default `25s`) to each page's **visible on-screen word density** (`epub.js` visible CFI range with proportional fallback), wheel nudges (`+15%` / `-10%`), and optional `300ms` cognitive micro-pauses on section breaks and blockquotes.
+- **Muted Numeric Bottom-Right Indicator**: Quiet numeric countdown that remains visible even in immersive fullscreen mode. Tapping the number opens a compact settings popover and suspends the timer until dismissed.
+- **Reliable Hands-Free Continuity**: Ignores false iframe-click blur events, recovers automatically across chapter/spread boundaries, and suspends only when genuinely leaving/minimizing the app or opening panels.
 
 ### Reading Tools & Accessibility
 - **In-Book Full-Text Search (`Ctrl+F`)**: Spine-wide EPUB search drawer with live debounced results, chapter attribution, inline excerpt highlighting, Previous/Next match stepping (`Enter` / `Shift+Enter`), and temporary in-page match highlights.
 - **Read Aloud (TTS)**: Web Speech Synthesis with Librera pronunciation normalization rules (decimals, abbreviations, Roman numerals), mute/pause toggle, and speed/pitch controls.
-- **RSVP Speed Reader**: Rapid Serial Visual Presentation modal with Optimal Recognition Point (ORP) alignment.
 - **Non-Destructive Footnotes**: Intercepts footnote links inline and displays them in a floating popover without losing your reading position.
 - **Warm Blue Light Night Filter**: Continuous color temperature (`2000K–4500K`) and intensity overlay for nighttime reading.
 - **Universal Additive Backup & Sync**: Export library metadata, shelves, highlights, notes, bookmarks, and cover art to portable JSON or ZIP archives with non-destructive additive import merging.
@@ -38,13 +37,12 @@ A fast, distraction-free desktop EPUB reader built with Electron, React, TypeScr
 | `Ctrl + F` | Open Find in Book drawer / re-focus search input |
 | `Enter` / `Shift + Enter` | Jump to next / previous search match (inside Find) |
 | `Ctrl + B` | Open Bookmarks drawer |
-| `Left` / `Page Up` / `Backspace` | Previous page |
-| `Right` / `Page Down` / `Space` | Next page |
+| `Up` / `Left` / `Page Up` / `Backspace` | Previous page (or smooth scroll up in PDF / Library) |
+| `Down` / `Right` / `Page Down` / `Space` | Next page (or smooth scroll down in PDF / Library) |
 | `Home` | Jump to start of book |
 | `F9` | Cycle reading theme (Day / Night / Light Sepia / Dark Sepia) |
 | `F10` | Toggle Single / Double page spread |
 | `F11` | Toggle True Immersive Fullscreen |
-| `Ctrl + +` / `Ctrl + -` / `Ctrl + 0` | Zoom interface in / out / reset (50%–300%) |
 | `F1` | Open Hotkeys & Navigation help modal |
 | `Esc` | Close open drawers, exit fullscreen, or return to library |
 
