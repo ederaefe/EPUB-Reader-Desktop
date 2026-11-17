@@ -346,6 +346,41 @@ export const FullSettingsModal: React.FC = () => {
                     onChange={(val) => updateSettings({ lineHeight: val / 100 })}
                   />
                 </div>
+
+                <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
+                  <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
+                    Text Weight
+                  </span>
+                  <div
+                    className="grid grid-cols-3 p-0.5 bg-[var(--app-bg)] rounded-md border border-[var(--app-border)] w-48"
+                    role="radiogroup"
+                    aria-label="Text Weight"
+                  >
+                    {[
+                      { label: 'Normal', value: 400 },
+                      { label: 'Medium', value: 500 },
+                      { label: 'Bold', value: 600 }
+                    ].map((opt) => {
+                      const active = (settings.fontWeight || 400) === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => updateSettings({ fontWeight: opt.value })}
+                          className={`h-7 rounded-[4px] text-[11.5px] font-semibold transition-all ${
+                            active
+                              ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                              : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
 
               {/* Warm Blue Light Night Filter Section */}

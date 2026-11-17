@@ -56,10 +56,10 @@ The initial glassmorphic web prototype ("Encapsulated Obsidian Glassmorphism") w
 ### EPUB Reading Themes (`EpubReaderView.tsx`)
 | Theme | Display Label | Background | Text | Link | Bottom Bar | Border |
 | --- | --- | --- | --- | --- | --- | --- |
-| **day** | Light | `#ffffff` | `#171717` | `#0070f3` | `#fafafa` | `rgba(0,0,0,0.08)` |
-| **night** | Obsidian | `#0d0d0e` | `#dcdcdc` | `#66b2ff` | `#0a0a0a` | `rgba(255,255,255,0.08)` |
-| **light-sepia** | Paper | `#f6ebd4` | `#4a3a26` | `#8b5a2b` | `#efe2c6` | `rgba(95,75,50,0.16)` |
-| **dark-sepia** | Dusk | `#221c16` | `#d8cbb8` | `#e6c8a5` | `#1a1510` | `rgba(255,255,255,0.08)` |
+| **day** | Light | `#ffffff` | `#121212` | `#005cc5` | `#fafafa` | `rgba(0,0,0,0.08)` |
+| **night** | Obsidian | `#0c0c0d` | `#f5f7fa` | `#8cc4ff` | `#0a0a0a` | `rgba(255,255,255,0.10)` |
+| **light-sepia** | Paper | `#f5ecd8` | `#1f1810` | `#6e4318` | `#ebe0c7` | `rgba(60,44,24,0.16)` |
+| **dark-sepia** | Dusk | `#1f1914` | `#f5ede0` | `#f3d9b8` | `#18130f` | `rgba(255,255,255,0.10)` |
 
 ### Native PDF Canvas Theme Adaptation (`PdfReaderView.tsx`)
 | Theme | Viewport Well | Canvas CSS Filter |

@@ -6,8 +6,8 @@ const SETTINGS_STORAGE_KEY = 'semply_user_settings_v1'
 export const THEME_WINDOW_BG: Record<UserSettings['theme'], string> = {
   night: '#0a0a0a',
   day: '#f6f7f9',
-  'light-sepia': '#f5ebd6',
-  'dark-sepia': '#1f1a14'
+  'light-sepia': '#f5ecd8',
+  'dark-sepia': '#1f1914'
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'night',
   fontFamily: 'original',
   fontSize: 21,
+  fontWeight: 400,
   lineHeight: 1.5,
   marginWidth: 40,
   dimming: 0,

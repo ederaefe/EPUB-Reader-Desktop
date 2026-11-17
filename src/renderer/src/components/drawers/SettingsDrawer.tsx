@@ -41,10 +41,16 @@ const THEME_SWATCHES: Array<{
   ink: string
   border: string
 }> = [
-  { id: 'day', label: 'Light', bg: '#ffffff', ink: '#111111', border: 'rgba(0,0,0,0.12)' },
-  { id: 'light-sepia', label: 'Paper', bg: '#f6ebd4', ink: '#4a3a26', border: 'rgba(95,75,50,0.2)' },
-  { id: 'dark-sepia', label: 'Dusk', bg: '#26201a', ink: '#d8cbb8', border: 'rgba(255,255,255,0.1)' },
-  { id: 'night', label: 'Obsidian', bg: '#0d0d0e', ink: '#ededed', border: 'rgba(255,255,255,0.12)' }
+  { id: 'day', label: 'Light', bg: '#ffffff', ink: '#121212', border: 'rgba(0,0,0,0.12)' },
+  { id: 'light-sepia', label: 'Paper', bg: '#f5ecd8', ink: '#1f1810', border: 'rgba(60,44,24,0.22)' },
+  { id: 'dark-sepia', label: 'Dusk', bg: '#1f1914', ink: '#f5ede0', border: 'rgba(255,255,255,0.12)' },
+  { id: 'night', label: 'Obsidian', bg: '#0c0c0d', ink: '#f5f7fa', border: 'rgba(255,255,255,0.12)' }
+]
+
+const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: number }> = [
+  { label: 'Normal', value: 400 },
+  { label: 'Medium', value: 500 },
+  { label: 'Bold', value: 600 }
 ]
 
 const SPACING_PRESETS = [
@@ -403,6 +409,35 @@ export const SettingsDrawer: React.FC = () => {
                     onChange={(val) => updateSettings({ lineHeight: val / 100 })}
                     compact
                   />
+                </div>
+
+                <div className="py-1.5 flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-bold text-[#ededed]">Text weight</span>
+                  <div
+                    className="grid grid-cols-3 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07] w-[148px]"
+                    role="radiogroup"
+                    aria-label="Text weight"
+                  >
+                    {FONT_WEIGHT_OPTIONS.map((opt) => {
+                      const active = (settings.fontWeight || 400) === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => updateSettings({ fontWeight: opt.value })}
+                          className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all cursor-pointer ${
+                            active
+                              ? 'bg-[#222222] text-white'
+                              : 'text-[#888888] hover:text-white'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
 

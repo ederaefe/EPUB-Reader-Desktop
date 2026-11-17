@@ -99,6 +99,7 @@ export interface UserSettings {
   theme: 'night' | 'day' | 'light-sepia' | 'dark-sepia'
   fontFamily: string
   fontSize: number
+  fontWeight?: number
   lineHeight: number
   marginWidth: number
   dimming: number

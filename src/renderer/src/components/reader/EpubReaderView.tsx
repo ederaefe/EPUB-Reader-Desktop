@@ -216,15 +216,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
   // Theme palettes aligned with Vercel/Geist Obsidian + Paper surfaces
   const themeStyles = {
-    day: { bg: '#ffffff', text: '#171717', link: '#0070f3', bottomBg: '#fafafa', border: 'rgba(0,0,0,0.08)' },
-    night: { bg: '#0d0d0e', text: '#f4f6f9', link: '#8cc4ff', bottomBg: '#0a0a0a', border: 'rgba(255,255,255,0.10)' },
-    'light-sepia': { bg: '#f6ebd4', text: '#4a3a26', link: '#8b5a2b', bottomBg: '#efe2c6', border: 'rgba(95,75,50,0.16)' },
-    'dark-sepia': { bg: '#221c16', text: '#f2e8d9', link: '#f3d9b8', bottomBg: '#1a1510', border: 'rgba(255,255,255,0.10)' }
+    day: { bg: '#ffffff', text: '#121212', link: '#005cc5', bottomBg: '#fafafa', border: 'rgba(0,0,0,0.08)' },
+    night: { bg: '#0c0c0d', text: '#f5f7fa', link: '#8cc4ff', bottomBg: '#0a0a0a', border: 'rgba(255,255,255,0.10)' },
+    'light-sepia': { bg: '#f5ecd8', text: '#1f1810', link: '#6e4318', bottomBg: '#ebe0c7', border: 'rgba(60,44,24,0.16)' },
+    'dark-sepia': { bg: '#1f1914', text: '#f5ede0', link: '#f3d9b8', bottomBg: '#18130f', border: 'rgba(255,255,255,0.10)' }
   }
 
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
 
-  // Injects dynamic user typography rules (font family, font size, line height) into an iframe Document
+  // Injects dynamic user typography rules (font family, size, weight, optical rendering, line height) into an iframe Document
   const applyDynamicStylesToDoc = useCallback((doc: Document | null | undefined) => {
     if (!doc || !doc.head) return
     let styleEl = doc.getElementById('semply-reader-dynamic-style') as HTMLStyleElement | null
@@ -236,6 +236,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     const currentSettings = useAppStore.getState().settings
     const fontFam = getFontCssFamily(currentSettings.fontFamily)
+    const fontWeight = currentSettings.fontWeight || 400
+    const isLightTheme = currentSettings.theme === 'day' || currentSettings.theme === 'light-sepia'
+    const smoothingRule = isLightTheme
+      ? '-webkit-font-smoothing: subpixel-antialiased !important;'
+      : '-webkit-font-smoothing: antialiased !important;'
+    // Subtle optical stroke lift at weight 500 so 2-weight Windows system serifs (Garamond/Georgia) visibly gain crispness
+    const mediumStrokeRule =
+      fontWeight === 500 ? '-webkit-text-stroke: 0.18px currentColor !important;' : '-webkit-text-stroke: 0 !important;'
+    const emphasisWeight = fontWeight >= 600 ? 800 : 700
     const fontRule =
       fontFam !== 'inherit'
         ? `body, body p, body div, body span, body li, body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 { font-family: ${fontFam} !important; }`
@@ -244,10 +253,19 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     styleEl.textContent = `
       html, body {
         font-size: ${currentSettings.fontSize}px !important;
+        font-weight: ${fontWeight} !important;
+        font-optical-sizing: auto !important;
+        text-rendering: optimizeLegibility !important;
+        ${smoothingRule}
       }
       body p, body div, body span, body li, body blockquote {
         font-size: ${currentSettings.fontSize}px !important;
         line-height: ${Math.round(currentSettings.lineHeight * 100)}% !important;
+        font-weight: ${fontWeight} !important;
+        ${mediumStrokeRule}
+      }
+      body strong, body b {
+        font-weight: ${emphasisWeight} !important;
       }
       ${fontRule}
     `
@@ -752,33 +770,33 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         renditionInstance!.themes.register('night', {
           ...baseRules,
-          body: { background: '#0d0d0e !important', color: '#f4f6f9 !important' },
-          'p, div, span, li, blockquote': { color: '#f4f6f9 !important' },
+          body: { background: '#0c0c0d !important', color: '#f5f7fa !important' },
+          'p, div, span, li, blockquote': { color: '#f5f7fa !important' },
           'h1, h2, h3, h4, h5': { color: '#ffffff !important' },
           a: { color: '#8cc4ff !important' }
         })
 
         renditionInstance!.themes.register('day', {
           ...baseRules,
-          body: { background: '#ffffff !important', color: '#202020 !important' },
-          'p, div, span, li, blockquote': { color: '#202020 !important' },
+          body: { background: '#ffffff !important', color: '#121212 !important' },
+          'p, div, span, li, blockquote': { color: '#121212 !important' },
           'h1, h2, h3, h4, h5': { color: '#000000 !important' },
-          a: { color: '#2a69df !important' }
+          a: { color: '#005cc5 !important' }
         })
 
         renditionInstance!.themes.register('light-sepia', {
           ...baseRules,
-          body: { background: '#fbf0d9 !important', color: '#5f4b32 !important' },
-          'p, div, span, li, blockquote': { color: '#5f4b32 !important' },
-          'h1, h2, h3, h4, h5': { color: '#433422 !important' },
-          a: { color: '#8b5a2b !important' }
+          body: { background: '#f5ecd8 !important', color: '#1f1810 !important' },
+          'p, div, span, li, blockquote': { color: '#1f1810 !important' },
+          'h1, h2, h3, h4, h5': { color: '#120d08 !important' },
+          a: { color: '#6e4318 !important' }
         })
 
         renditionInstance!.themes.register('dark-sepia', {
           ...baseRules,
-          body: { background: '#2d261e !important', color: '#f2e8d9 !important' },
-          'p, div, span, li, blockquote': { color: '#f2e8d9 !important' },
-          'h1, h2, h3, h4, h5': { color: '#fffbf2 !important' },
+          body: { background: '#1f1914 !important', color: '#f5ede0 !important' },
+          'p, div, span, li, blockquote': { color: '#f5ede0 !important' },
+          'h1, h2, h3, h4, h5': { color: '#fffcf6 !important' },
           a: { color: '#f3d9b8 !important' }
         })
 
@@ -1122,7 +1140,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
 
     applyFontAndTheme()
-  }, [settings.theme, settings.fontSize, settings.lineHeight, settings.fontFamily, applyDynamicStylesToDoc])
+  }, [settings.theme, settings.fontSize, settings.fontWeight, settings.lineHeight, settings.fontFamily, applyDynamicStylesToDoc])
 
   // Resilient page navigation: delegates to epub.js next()/prev(), and if a non-linear
   // spine section (linear="no", common on EPUB covers/front-matter) returns undefined from

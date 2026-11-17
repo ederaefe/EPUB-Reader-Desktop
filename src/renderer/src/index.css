@@ -117,24 +117,24 @@ html[data-theme="day"] {
 }
 
 html[data-theme="light-sepia"] {
-  --app-bg: #f5ebd6;
-  --app-chrome: #efe2c6;
-  --app-surface: #fbf3e2;
-  --app-surface-2: #eadbbd;
-  --app-surface-hover: #e1cea9;
-  --app-input-bg: #fdf7ea;
-  --app-border: rgba(95, 75, 50, 0.16);
-  --app-border-strong: rgba(95, 75, 50, 0.30);
-  --app-text: #4a3b28;
-  --app-text-strong: #2b2013;
-  --app-text-muted: #5c4932;
-  --app-text-subtle: #756046;
-  --app-accent: #8b5a2b;
-  --app-accent-soft: rgba(139, 90, 43, 0.14);
-  --app-accent-text: #7a4b1f;
-  --app-btn-primary-bg: #5f4b32;
-  --app-btn-primary-hover: #4c3b27;
-  --app-btn-primary-fg: #fbf3e2;
+  --app-bg: #f5ecd8;
+  --app-chrome: #ebe0c7;
+  --app-surface: #fbf4e4;
+  --app-surface-2: #e7d7b8;
+  --app-surface-hover: #dec9a3;
+  --app-input-bg: #fdf8ec;
+  --app-border: rgba(60, 44, 24, 0.16);
+  --app-border-strong: rgba(60, 44, 24, 0.30);
+  --app-text: #2a2015;
+  --app-text-strong: #17110a;
+  --app-text-muted: #463623;
+  --app-text-subtle: #5c4932;
+  --app-accent: #7a4b1f;
+  --app-accent-soft: rgba(122, 75, 31, 0.14);
+  --app-accent-text: #6e4318;
+  --app-btn-primary-bg: #3b2d1d;
+  --app-btn-primary-hover: #291f13;
+  --app-btn-primary-fg: #fbf4e4;
   --app-slider-track: rgba(95, 75, 50, 0.22);
   --app-slider-track-hover: rgba(95, 75, 50, 0.34);
   --app-slider-thumb: #8b5a2b;
