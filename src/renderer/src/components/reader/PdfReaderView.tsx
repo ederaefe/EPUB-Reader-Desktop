@@ -15,6 +15,7 @@ import {
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Annotation, type Book, type Bookmark as BookmarkItem, type NoteColor } from '../../db'
 import { ReaderTopBar } from './ReaderTopBar'
+import { SideNavigation } from './SideNavigation'
 import { TOCDrawer, type TocItem } from '../drawers/TOCDrawer'
 import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
@@ -495,6 +496,12 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       )}
 
       {/* Main PDF Scroll / Page Viewport */}
+      <SideNavigation
+        onPrev={handlePrev}
+        onNext={handleNext}
+        isLeftDisabled={currentPage <= 1}
+        isRightDisabled={currentPage >= totalPages}
+      />
       <div
         ref={viewportRef}
         onContextMenu={handleContextMenu}

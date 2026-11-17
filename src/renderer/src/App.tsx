@@ -7,6 +7,7 @@ import { LibraryView } from './components/library/LibraryView'
 import { EpubReaderView } from './components/reader/EpubReaderView'
 import { PdfReaderView } from './components/reader/PdfReaderView'
 import { HelpModal } from './components/ui/HelpModal'
+import { AboutModal } from './components/ui/AboutModal'
 import { FullSettingsModal } from './components/modals/FullSettingsModal'
 import { NativeFeedbackHost } from './components/ui/NativeFeedbackHost'
 import { getWarmFilterOverlay } from './services/colorTempService'
@@ -465,6 +466,7 @@ export const App: React.FC = () => {
       </main>
 
       <HelpModal />
+      <AboutModal />
       <FullSettingsModal />
       <NativeFeedbackHost />
 

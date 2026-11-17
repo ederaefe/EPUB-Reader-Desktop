@@ -68,6 +68,7 @@ export const SettingsDrawer: React.FC = () => {
     setAutoscrollActive,
     pdfViewMode,
     setPdfViewMode,
+    setScrollMode,
     reflowEpubBuffer,
     setReflowEpubBuffer,
     isConvertingPdf,
@@ -298,6 +299,19 @@ export const SettingsDrawer: React.FC = () => {
             <>
               {/* Visual Theme Swatches */}
               <div className="space-y-2">
+                <span className="text-[11px] font-medium text-[#888888]">Scroll Mode</span>
+                <div className="bg-[#1a1a1a] rounded-md border border-white/[0.05]">
+                  <select
+                    value={settings.scrollMode || 'horizontal'}
+                    onChange={(e) => setScrollMode(e.target.value as 'horizontal' | 'vertical')}
+                    className="w-full bg-transparent text-[13px] text-white p-2 outline-none cursor-pointer"
+                  >
+                    <option value="horizontal">Horizontal</option>
+                    <option value="vertical">Vertical</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <span className="text-[11px] font-medium text-[#888888]">Surface</span>
                 <div className="grid grid-cols-4 gap-2">
                   {THEME_SWATCHES.map((t) => {
@@ -336,9 +350,9 @@ export const SettingsDrawer: React.FC = () => {
               <FontPicker compact />
 
               {/* Font Size Tactile Stepper + Slider */}
-              <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2.5">
+              <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#888888]">Text size</span>
+                  <span className="text-[11px] font-bold text-[#ededed]">Text size</span>
                   <span className="font-mono text-[#ededed] text-[11px] tabular-nums">{settings.fontSize}px</span>
                 </div>
                 <ValueStepper
@@ -349,31 +363,25 @@ export const SettingsDrawer: React.FC = () => {
                   unit="px"
                   ariaLabel="Font size"
                   onChange={(val) => updateSettings({ fontSize: val })}
+                  compact
                 />
 
-                {/* Line Spacing 3-way segmented bar */}
-                <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                {/* Line Spacing */}
+                <div className="pt-2 border-t border-white/[0.06] space-y-1">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#888888]">Line spacing</span>
+                    <span className="font-bold text-[#ededed]">Line spacing</span>
                     <span className="font-mono text-[#ededed] tabular-nums">{settings.lineHeight.toFixed(1)}×</span>
                   </div>
-                  <div className="grid grid-cols-3 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07]">
-                    {SPACING_PRESETS.map((sp) => {
-                      const active = Math.abs(settings.lineHeight - sp.value) < 0.16
-                      return (
-                        <button
-                          key={sp.label}
-                          type="button"
-                          onClick={() => updateSettings({ lineHeight: sp.value })}
-                          className={`h-6 rounded-[4px] text-[11px] font-medium transition-all cursor-pointer ${
-                            active ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-[#cccccc]'
-                          }`}
-                        >
-                          {sp.label}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <ValueStepper
+                    value={settings.lineHeight * 100}
+                    min={100}
+                    max={200}
+                    step={10}
+                    unit="%"
+                    ariaLabel="Line spacing"
+                    onChange={(val) => updateSettings({ lineHeight: val / 100 })}
+                    compact
+                  />
                 </div>
               </div>
 
@@ -781,6 +789,39 @@ export const SettingsDrawer: React.FC = () => {
                       </div>
                       <div className={`text-[10px] mt-0.5 ${pdfViewMode === 'reflow' ? 'text-black/65' : 'text-[#666666]'}`}>
                         Fluid text &amp; fonts
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) return
+                        const savePath = await window.desktopAPI.showSaveDialog({
+                          title: 'Save EPUB',
+                          filters: [{ name: 'EPUB Files', extensions: ['epub'] }]
+                        })
+                        if (savePath) {
+                          setPdfConversionState(true, { percent: 10, stage: 'Converting...' })
+                          const res = await window.desktopAPI.convertToEpub({
+                            pdfPath: activeBook!.filePath,
+                            outputPath: savePath,
+                            mode: 'export'
+                          })
+                          setPdfConversionState(false)
+                          if (res.success) {
+                            showToast('Saved as EPUB', 'success')
+                          } else {
+                            showToast(res.error || 'Conversion failed', 'error')
+                          }
+                        }
+                      }}
+                      className="p-2.5 rounded-md border text-left transition-all cursor-pointer bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20 hover:bg-[#1a1a1a]"
+                    >
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Convert to EPUB</span>
+                      </div>
+                      <div className="text-[10px] mt-0.5 text-[#666666]">
+                        Export to file
                       </div>
                     </button>
                   </div>

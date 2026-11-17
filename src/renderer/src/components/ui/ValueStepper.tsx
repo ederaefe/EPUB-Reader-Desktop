@@ -78,23 +78,23 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
     }
   }
 
-  const btnSize = compact ? 'w-7 h-7' : 'w-8 h-8'
-  const inputHeight = compact ? 'h-7' : 'h-8'
+  const btnSize = compact ? 'w-5 h-5' : 'w-6 h-6'
+  const inputHeight = compact ? 'h-5' : 'h-6'
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => onChange(clamp(value - step))}
         disabled={value <= min}
         aria-label={`Decrease ${ariaLabel}`}
         title={`-${step}${unit}`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-md bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnSize} shrink-0 flex items-center justify-center rounded-[3px] bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Minus className="w-3.5 h-3.5" />
+        <Minus className="w-2.5 h-2.5" />
       </button>
 
-      <div className="relative flex-1 flex items-center">
+      <div className="relative w-16 flex items-center">
         <input
           type="text"
           inputMode={decimals > 0 ? 'decimal' : 'numeric'}
@@ -104,12 +104,10 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={(e) => e.target.select()}
           aria-label={ariaLabel}
-          className={`ice-input w-full ${inputHeight} pl-3 ${
-            unit ? 'pr-9' : 'pr-3'
-          } text-center font-mono text-[12px] font-medium text-white tabular-nums select-text`}
+          className={`ice-input w-full ${inputHeight} px-1 text-center font-mono text-[11px] font-medium text-white tabular-nums select-text`}
         />
         {unit && (
-          <span className="absolute right-2.5 text-[10px] font-mono text-[#6e7681] pointer-events-none select-none">
+          <span className="absolute right-1 text-[9px] font-mono text-[#6e7681] pointer-events-none select-none">
             {unit}
           </span>
         )}
@@ -121,10 +119,11 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
         disabled={value >= max}
         aria-label={`Increase ${ariaLabel}`}
         title={`+${step}${unit}`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-md bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnSize} shrink-0 flex items-center justify-center rounded-[3px] bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Plus className="w-3.5 h-3.5" />
+        <Plus className="w-2.5 h-2.5" />
       </button>
     </div>
   )
 }
+
