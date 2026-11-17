@@ -285,7 +285,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
                       type="button"
                       onClick={() => setNewCatColor(c)}
                       className={`w-3.5 h-3.5 rounded-full transition-transform ${
-                        newCatColor === c ? 'ring-2 ring-white scale-110' : 'hover:scale-105'
+                        newCatColor === c ? 'ring-2 ring-[var(--app-text-strong)] scale-110' : 'hover:scale-105'
                       }`}
                       style={{ backgroundColor: c }}
                       title={c}
@@ -299,7 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
                       className="w-3.5 h-3.5 opacity-0 absolute inset-0 cursor-pointer"
                     />
                     <div
-                      className="w-3.5 h-3.5 rounded-full border border-dashed border-[#8b949e] flex items-center justify-center text-[8px] text-[#8b949e] hover:border-white hover:text-white"
+                      className="w-3.5 h-3.5 rounded-full border border-dashed border-[var(--app-border-strong)] flex items-center justify-center text-[8px] text-[var(--app-text-muted)] hover:border-[var(--app-text-strong)] hover:text-[var(--app-text-strong)]"
                       style={{ backgroundColor: COLOR_PALETTE.includes(newCatColor) ? 'transparent' : newCatColor }}
                     >
                       +

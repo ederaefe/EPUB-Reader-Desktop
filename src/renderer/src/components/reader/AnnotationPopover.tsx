@@ -114,11 +114,11 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                   onClick={() => handleColorSwitch(col.id)}
                   title={`Change to ${col.label}`}
                   className={`w-4 h-4 rounded-[2px] flex items-center justify-center transition-transform cursor-pointer ${
-                    isSelected ? 'ring-1 ring-white scale-110' : 'opacity-80 hover:opacity-100 hover:scale-105'
+                    isSelected ? 'ring-1 ring-[var(--app-text-strong)] scale-110' : 'opacity-80 hover:opacity-100 hover:scale-105'
                   }`}
                   style={
                     col.isUnderline
-                      ? { backgroundColor: '#232732', border: '1px solid #3c404d', color: '#79c0ff' }
+                      ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
                       : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
                   }
                 >

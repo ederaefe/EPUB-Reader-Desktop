@@ -500,8 +500,8 @@ export const SettingsDrawer: React.FC = () => {
                       onClick={handleToggleAutoScroll}
                       className={`h-7 px-2.5 rounded flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-colors ${
                         isAutoscrollActive
-                          ? 'bg-[#2a1416] text-[#f85149] hover:bg-[#3d181c] border border-[#f85149]/30'
-                          : 'bg-white text-black hover:bg-[#eaeaea]'
+                          ? 'bg-[#e5484d]/12 text-[#e5484d] hover:bg-[#e5484d]/20 border border-[#e5484d]/30'
+                          : 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] hover:bg-[var(--app-btn-primary-hover)]'
                       }`}
                       title={isAutoscrollActive ? 'Pause auto-scroll' : 'Play auto-scroll'}
                     >
@@ -521,15 +521,19 @@ export const SettingsDrawer: React.FC = () => {
                       type="button"
                       role="switch"
                       aria-checked={isAutoscrollActive}
+                      data-preserve-theme="true"
                       onClick={handleToggleAutoScroll}
-                      className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
-                        isAutoscrollActive ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
-                      }`}
+                      style={{
+                        backgroundColor: isAutoscrollActive
+                          ? 'var(--app-accent)'
+                          : 'var(--app-border-strong)'
+                      }}
+                      className="w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer"
                       title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
                     >
                       <span
-                        className={`w-4 h-4 rounded-full shadow-sm block ${
-                          isAutoscrollActive ? 'bg-black' : 'bg-[#888888]'
+                        className={`w-4 h-4 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
+                          isAutoscrollActive ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
                     </button>
@@ -670,12 +674,20 @@ export const SettingsDrawer: React.FC = () => {
                         type="button"
                         role="switch"
                         aria-checked={microPauseEnabled}
+                        data-preserve-theme="true"
                         onClick={handleMicroPauseToggle}
-                        className={`w-8 h-4 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
-                          microPauseEnabled ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
-                        }`}
+                        style={{
+                          backgroundColor: microPauseEnabled
+                            ? 'var(--app-accent)'
+                            : 'var(--app-border-strong)'
+                        }}
+                        className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors cursor-pointer"
                       >
-                        <span className={`w-3 h-3 rounded-full block ${microPauseEnabled ? 'bg-black' : 'bg-[#888888]'}`} />
+                        <span
+                          className={`w-3 h-3 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
+                            microPauseEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
                       </button>
                     </div>
                   </div>
@@ -695,7 +707,7 @@ export const SettingsDrawer: React.FC = () => {
                       onClick={handleToggleMute}
                       className={`w-7 h-7 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
                         isTTSMuted
-                          ? 'bg-[#2a1517] border-[#5c262d] text-[#f85149]'
+                          ? 'bg-[#e5484d]/12 border-[#e5484d]/30 text-[#e5484d]'
                           : 'bg-[#0f0f0f] border-white/[0.08] text-[#888888] hover:text-white'
                       }`}
                       title={isTTSMuted ? 'Resume voice' : 'Pause voice'}
@@ -708,7 +720,7 @@ export const SettingsDrawer: React.FC = () => {
                       className={`h-7 px-3 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                         isTTSActive
                           ? 'bg-[#0070f3] text-white'
-                          : 'bg-[#ededed] text-[#0a0a0a] hover:bg-white'
+                          : 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] hover:bg-[var(--app-btn-primary-hover)]'
                       }`}
                     >
                       {isTTSActive ? <Pause className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
@@ -792,7 +804,7 @@ export const SettingsDrawer: React.FC = () => {
                     <div className="space-y-1">
                       <div className="w-full h-1 bg-[#262626] rounded overflow-hidden">
                         <div
-                          className="h-full bg-white transition-all duration-150"
+                          className="h-full bg-[var(--app-accent)] transition-all duration-150"
                           style={{ width: `${pdfConvertProgress.percent}%` }}
                         />
                       </div>

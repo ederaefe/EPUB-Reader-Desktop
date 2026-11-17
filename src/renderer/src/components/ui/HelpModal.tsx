@@ -1,9 +1,18 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { X, Keyboard } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 
 export const HelpModal: React.FC = () => {
   const { isHelpModalOpen, toggleHelpModal } = useAppStore()
+
+  useEffect(() => {
+    if (!isHelpModalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') toggleHelpModal(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isHelpModalOpen, toggleHelpModal])
 
   if (!isHelpModalOpen) return null
 
@@ -24,8 +33,14 @@ export const HelpModal: React.FC = () => {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-[#1c1f26] border border-[#2d323f] rounded-lg w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+    <div
+      onClick={() => toggleHelpModal(false)}
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#1c1f26] border border-[#2d323f] rounded-lg w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+      >
         {/* Header */}
         <div className="h-10 bg-[#171a21] border-b border-[#2b2f3a] px-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">

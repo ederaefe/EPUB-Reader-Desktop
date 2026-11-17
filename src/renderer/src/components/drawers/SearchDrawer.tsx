@@ -25,7 +25,7 @@ function renderHighlightedExcerpt(excerpt: string, query: string): React.ReactNo
     part.toLowerCase() === trimmed.toLowerCase() ? (
       <mark
         key={idx}
-        className="bg-[#f59e0b]/35 text-[#fde68a] px-0.5 rounded-[1px]"
+        className="bg-[#f59e0b]/30 text-[var(--app-text-strong)] font-semibold px-0.5 rounded-[2px]"
       >
         {part}
       </mark>

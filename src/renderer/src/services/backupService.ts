@@ -2,7 +2,7 @@
 // Implements non-destructive JSON & ZIP export and additive upsert merge
 
 import JSZip from 'jszip'
-import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings } from '../db'
+import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings, type NoteColor } from '../db'
 import { useAppStore } from '../stores/useAppStore'
 
 export interface LibraryBackupData {
@@ -27,6 +27,28 @@ function hasPrototypePollutionKey(obj: Record<string, any>): boolean {
     }
   }
   return false
+}
+
+function sanitizeString(val: any, maxLen = 256): string {
+  return typeof val === 'string' ? val.trim().slice(0, maxLen) : ''
+}
+
+function sanitizeColor(color: any, fallback = '#2a69df'): string {
+  return typeof color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(color.trim()) ? color.trim() : fallback
+}
+
+function sanitizeNoteColor(color: any): NoteColor {
+  const valid: NoteColor[] = ['blue', 'purple', 'red', 'yellow', 'green', 'underline']
+  return valid.includes(color) ? color : 'yellow'
+}
+
+function sanitizeCoverDataUrl(url: any): string | null {
+  if (typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
+    return trimmed
+  }
+  return null
 }
 
 export function validateBackupStructure(raw: unknown): raw is LibraryBackupData {
@@ -213,14 +235,16 @@ export class BackupService {
 
     const catIdMapping = new Map<number, number>()
     for (const remoteCat of backup.categories || []) {
-      const key = remoteCat.name.toLowerCase()
+      const safeCatName = sanitizeString(remoteCat.name, 64)
+      if (!safeCatName) continue
+      const key = safeCatName.toLowerCase()
       if (categoryNameMap.has(key)) {
         if (remoteCat.id) catIdMapping.set(remoteCat.id, categoryNameMap.get(key)!)
       } else {
         const newId = await db.categories.add({
-          name: remoteCat.name,
-          color: remoteCat.color || '#2a69df',
-          createdAt: remoteCat.createdAt || Date.now()
+          name: safeCatName,
+          color: sanitizeColor(remoteCat.color, '#2a69df'),
+          createdAt: typeof remoteCat.createdAt === 'number' && Number.isFinite(remoteCat.createdAt) ? remoteCat.createdAt : Date.now()
         })
         categoryNameMap.set(key, newId as number)
         if (remoteCat.id) catIdMapping.set(remoteCat.id, newId as number)
@@ -251,18 +275,29 @@ export class BackupService {
         }
       }
 
+      const safeTitle = sanitizeString(remoteBook.title, 256) || 'Untitled Book'
+      const safeAuthor = sanitizeString(remoteBook.author, 128) || 'Unknown Author'
+      const safeFilePath = sanitizeString(remoteBook.filePath, 1024)
+      const safeCover = sanitizeCoverDataUrl(remoteBook.coverDataUrl)
+      const safeFormat = (['epub', 'pdf', 'mobi', 'txt'] as const).includes(remoteBook.format)
+        ? remoteBook.format
+        : 'epub'
+      const safeProgress = typeof remoteBook.progressPercent === 'number' && Number.isFinite(remoteBook.progressPercent)
+        ? Math.max(0, Math.min(100, remoteBook.progressPercent))
+        : 0
+
       const match =
-        bookKeyMap.get(remoteBook.filePath) ||
-        bookKeyMap.get(`${remoteBook.title}:::${remoteBook.author}`)
+        bookKeyMap.get(safeFilePath) ||
+        bookKeyMap.get(`${safeTitle}:::${safeAuthor}`)
 
       if (match && match.id) {
         if (remoteBook.id) bookIdMapping.set(remoteBook.id, match.id)
         // Update reading progress if remote is further along
-        if ((remoteBook.progressPercent || 0) > (match.progressPercent || 0)) {
+        if (safeProgress > (match.progressPercent || 0)) {
           await db.books.update(match.id, {
-            progressPercent: remoteBook.progressPercent,
-            progressCfi: remoteBook.progressCfi || match.progressCfi,
-            currentPage: remoteBook.currentPage || match.currentPage
+            progressPercent: safeProgress,
+            progressCfi: typeof remoteBook.progressCfi === 'string' ? remoteBook.progressCfi : match.progressCfi,
+            currentPage: typeof remoteBook.currentPage === 'number' && Number.isFinite(remoteBook.currentPage) ? remoteBook.currentPage : match.currentPage
           })
         }
       } else {
@@ -270,11 +305,24 @@ export class BackupService {
           ? catIdMapping.get(remoteBook.categoryId) || null
           : null
 
-        const { id, ...bookData } = remoteBook
         const newBookId = await db.books.add({
-          ...bookData,
+          title: safeTitle,
+          author: safeAuthor,
+          filePath: safeFilePath,
+          format: safeFormat,
+          coverDataUrl: safeCover,
+          fileSize: typeof remoteBook.fileSize === 'number' && Number.isFinite(remoteBook.fileSize) ? Math.max(0, remoteBook.fileSize) : 0,
+          addedAt: typeof remoteBook.addedAt === 'number' && Number.isFinite(remoteBook.addedAt) ? remoteBook.addedAt : Date.now(),
+          lastOpenedAt: typeof remoteBook.lastOpenedAt === 'number' && Number.isFinite(remoteBook.lastOpenedAt) ? remoteBook.lastOpenedAt : null,
+          progressPercent: safeProgress,
+          progressCfi: typeof remoteBook.progressCfi === 'string' ? remoteBook.progressCfi : null,
+          currentPage: typeof remoteBook.currentPage === 'number' && Number.isFinite(remoteBook.currentPage) ? Math.max(1, remoteBook.currentPage) : 1,
+          totalPages: typeof remoteBook.totalPages === 'number' && Number.isFinite(remoteBook.totalPages) ? Math.max(1, remoteBook.totalPages) : 1,
           categoryId: mappedCatId,
-          addedAt: bookData.addedAt || Date.now()
+          isFavorite: Boolean(remoteBook.isFavorite),
+          isRead: Boolean(remoteBook.isRead),
+          isPinned: Boolean(remoteBook.isPinned),
+          pinnedAt: typeof remoteBook.pinnedAt === 'number' && Number.isFinite(remoteBook.pinnedAt) ? remoteBook.pinnedAt : null
         })
         if (remoteBook.id) bookIdMapping.set(remoteBook.id, newBookId as number)
         addedBooks++
@@ -289,12 +337,19 @@ export class BackupService {
 
     for (const remoteAnn of backup.annotations || []) {
       const localBookId = bookIdMapping.get(remoteAnn.bookId) || remoteAnn.bookId
-      const key = `${localBookId}:::${remoteAnn.cfiRange}`
+      const safeCfiRange = sanitizeString(remoteAnn.cfiRange, 512)
+      if (!safeCfiRange) continue
+      const key = `${localBookId}:::${safeCfiRange}`
       if (!annotationKeySet.has(key)) {
-        const { id, ...annData } = remoteAnn
         await db.annotations.add({
-          ...annData,
-          bookId: localBookId
+          bookId: localBookId,
+          cfiRange: safeCfiRange,
+          text: sanitizeString(remoteAnn.text, 2048),
+          note: sanitizeString(remoteAnn.note, 4096),
+          color: sanitizeNoteColor(remoteAnn.color),
+          pageNumber: typeof remoteAnn.pageNumber === 'number' && Number.isFinite(remoteAnn.pageNumber) ? remoteAnn.pageNumber : undefined,
+          chapterTitle: remoteAnn.chapterTitle ? sanitizeString(remoteAnn.chapterTitle, 128) : undefined,
+          createdAt: typeof remoteAnn.createdAt === 'number' && Number.isFinite(remoteAnn.createdAt) ? remoteAnn.createdAt : Date.now()
         })
         annotationKeySet.add(key)
         addedAnnotations++
@@ -309,12 +364,18 @@ export class BackupService {
 
     for (const remoteBm of backup.bookmarks || []) {
       const localBookId = bookIdMapping.get(remoteBm.bookId) || remoteBm.bookId
-      const key = `${localBookId}:::${remoteBm.cfi}`
+      const safeCfi = sanitizeString(remoteBm.cfi, 512)
+      if (!safeCfi) continue
+      const key = `${localBookId}:::${safeCfi}`
       if (!bookmarkKeySet.has(key)) {
-        const { id, ...bmData } = remoteBm
         await db.bookmarks.add({
-          ...bmData,
-          bookId: localBookId
+          bookId: localBookId,
+          cfi: safeCfi,
+          label: sanitizeString(remoteBm.label, 128) || 'Bookmark',
+          pageNumber: typeof remoteBm.pageNumber === 'number' && Number.isFinite(remoteBm.pageNumber) ? Math.max(1, remoteBm.pageNumber) : 1,
+          progressPercent: typeof remoteBm.progressPercent === 'number' && Number.isFinite(remoteBm.progressPercent) ? Math.max(0, Math.min(100, remoteBm.progressPercent)) : undefined,
+          chapterTitle: remoteBm.chapterTitle ? sanitizeString(remoteBm.chapterTitle, 128) : undefined,
+          createdAt: typeof remoteBm.createdAt === 'number' && Number.isFinite(remoteBm.createdAt) ? remoteBm.createdAt : Date.now()
         })
         bookmarkKeySet.add(key)
         addedBookmarks++

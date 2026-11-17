@@ -100,7 +100,7 @@ export const NativeFeedbackHost: React.FC = () => {
                 className={`h-8 px-3.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                   confirmDialog.danger
                     ? 'bg-[#e5484d] hover:bg-[#f2555a] text-white'
-                    : 'bg-[#ededed] hover:bg-white text-[#0a0a0a]'
+                    : 'bg-[var(--app-btn-primary-bg)] hover:bg-[var(--app-btn-primary-hover)] text-[var(--app-btn-primary-fg)]'
                 }`}
               >
                 {confirmDialog.confirmLabel || 'Confirm'}

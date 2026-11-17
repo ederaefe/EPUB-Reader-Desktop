@@ -75,11 +75,11 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       ref={menuRef}
       style={{ left: coords.left, top: coords.top }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[#111111] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.85)] p-1 text-[12px] text-[#ededed] select-none app-no-drag animate-in fade-in duration-75"
+      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.35)] p-1 text-[12px] text-[var(--app-text)] select-none app-no-drag animate-in fade-in duration-75"
     >
       {items.map((item) => {
         if (item.divider) {
-          return <div key={item.id} className="my-1 border-t border-white/[0.07]" />
+          return <div key={item.id} className="my-1 border-t border-[var(--app-border)]" />
         }
 
         if (item.swatches && item.swatches.length > 0) {
@@ -131,10 +131,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
                 item.disabled
                   ? 'opacity-40 cursor-not-allowed'
                   : item.danger
-                  ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
+                  ? 'text-[#e5484d] hover:bg-[#e5484d]/15 hover:text-[#e5484d] cursor-pointer'
                   : isSubmenuOpen
-                  ? 'bg-white/[0.08] text-white cursor-pointer'
-                  : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                  ? 'bg-[var(--app-surface-hover)] text-[var(--app-text-strong)] cursor-pointer'
+                  : 'text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] cursor-pointer'
               }`}
             >
               <span className="flex items-center gap-2 truncate">
@@ -162,7 +162,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
                   top: -4,
                   [openLeft ? 'right' : 'left']: 'calc(100% + 4px)'
                 }}
-                className="absolute z-[101] min-w-[150px] bg-[#141414] border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.85)] p-1 text-[12px] text-[#ededed] select-none animate-in fade-in zoom-in-95 duration-75"
+                className="absolute z-[101] min-w-[150px] bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.35)] p-1 text-[12px] text-[var(--app-text)] select-none animate-in fade-in zoom-in-95 duration-75"
               >
                 {item.children!.map((subItem) => (
                   <button
@@ -178,8 +178,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
                       subItem.disabled
                         ? 'opacity-40 cursor-not-allowed'
                         : subItem.danger
-                        ? 'text-[#f85149] hover:bg-[#2a1416] hover:text-[#ff7b72] cursor-pointer'
-                        : 'text-[#d4d4d4] hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                        ? 'text-[#e5484d] hover:bg-[#e5484d]/15 hover:text-[#e5484d] cursor-pointer'
+                        : 'text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] cursor-pointer'
                     }`}
                   >
                     {subItem.icon && (

@@ -115,7 +115,8 @@ export const LibraryView: React.FC = () => {
         if (updates.title || updates.author) {
           const effectiveTitle = updates.title || b.title
           const effectiveAuthor = updates.author || b.author
-          if (b.coverDataUrl?.startsWith('data:image')) {
+          // Only generate a fallback cover if the book does not already have one
+          if (!b.coverDataUrl) {
             updates.coverDataUrl = generateCoverCanvas(effectiveTitle, effectiveAuthor)
           }
         }
@@ -955,35 +956,35 @@ export const LibraryView: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSortClick('title')}
-            className={`w-[38%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'title' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+            className={`w-[38%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'title' ? 'text-[var(--app-text-strong)]' : 'hover:text-[var(--app-text-strong)]'}`}
           >
             <span>Title{sortBy === 'title' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
           </button>
           <button
             type="button"
             onClick={() => handleSortClick('author')}
-            className={`w-[24%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'author' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+            className={`w-[24%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'author' ? 'text-[var(--app-text-strong)]' : 'hover:text-[var(--app-text-strong)]'}`}
           >
             <span>Author{sortBy === 'author' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
           </button>
           <button
             type="button"
             onClick={() => handleSortClick('date')}
-            className={`w-[14%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'date' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+            className={`w-[14%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'date' ? 'text-[var(--app-text-strong)]' : 'hover:text-[var(--app-text-strong)]'}`}
           >
             <span>Date{sortBy === 'date' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
           </button>
           <button
             type="button"
             onClick={() => handleSortClick('notes')}
-            className={`w-[12%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'notes' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+            className={`w-[12%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'notes' ? 'text-[var(--app-text-strong)]' : 'hover:text-[var(--app-text-strong)]'}`}
           >
             <span>Notes{sortBy === 'notes' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
           </button>
           <button
             type="button"
             onClick={() => handleSortClick('progress')}
-            className={`w-[12%] flex items-center justify-end gap-1 cursor-pointer pr-4 ${sortBy === 'progress' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+            className={`w-[12%] flex items-center justify-end gap-1 cursor-pointer pr-4 ${sortBy === 'progress' ? 'text-[var(--app-text-strong)]' : 'hover:text-[var(--app-text-strong)]'}`}
           >
             <span>Progress{sortBy === 'progress' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
           </button>

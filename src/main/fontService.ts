@@ -1,9 +1,22 @@
 import { app, net } from 'electron'
 import { join } from 'path'
-import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile, rename, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { createHash } from 'crypto'
 import { getFontEntry, isBuiltinFont } from '../shared/fontCatalog'
+
+const MAX_FONT_FACE_SIZE = 10 * 1024 * 1024 // 10 MB per font face file
+
+async function writeAtomic(targetPath: string, data: string | Buffer): Promise<void> {
+  const tempPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
+  try {
+    await writeFile(tempPath, data)
+    await rename(tempPath, targetPath)
+  } catch (err) {
+    await unlink(tempPath).catch(() => {})
+    throw err
+  }
+}
 
 interface CachedFace {
   fontFamily: string
@@ -113,16 +126,23 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
   if (!url || typeof url !== 'string' || !url.startsWith('https://')) {
     throw new Error(`Security violation: font requests must use HTTPS: ${url}`)
   }
+  assertGoogleFontUrl(url)
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    return await net.fetch(url, {
+    const resp = await net.fetch(url, {
       headers: {
         'User-Agent': MODERN_CHROME_UA,
         Accept: 'text/css,*/*;q=0.1'
       },
       signal: controller.signal
     })
+    // Ensure final redirected URL is still on an authorized HTTPS Google origin
+    if (resp.url) {
+      assertGoogleFontUrl(resp.url)
+    }
+    return resp
   } finally {
     clearTimeout(timer)
   }
@@ -261,11 +281,15 @@ export async function downloadFont(fontId: string): Promise<{
         if (!resp.ok) {
           throw new Error(`Failed to download font asset (${resp.status})`)
         }
-        const buf = Buffer.from(await resp.arrayBuffer())
+        const arrayBuf = await resp.arrayBuffer()
+        if (arrayBuf.byteLength > MAX_FONT_FACE_SIZE) {
+          throw new Error('Font file exceeds maximum allowable size (10MB)')
+        }
+        const buf = Buffer.from(arrayBuf)
         const hash = createHash('sha1').update(face.url).digest('hex').slice(0, 12)
         const ext = resolveSafeFontExtension(face.url)
         fileName = `${hash}.${ext}`
-        await writeFile(join(fontDir, fileName), buf)
+        await writeAtomic(join(fontDir, fileName), buf)
         downloadedFiles.set(face.url, fileName)
       }
 
@@ -284,7 +308,7 @@ export async function downloadFont(fontId: string): Promise<{
       downloadedAt: Date.now(),
       faces: cachedFaces
     }
-    await writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8')
+    await writeAtomic(metaPath, JSON.stringify(meta, null, 2))
     return { success: true }
   } catch (err: any) {
     // Clean up any partial files

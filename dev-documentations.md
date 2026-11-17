@@ -1287,3 +1287,61 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - Guarded `currentPage` input before generating default labels and fallback CFIs (`Number.isFinite(currentPage) && currentPage > 0 ? currentPage : 1`) to eliminate `Page NaN` and invalid CFI record generation.
 6. **Global TTS Hotkey Handlers (`src/renderer/src/App.tsx`)**:
    - Implemented documented `F7` and `F8` keyboard listeners: `F7` toggles Play/Pause for Read Aloud (TTS), and `F8` stops active speech synthesis.
+
+
+---
+
+## Increment 31: Bug Bounty Remediation, Sandbox Activation & IPC Defense-in-Depth
+
+### Architecture & Implementation
+1. **Chromium Sandbox Activation (`src/main/index.ts`)**:
+   - Switched `webPreferences.sandbox` from `false` to `true`.
+   - Verified preload compatibility: preload relies exclusively on `contextBridge`, `ipcRenderer`, and `webFrame`, all of which are officially supported in Electron sandboxed preloads without requiring direct Node.js runtime bindings.
+2. **Filesystem IPC Path Validation & Defense-in-Depth (`src/main/index.ts`)**:
+   - Implemented `assertSafePath(targetPath, mode: 'read' | 'write')` enforcing path normalization (`normalize(resolve(targetPath))`), control character / null byte rejection, extension whitelisting (`ALLOWED_READ_EXTS`: `.epub`, `.pdf`, `.mobi`, `.txt`, `.json`, `.zip`; `ALLOWED_WRITE_EXTS`: `.json`, `.zip`, `.epub`, `.txt`), and rejection of sensitive operating system / credential directories (Windows `System32`, `Windows`, `Program Files`, startup folders, `.ssh`, `.aws`, `.gnupg`, `.git`, Linux `/etc`, `/var`, `/proc`, `/sys`).
+   - Hardened `fs:readFileBuffer`, `fs:readFileText`, `fs:writeFileText`, and `fs:writeFileBuffer` to pass all incoming targets through `assertSafePath`.
+3. **Bounded Recursive Folder Scanning (`src/main/index.ts`)**:
+   - Implemented `assertSafeFolderPath` blocking attempts to scan root drive volumes (`C:\`, `/`) and OS system folders.
+   - Enforced maximum directory recursion depth (`MAX_DEPTH = 6`), total file collection limit (`MAX_FILES = 2500`), and explicit symlink exclusion (`entry.isSymbolicLink()`) to protect against infinite symlink loops and memory exhaustion denial-of-service.
+4. **Font Download Boundary Enforcement & Safe Extensions (`src/main/fontService.ts`)**:
+   - Enforced HTTPS requirement in `fetchWithTimeout` to prevent cleartext font fetching.
+   - Added `assertGoogleFontUrl` verifying that font asset download URLs strictly originate from `fonts.gstatic.com` or `fonts.googleapis.com`.
+   - Added `resolveSafeFontExtension` mapping incoming binary URLs strictly to an allowlist of font extensions (`woff2`, `woff`, `ttf`, `otf`).
+5. **Universal Backup Schema & Prototype Pollution Protection (`src/renderer/src/services/backupService.ts`)**:
+   - Added `validateBackupStructure` before parsing and importing backup archives.
+   - Enforced type checks on `version`, `books`, `categories`, `annotations`, `bookmarks`, and blocked objects containing prototype pollution vectors (`__proto__`, `constructor`, `prototype`).
+6. **External Provider URL Scheme Assertion (`src/renderer/src/components/reader/SelectionPopup.tsx`)**:
+   - Enforced `https:` protocol validation before calling `window.open(url, '_blank', 'noopener,noreferrer')`.
+7. **Dictionary & Wikipedia Service Hardening (`src/renderer/src/services/dictService.ts`)**:
+   - Integrated 6-second `AbortController` timeouts on both Free Dictionary and Wikipedia REST API fetches.
+   - Added in-flight request deduplication via `dictInflight` and `wikiInflight` promise caches to prevent API floods on rapid text selection.
+8. **EpubReaderView Local Buffer Fetch Bypass (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - In `initReader`, prioritized `window.desktopAPI.readFileBuffer(book.filePath)` over raw `fetch(book.filePath)` for local filesystem paths.
+
+
+---
+
+## Increment 32: Advanced Resilience & Anti-Tamper Hardening
+
+### Architecture & Implementation
+1. **UNC & Alternate Data Stream (ADS) Interception (`src/main/index.ts`)**:
+   - Enhanced `assertSafePath` to reject Universal Naming Convention (UNC) network paths (`\\server\share`, `//server/share`), eliminating Windows SMB/NTLM credential reflection and remote network traversal attacks.
+   - Enforced Alternate Data Stream (ADS) filtering (`targetPath.slice(2).includes(':')`), ensuring NTFS stream bypasses (`book.epub:hidden.exe`) are blocked before touching filesystem APIs.
+2. **Main-Process Memory Quota & OOM Prevention (`src/main/index.ts`)**:
+   - Integrated pre-read file size inspection (`stat.size`) inside `fs:readFileBuffer` with a 250 MB ceiling (`MAX_BUFFER_READ_SIZE = 250 * 1024 * 1024`), preventing Out-Of-Memory fatal crashes if oversized or malformed binary streams are opened.
+3. **Atomic File Write Replacement Engine (`src/main/index.ts`, `src/main/fontService.ts`)**:
+   - Implemented `writeAtomic(targetPath, data)` utilizing temporary file staging (`<targetPath>.<timestamp>.<nonce>.tmp`) followed by atomic filesystem replacement (`rename`), guaranteeing that library backup exports (`.json`, `.zip`), converted reflow EPUBs, and Google font assets never suffer corruption from abrupt power cutoffs or OS interruption.
+4. **Offline Conversion Engine Path Validation (`src/main/index.ts`)**:
+   - Wired `pdf:convertToEpub` through `assertSafePath` for both the input `pdfPath` (read validation) and user-supplied `outputPath` (write validation), closing previously uninspected path input parameters.
+5. **Zoom Factor Clamping & Boundary Check (`src/main/index.ts`)**:
+   - Clamped `window:setZoomFactor` factor parameter strictly between `0.25` (25%) and `5.0` (500%), ensuring non-finite values or extreme floats cannot destabilize the Chromium webContents renderer view.
+6. **Post-Redirect Origin Verification & Font Binary Cap (`src/main/fontService.ts`)**:
+   - Upgraded `fetchWithTimeout` to re-assert Google host origin on final redirect URLs (`assertGoogleFontUrl(resp.url)`), preventing open redirect exploitation to untrusted external mirrors.
+   - Enforced a 10 MB per-face download ceiling (`MAX_FONT_FACE_SIZE = 10 * 1024 * 1024`), safeguarding against infinite streaming responses.
+7. **Strict Field Sanitization & Anti-XSS Payload Scrubbing (`src/renderer/src/services/backupService.ts`)**:
+   - Implemented strict per-field sanitization helpers (`sanitizeString`, `sanitizeColor`, `sanitizeNoteColor`, `sanitizeCoverDataUrl`).
+   - Validated that `coverDataUrl` strictly adheres to `^data:image/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$`, preventing script-injected data URIs (`data:text/html;base64,...`) from entering IndexedDB.
+   - Constrained category and annotation colors to safe hex codes and valid reader note color identifiers.
+8. **10-Minute LRU/TTL Cache & Content-Type Gate (`src/renderer/src/services/dictService.ts`)**:
+   - Introduced in-memory TTL caching (`dictResolvedCache`, `wikiResolvedCache`, 10-minute expiry, max 200 items with LRU eviction) to eliminate redundant network hits on repeated word queries.
+   - Added `Content-Type: application/json` inspection before invoking `.json()`, cleanly absorbing upstream HTML error responses without runtime parsing exceptions.

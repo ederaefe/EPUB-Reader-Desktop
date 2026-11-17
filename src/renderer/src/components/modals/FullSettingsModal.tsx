@@ -83,6 +83,8 @@ export const FullSettingsModal: React.FC = () => {
     setIsProcessing(false)
     if (res.success) {
       setBackupStatus('Library metadata exported successfully.')
+    } else if (!res.canceled) {
+      setBackupStatus('Could not export library metadata.')
     }
   }
 
@@ -92,6 +94,8 @@ export const FullSettingsModal: React.FC = () => {
     setIsProcessing(false)
     if (res.success) {
       setBackupStatus('Complete archive with cover art exported successfully.')
+    } else if (!res.canceled) {
+      setBackupStatus('Could not export library archive.')
     }
   }
 
@@ -99,7 +103,12 @@ export const FullSettingsModal: React.FC = () => {
     setIsProcessing(true)
     const res = await backupService.promptImport()
     setIsProcessing(false)
-    setBackupStatus(res.message)
+    if (res.success) {
+      bumpLibraryVersion()
+    }
+    if (res.message && res.message !== 'Import cancelled') {
+      setBackupStatus(res.message)
+    }
   }
 
   const handleEmptyLibrary = () => {
@@ -750,7 +759,9 @@ export const FullSettingsModal: React.FC = () => {
                     <span>GitHub</span>
                   </a>
                   <a
-                    href="documentations/index.html"
+                    href="https://github.com/ederaefe/EPUB-Reader-Desktop/blob/main/documentation.md"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <FileText className="w-3.5 h-3.5" />

@@ -162,7 +162,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                 className="w-4 h-4 rounded-[2px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
                 style={
                   col.isUnderline
-                    ? { backgroundColor: '#232732', border: '1px solid #353b4c', color: '#79c0ff' }
+                    ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
                     : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.4)' }
                 }
                 title={`${col.label}${col.isUnderline ? '' : ' Highlight'}`}
@@ -278,11 +278,11 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                       type="button"
                       onClick={() => setNoteColor(col.id)}
                       className={`w-5 h-5 rounded-[2px] flex items-center justify-center transition-transform cursor-pointer ${
-                        active ? 'ring-2 ring-white scale-105' : 'opacity-75 hover:opacity-100'
+                        active ? 'ring-2 ring-[var(--app-text-strong)] scale-105' : 'opacity-75 hover:opacity-100'
                       }`}
                       style={
                         col.isUnderline
-                          ? { backgroundColor: '#232732', border: '1px solid #353b4c', color: '#79c0ff' }
+                          ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
                           : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
                       }
                       title={col.label}

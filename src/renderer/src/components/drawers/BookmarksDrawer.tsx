@@ -179,7 +179,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
               onClick={onToggleCurrentBookmark}
               className={`w-full h-8 gap-1.5 text-xs rounded-[2px] flex items-center justify-center font-medium transition-colors cursor-pointer ${
                 isCurrentPageBookmarked
-                  ? 'bg-[#1d3156] hover:bg-[#243d6b] border border-[#2a69df]/60 text-[#9bc2ff]'
+                  ? 'bg-[var(--app-accent-soft)] hover:brightness-95 border border-[var(--app-accent)]/50 text-[var(--app-accent-text)]'
                   : 'ice-btn-blue'
               }`}
               title="Toggle bookmark on current page (Ctrl+B)"
@@ -265,7 +265,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                     }}
                     className={`p-2.5 rounded-[2px] border cursor-pointer transition-colors group space-y-1.5 ${
                       isCurrent
-                        ? 'bg-[#1c263b] border-[#2a69df]/60 hover:bg-[#222f4a]'
+                        ? 'bg-[var(--app-accent-soft)] border-[var(--app-accent)]/50 hover:brightness-95'
                         : 'bg-[#1c202a] hover:bg-[#232836] border-[#282c38]'
                     }`}
                   >

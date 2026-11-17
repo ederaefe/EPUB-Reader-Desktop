@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Menu, screen } from 'electron'
 import { join, extname, basename, resolve, normalize } from 'path'
-import { readFile, readdir, writeFile, mkdir } from 'fs/promises'
+import { readFile, readdir, writeFile, mkdir, stat, rename, unlink } from 'fs/promises'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { createHash } from 'crypto'
 import { convertPdfToEpub } from './pdfToEpubEngine'
@@ -17,14 +17,37 @@ let pendingExternalFile: string | null = null
 const SUPPORTED_EXTS = new Set(['.epub', '.pdf'])
 const ALLOWED_READ_EXTS = new Set(['.epub', '.pdf', '.mobi', '.txt', '.json', '.zip'])
 const ALLOWED_WRITE_EXTS = new Set(['.json', '.zip', '.epub', '.txt'])
+const MAX_BUFFER_READ_SIZE = 250 * 1024 * 1024 // 250 MB ceiling to prevent main process memory exhaustion
+
+async function writeAtomic(targetPath: string, data: string | Buffer): Promise<void> {
+  const tempPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
+  try {
+    await writeFile(tempPath, data)
+    await rename(tempPath, targetPath)
+  } catch (err) {
+    await unlink(tempPath).catch(() => {})
+    throw err
+  }
+}
 
 function assertSafePath(targetPath: string, mode: 'read' | 'write'): string {
   if (typeof targetPath !== 'string' || !targetPath.trim()) {
     throw new Error('Invalid path: path must be a non-empty string')
   }
 
+  // Block null bytes and control characters
   if (/[\0\x01-\x1F\x7F]/.test(targetPath)) {
     throw new Error('Invalid path: contains illegal control characters')
+  }
+
+  // Block UNC network paths (SMB/NTLM credential relay vectors)
+  if (targetPath.startsWith('\\\\') || targetPath.startsWith('//')) {
+    throw new Error('Access denied: UNC network paths are not permitted')
+  }
+
+  // Block Windows Alternate Data Streams (ADS) e.g., file.txt:evil.exe
+  if (targetPath.slice(2).includes(':')) {
+    throw new Error('Access denied: alternate data streams are not permitted')
   }
 
   const normalized = normalize(resolve(targetPath))
@@ -416,7 +439,10 @@ ipcMain.handle('window:setBackgroundColor', (_, color: string) => {
   }
 })
 ipcMain.handle('window:setZoomFactor', (_, factor: number) => {
-  mainWindow?.webContents.setZoomFactor(factor)
+  const safeFactor = typeof factor === 'number' && Number.isFinite(factor)
+    ? Math.max(0.25, Math.min(5.0, factor))
+    : 1.0
+  mainWindow?.webContents.setZoomFactor(safeFactor)
 })
 ipcMain.handle('window:getZoomFactor', () => {
   return mainWindow?.webContents.getZoomFactor() ?? 1.0
@@ -487,9 +513,13 @@ ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
   return results
 })
 
-// Read binary file buffer with path validation
+// Read binary file buffer with path validation and safe size ceiling
 ipcMain.handle('fs:readFileBuffer', async (_, filePath: string) => {
   const safePath = assertSafePath(filePath, 'read')
+  const st = await stat(safePath)
+  if (st.size > MAX_BUFFER_READ_SIZE) {
+    throw new Error(`File size (${Math.round(st.size / 1024 / 1024)}MB) exceeds safe buffer limit (250MB)`)
+  }
   const buffer = await readFile(safePath)
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
 })
@@ -500,17 +530,17 @@ ipcMain.handle('fs:readFileText', async (_, filePath: string) => {
   return await readFile(safePath, 'utf-8')
 })
 
-// Write text file with path validation
+// Write text file with path validation and atomic replacement
 ipcMain.handle('fs:writeFileText', async (_, filePath: string, content: string) => {
   const safePath = assertSafePath(filePath, 'write')
-  await writeFile(safePath, content, 'utf-8')
+  await writeAtomic(safePath, content)
   return true
 })
 
-// Write binary buffer with path validation
+// Write binary buffer with path validation and atomic replacement
 ipcMain.handle('fs:writeFileBuffer', async (_, filePath: string, buffer: ArrayBuffer) => {
   const safePath = assertSafePath(filePath, 'write')
-  await writeFile(safePath, Buffer.from(buffer))
+  await writeAtomic(safePath, Buffer.from(buffer))
   return true
 })
 
@@ -545,11 +575,13 @@ ipcMain.handle(
         }
   ) => {
     try {
-      const pdfPath = typeof input === 'string' ? input : input.pdfPath
+      const rawPdfPath = typeof input === 'string' ? input : input.pdfPath
+      const safePdfPath = assertSafePath(rawPdfPath, 'read')
       const mode = typeof input === 'string' ? 'library' : input.mode || 'library'
       const customOutputPath = typeof input === 'string' ? undefined : input.outputPath
+      const safeCustomOutputPath = customOutputPath ? assertSafePath(customOutputPath, 'write') : undefined
 
-      const pdfName = basename(pdfPath, extname(pdfPath))
+      const pdfName = basename(safePdfPath, extname(safePdfPath))
       const userData = app.getPath('userData')
       const subDir = mode === 'reflow-cache' ? 'reflow_cache' : 'converted_epubs'
       const outDir = join(userData, subDir)
@@ -557,10 +589,10 @@ ipcMain.handle(
         await mkdir(outDir, { recursive: true })
       }
 
-      let targetEpubPath = customOutputPath
+      let targetEpubPath = safeCustomOutputPath
       if (!targetEpubPath) {
         if (mode === 'reflow-cache') {
-          const pathHash = createHash('sha1').update(pdfPath).digest('hex').slice(0, 12)
+          const pathHash = createHash('sha1').update(safePdfPath).digest('hex').slice(0, 12)
           targetEpubPath = join(outDir, `${pdfName}_${pathHash}-reflow.epub`)
           if (existsSync(targetEpubPath)) {
             mainWindow?.webContents.send('pdf:convertProgress', {
@@ -576,7 +608,7 @@ ipcMain.handle(
         }
       }
 
-      const result = await convertPdfToEpub(pdfPath, targetEpubPath, (progress) => {
+      const result = await convertPdfToEpub(safePdfPath, targetEpubPath, (progress) => {
         mainWindow?.webContents.send('pdf:convertProgress', progress)
       })
       return result

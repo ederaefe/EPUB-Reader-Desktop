@@ -248,8 +248,8 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
               className="px-1.5 py-0.5 rounded-[2px] text-[10px] font-mono font-medium shrink-0"
               style={
                 meta.isUnderline
-                  ? { backgroundColor: '#232732', color: '#79c0ff', borderBottom: '1px solid #2a69df' }
-                  : { backgroundColor: '#14161c', color: meta.hex }
+                  ? { backgroundColor: 'var(--app-surface-2)', color: 'var(--app-accent-text)', borderBottom: '1px solid var(--app-accent)' }
+                  : { backgroundColor: 'var(--app-surface-2)', color: meta.borderHex }
               }
             >
               {ann.pageNumber ? `p.${ann.pageNumber}` : meta.label}
@@ -330,11 +330,11 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
                   type="button"
                   onClick={() => setEditColorDraft(col.id)}
                   className={`w-4 h-4 rounded-[2px] flex items-center justify-center cursor-pointer ${
-                    editColorDraft === col.id ? 'ring-1 ring-white scale-110' : 'opacity-70 hover:opacity-100'
+                    editColorDraft === col.id ? 'ring-1 ring-[var(--app-text-strong)] scale-110' : 'opacity-70 hover:opacity-100'
                   }`}
                   style={
                     col.isUnderline
-                      ? { backgroundColor: '#232732', border: '1px solid #353b4c', color: '#79c0ff' }
+                      ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
                       : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
                   }
                   title={col.label}

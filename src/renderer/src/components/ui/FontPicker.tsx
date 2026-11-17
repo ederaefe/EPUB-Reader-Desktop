@@ -259,8 +259,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false, inline 
           {offlineNotice && (
             <div
               role="alert"
-              className="px-2 py-1.5 rounded bg-[#2a1517] border border-[#5c262d] text-[#f87171] text-[10.5px] flex items-center justify-between gap-1.5"
-              data-preserve-theme="true"
+              className="px-2 py-1.5 rounded bg-[#e5484d]/12 border border-[#e5484d]/30 text-[#e5484d] text-[10.5px] flex items-center justify-between gap-1.5"
             >
               <span className="flex items-center gap-1.5 min-w-0 truncate">
                 <WifiOff className="w-3 h-3 shrink-0" />
@@ -269,7 +268,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false, inline 
               <button
                 type="button"
                 onClick={() => setOfflineNotice(null)}
-                className="p-0.5 hover:text-white shrink-0 cursor-pointer"
+                className="p-0.5 hover:opacity-75 shrink-0 cursor-pointer"
                 aria-label="Dismiss offline notice"
               >
                 <X className="w-3 h-3" />

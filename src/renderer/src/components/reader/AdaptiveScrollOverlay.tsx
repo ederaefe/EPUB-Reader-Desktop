@@ -149,8 +149,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 aria-label={metrics.isUserPaused ? 'Resume Auto-Scroll' : 'Pause Auto-Scroll'}
                 className={`h-7 px-2.5 flex items-center justify-center gap-1.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                   metrics.isUserPaused
-                    ? 'bg-white text-black hover:bg-[#ededed]'
-                    : 'bg-[#1f1f1f] text-white hover:bg-[#2a2a2a]'
+                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] hover:bg-[var(--app-btn-primary-hover)]'
+                    : 'bg-[var(--app-surface-2)] text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)]'
                 }`}
               >
                 {metrics.isUserPaused ? (
@@ -196,7 +196,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 onClick={handleTurnOff}
                 aria-label="Turn off Auto-Scroll"
                 title="Turn off Auto-Scroll completely"
-                className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-[#f85149] hover:bg-[#332225] transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--app-text-muted)] hover:text-[#e5484d] hover:bg-[#e5484d]/15 transition-colors"
               >
                 <Power className="w-3.5 h-3.5" />
               </button>
@@ -306,10 +306,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           isImmersiveFullscreen ? 'bottom-4' : 'bottom-11'
         } right-5 z-40 h-7 min-w-[28px] px-1.5 flex items-center justify-center gap-1 rounded-[2px] font-mono tabular-nums text-[13px] tracking-tight transition-all duration-150 select-none cursor-pointer ${
           isModalOpen
-            ? 'bg-[#171a21]/95 border border-[#2a69df] text-white opacity-100 shadow-lg'
+            ? 'bg-[var(--app-surface)] border border-[var(--app-accent)] text-[var(--app-text-strong)] opacity-100 shadow-lg'
             : metrics.isUserPaused
-            ? 'bg-transparent text-[#8b949e] opacity-40 hover:opacity-95 hover:bg-[#171a21]/75'
-            : 'bg-transparent text-[#8b949e] opacity-45 hover:opacity-100 hover:bg-[#171a21]/75 hover:text-white'
+            ? 'bg-transparent text-[var(--app-text-muted)] opacity-55 hover:opacity-100 hover:bg-[var(--app-surface)]/85'
+            : 'bg-transparent text-[var(--app-text-muted)] opacity-60 hover:opacity-100 hover:bg-[var(--app-surface)]/85 hover:text-[var(--app-text-strong)]'
         }`}
       >
         {metrics.pauseReason === 'inactivity' ? (

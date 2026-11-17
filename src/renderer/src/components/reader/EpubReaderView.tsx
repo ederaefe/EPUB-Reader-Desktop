@@ -145,9 +145,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const openContextMenuRef = useRef<(x: number, y: number, text?: string, cfiRange?: string) => void>(() => {})
 
-  // Scrubber & pagination synchronization refs
+  // Scrubber, locations readiness & pagination synchronization refs
   const isScrubbingRef = useRef(false)
-  const scrubDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const locationsReadyRef = useRef(false)
+  const seekRequestIdRef = useRef(0)
+  const handleToggleTTSRef = useRef<() => void>(() => {})
+  const handleStopTTSRef = useRef<() => void>(() => {})
+  const handleJumpEndRef = useRef<() => void>(() => {})
   const totalPagesRef = useRef(totalPages)
   totalPagesRef.current = totalPages
   const currentCfiRef = useRef(currentCfi)
@@ -164,6 +168,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   progressPercentRef.current = progressPercent
   const themeRef = useRef(settings.theme)
   themeRef.current = settings.theme
+  const scrollModeRef = useRef(settings.scrollMode || 'horizontal')
+  scrollModeRef.current = settings.scrollMode || 'horizontal'
 
   // Real-time manual reading cadence profiler refs
   const pageEnteredAtRef = useRef<number>(Date.now())
@@ -304,7 +310,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           return
         }
 
-        // Smooth manual mouse-wheel page turning when no panel is open
+        // Smooth manual mouse-wheel page turning in horizontal paginated mode when no panel is open
+        if (scrollModeRef.current === 'vertical') {
+          return
+        }
         if (
           state.isTOCDrawerOpen ||
           state.isNotesDrawerOpen ||
@@ -323,7 +332,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       { passive: false }
     )
 
-    // Throttled iframe user-activity feed for the 5-minute inactivity auto-pause watchdog
+    // Throttled iframe user-activity feed & pointer-X forwarding for SideNavigation
     let lastIframeActivityAt = 0
     const recordIframeActivity = () => {
       const now = Date.now()
@@ -331,7 +340,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       lastIframeActivityAt = now
       adaptiveScrollEngine.recordUserActivity()
     }
-    contents.window.addEventListener('pointermove', recordIframeActivity, { passive: true })
+    let lastPointerEmitAt = 0
+    const forwardIframePointer = (e: MouseEvent) => {
+      recordIframeActivity()
+      const now = Date.now()
+      if (now - lastPointerEmitAt < 45) return
+      lastPointerEmitAt = now
+      const frameRect = (contents.window.frameElement as HTMLElement | null)?.getBoundingClientRect()
+        || viewerRef.current?.getBoundingClientRect()
+      const clientX = (frameRect?.left || 0) + e.clientX
+      window.dispatchEvent(new CustomEvent('semply:reader-pointer', { detail: { clientX } }))
+    }
+    contents.window.addEventListener('pointermove', forwardIframePointer, { passive: true })
     contents.window.addEventListener('mousedown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('keydown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('touchstart', recordIframeActivity, { passive: true })
@@ -373,7 +393,28 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         return
       }
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      const isVert = scrollModeRef.current === 'vertical'
+      const scrollContainer = (renditionRef.current as any)?.manager?.container as HTMLElement | undefined
+
+      if (e.key === 'F7') {
+        e.preventDefault()
+        handleToggleTTSRef.current()
+      } else if (e.key === 'F8') {
+        e.preventDefault()
+        handleStopTTSRef.current()
+      } else if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ')) {
+        if (scrollContainer) {
+          e.preventDefault()
+          const delta = e.key === 'ArrowDown' ? 140 : Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        }
+      } else if (isVert && (e.key === 'ArrowUp' || e.key === 'PageUp')) {
+        if (scrollContainer) {
+          e.preventDefault()
+          const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        }
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault()
         renditionRef.current?.next()
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
@@ -382,6 +423,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if (e.key === 'Home') {
         e.preventDefault()
         renditionRef.current?.display(0)
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        handleJumpEndRef.current()
       } else if (e.key === 'Escape') {
         setContextMenu(null)
         setActiveAnnotation(null)
@@ -437,11 +481,100 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     })
   }, [setActiveFootnote])
 
+  // Helper: only trust epub.js locations once generation/load has finalized with total > 0
+  const hasReadyLocations = useCallback((epub: EpubBook | null | undefined): boolean => {
+    if (!epub || !locationsReadyRef.current) return false
+    const locs = epub.locations as any
+    return Boolean(locs && typeof locs.total === 'number' && locs.total > 0 && locs.length?.() > 1)
+  }, [])
+
+  // Compute consistent 1-based page number and smooth fractional progress percent from a rendition location
+  const computeProgressMetrics = useCallback(
+    (epub: EpubBook | null | undefined, location: any): { page: number; pct: number; total: number } => {
+      const start = location?.start
+      if (!start) {
+        return {
+          page: currentPageRef.current || 1,
+          pct: progressPercentRef.current || 0,
+          total: Math.max(1, totalPagesRef.current || book.totalPages || 1)
+        }
+      }
+
+      const cfi: string = start.cfi || ''
+      const atEnd = Boolean(location?.atEnd)
+      const hasMovedPastStart =
+        (start.index != null && start.index > 0) ||
+        Boolean(start.displayed?.page && start.displayed.page > 1)
+
+      // 1. Accurate locations-backed metrics (only when locations are fully indexed)
+      if (hasReadyLocations(epub) && cfi) {
+        const locs = epub!.locations as any
+        const locCount = Math.max(1, Number(locs.length?.() || locs.total + 1 || 1))
+        const rawLoc = Number(locs.locationFromCfi(cfi))
+        const page = atEnd
+          ? locCount
+          : Number.isFinite(rawLoc) && rawLoc >= 0
+          ? Math.min(locCount, Math.max(1, rawLoc + 1))
+          : 1
+
+        let rawPct = Number(locs.percentageFromCfi(cfi))
+        if (!Number.isFinite(rawPct) || rawPct < 0) {
+          rawPct = locCount > 1 ? (page - 1) / (locCount - 1) : 0
+        }
+        const pct = atEnd
+          ? 100
+          : page <= 1 && !hasMovedPastStart
+          ? 0
+          : Math.min(100, Math.max(0.5, Math.round(rawPct * 1000) / 10))
+        return { page, pct, total: locCount }
+      }
+
+      // 2. Reliable spine-proportional fallback while locations index in the background
+      const spineItems: any[] = ((epub?.spine as any)?.spineItems || []).filter(
+        (item: any) => item && item.linear !== false && item.linear !== 'no'
+      )
+      const spineTotal = Math.max(1, spineItems.length || (epub?.spine as any)?.length || 1)
+      let spineIdx = typeof start.index === 'number' ? start.index : 0
+      if (spineItems.length > 0 && start.href) {
+        const cleanHref = String(start.href).split('#')[0]
+        const foundIdx = spineItems.findIndex(
+          (item: any) => item.href && (item.href === cleanHref || cleanHref.endsWith(item.href))
+        )
+        if (foundIdx >= 0) spineIdx = foundIdx
+      }
+      const secPage = Math.max(1, start.displayed?.page || 1)
+      const secTotal = Math.max(1, start.displayed?.total || 1)
+      const progressRatio = atEnd
+        ? 1
+        : Math.min(1, Math.max(0, (spineIdx + (secPage - 1) / secTotal) / spineTotal))
+
+      const fallbackTotal = Math.max(
+        spineTotal,
+        totalPagesRef.current > 1 ? totalPagesRef.current : 0,
+        book.totalPages > 1 ? book.totalPages : 0,
+        secTotal
+      )
+      const page = atEnd
+        ? fallbackTotal
+        : Math.min(fallbackTotal, Math.max(1, Math.round(progressRatio * Math.max(1, fallbackTotal - 1)) + 1))
+      const pct = atEnd
+        ? 100
+        : spineIdx === 0 && secPage <= 1
+        ? 0
+        : Math.min(100, Math.max(0.5, Math.round(progressRatio * 1000) / 10))
+
+      return { page, pct, total: fallbackTotal }
+    },
+    [book.totalPages, hasReadyLocations]
+  )
+
   // Initialize ePub reader engine
   useEffect(() => {
     let isCancelled = false
     let epubInstance: EpubBook | null = null
     let renditionInstance: Rendition | null = null
+    locationsReadyRef.current = false
+    isScrubbingRef.current = false
 
     async function initReader() {
       if (!viewerRef.current) return
@@ -452,37 +585,92 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           ? reflowEpubBuffer
           : activeBookBuffer
       if (!sourceData) {
-        try {
-          const resp = await fetch(book.filePath)
-          sourceData = await resp.arrayBuffer()
-        } catch {
-          sourceData = book.filePath
+        if (
+          window.desktopAPI?.readFileBuffer &&
+          !book.filePath.startsWith('http://') &&
+          !book.filePath.startsWith('https://') &&
+          !book.filePath.startsWith('/assets/') &&
+          !book.filePath.startsWith('assets/')
+        ) {
+          try {
+            sourceData = await window.desktopAPI.readFileBuffer(book.filePath)
+          } catch {
+            sourceData = book.filePath
+          }
+        } else {
+          try {
+            const resp = await fetch(book.filePath)
+            sourceData = await resp.arrayBuffer()
+          } catch {
+            sourceData = book.filePath
+          }
         }
       }
 
       epubInstance = ePub(sourceData)
       epubBookRef.current = epubInstance
 
-      // 1:1 Dual page spread support
-      const isDouble = settings.pageSpread === 'double'
+      // 1:1 Horizontal Paginated Spread OR Vertical Continuous Scroll support
+      const isVertical = settings.scrollMode === 'vertical'
+      const isDouble = !isVertical && settings.pageSpread === 'double'
       renditionInstance = epubInstance.renderTo(viewerRef.current, {
         width: '100%',
         height: '100%',
         spread: isDouble ? 'always' : 'none',
-        flow: 'paginated',
+        flow: isVertical ? 'scrolled' : 'paginated',
+        manager: isVertical ? 'continuous' : 'default',
         minSpreadWidth: 800
       })
       renditionRef.current = renditionInstance
 
-      // Register themes with exact CSS injection
-      const registerThemes = () => {
-        const fontFam = getFontCssFamily(useAppStore.getState().settings.fontFamily)
+      // Guard epub.js internal Queue against permanent rejection deadlocks:
+      // In epubjs@0.3.93, Queue.run() lacks a rejection handler on dequeue(), so any rejected
+      // display() leaves q.running === true forever and freezes arrow keys, wheel, and seeking.
+      const q = (renditionInstance as any).q
+      if (q && typeof q.run === 'function' && !q.__semplySafePatched) {
+        q.__semplySafePatched = true
+        q.run = function () {
+          if (!this.running) {
+            this.running = true
+            let resolveDeferred!: () => void
+            const promise = new Promise<void>((res) => {
+              resolveDeferred = res
+            })
+            this.defered = { promise, resolve: resolveDeferred }
+          }
+          const tick = this.tick || window.requestAnimationFrame
+          tick.call(window, () => {
+            if (this._q && this._q.length) {
+              Promise.resolve(this.dequeue()).then(
+                () => this.run(),
+                () => this.run()
+              )
+            } else {
+              this.defered?.resolve?.()
+              this.running = undefined
+            }
+          })
+          if (this.paused === true) {
+            this.paused = false
+          }
+          return this.defered.promise
+        }
+      }
 
+      // Also resolve dangling displaying deferred on displayError so q never stalls mid-display
+      renditionInstance.on('displayError', () => {
+        const rendAny = renditionInstance as any
+        if (rendAny?.displaying) {
+          try {
+            rendAny.displaying.resolve()
+          } catch {}
+          rendAny.displaying = undefined
+        }
+      })
+
+      // Register themes without clobbering epub.js paginated column padding/margins
+      const registerThemes = () => {
         const baseRules = {
-          'html, body': {
-            margin: '0 auto !important',
-            padding: '24px 32px !important'
-          },
           p: {
             'margin-bottom': '1em !important'
           },
@@ -548,118 +736,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         setToc(items)
       })
 
-      // Generate spine locations
-      epubInstance.ready.then(() => {
-        if (isCancelled) return
-        return epubInstance?.locations.generate(1000)
-      }).then(() => {
-        if (isCancelled) return
-        const computedTotal = (epubInstance?.locations as any)?.total
-        const spineLength = (epubInstance?.spine as any)?.length || (epubInstance?.spine as any)?.spineItems?.length || 1
-        const fallbackTotal = (book.totalPages && book.totalPages > 0) ? book.totalPages : Math.max(1, spineLength)
-        const total = computedTotal || fallbackTotal
-        setTotalPages(total)
-        // Immediately sync page numbers once locations finish generating
-        const loc = renditionInstance?.currentLocation() as any
-        if (loc && loc.start) {
-          const currentLoc = (epubInstance.locations as any).locationFromCfi(loc.start.cfi)
-          const currentPct = epubInstance.locations.percentageFromCfi(loc.start.cfi)
-          const numLoc = typeof currentLoc === 'number' ? currentLoc : Number(currentLoc)
-          if (!isNaN(numLoc) && numLoc > 0) {
-            setCurrentPage(numLoc)
-          }
-          if (currentPct != null && !isNaN(currentPct)) {
-            const rawExact = currentPct * 100
-            const calcPct = (numLoc > 1 && rawExact > 0)
-              ? Math.min(100, Math.max(1, Math.round(rawExact)))
-              : Math.min(100, Math.max(0, Math.round(rawExact)))
-            setProgressPercent(calcPct)
-          }
-        }
-      }).catch(() => {})
-
-      // Display initial position
-      const startLocation = book.progressCfi || undefined
-      await renditionInstance.display(startLocation)
-
-      // Hydrate all saved annotations/highlights onto the rendition immediately
-      if (book.id && !isCancelled) {
-        try {
-          const saved = await db.annotations.where('bookId').equals(book.id).toArray()
-          annotationsListRef.current = saved
-          hydrateRenditionAnnotations(
-            renditionInstance,
-            saved,
-            themeRef.current,
-            (ann, e) => openAnnotationPopoverRef.current(ann, e)
-          )
-        } catch (err) {
-          console.warn('Annotation hydration failed:', err)
-        }
-      }
-
-      // Inject Librera CSS normalization layer
-      fetch('/src/assets/app-Librera.css')
-        .then((res) => res.text())
-        .then((css) => {
-          if (isCancelled) return
-          ;(renditionInstance?.getContents() as any)?.forEach?.((contents: any) => {
-            const style = contents.document.createElement('style')
-            style.textContent = css
-            contents.document.head.appendChild(style)
-          })
-        })
-        .catch(() => {})
-
-      // Relocation listener
-      renditionInstance.on('relocated', (location: any) => {
+      const applyLocationState = (location: any, persistToDb = true) => {
         if (isCancelled || !location || !location.start) return
         const cfi = location.start.cfi
         setCurrentCfi(cfi)
         setCurrentEndCfi(location.end?.cfi || '')
 
-        let page = 1
-        let pct = 0
-
-        // 1. If epub.js locations are generated, use accurate location & percentage from CFI
-        const hasMovedPastStart = (location.start.index != null && location.start.index > 0) || (location.start.displayed?.page && location.start.displayed.page > 1)
-        if (epubInstance?.locations?.length()) {
-          const rawLoc = (epubInstance.locations as any).locationFromCfi(cfi)
-          const numLoc = typeof rawLoc === 'number' ? rawLoc : Number(rawLoc)
-          if (!isNaN(numLoc) && numLoc > 0) {
-            page = numLoc
-          }
-          const rawPct = epubInstance.locations.percentageFromCfi(cfi)
-          if (rawPct != null && !isNaN(rawPct)) {
-            const rawExact = rawPct * 100
-            pct = (page > 1 || hasMovedPastStart) && rawExact > 0
-              ? Math.min(100, Math.max(1, Math.round(rawExact)))
-              : Math.min(100, Math.max(0, Math.round(rawExact)))
-          }
-        } else if (location.start.location != null && Number(location.start.location) > 0) {
-          page = Number(location.start.location)
-          const rawExact = (location.start.percentage || 0) * 100
-          pct = (page > 1 || hasMovedPastStart) && rawExact > 0
-            ? Math.min(100, Math.max(1, Math.round(rawExact)))
-            : Math.min(100, Math.max(0, Math.round(rawExact)))
-        } else {
-          // 2. Fallback: Proportional progress based on spine index and section pages
-          const spineTotal = (epubInstance?.spine as any)?.length || (epubInstance?.spine as any)?.spineItems?.length || 1
-          const spineIdx = location.start.index ?? 0
-          const secPage = location.start.displayed?.page || 1
-          const secTotal = Math.max(1, location.start.displayed?.total || 1)
-          const progressRatio = (spineIdx + ((secPage - 1) / secTotal)) / Math.max(1, spineTotal)
-          const rawExact = progressRatio * 100
-          pct = (spineIdx > 0 || secPage > 1) && rawExact > 0
-            ? Math.min(100, Math.max(1, Math.round(rawExact)))
-            : Math.min(100, Math.max(0, Math.round(rawExact)))
-          const bookTotal =
-            (epubInstance?.locations as any)?.total ||
-            totalPagesRef.current ||
-            (book.totalPages && book.totalPages > 0 ? book.totalPages : Math.max(1, spineTotal))
-          page = Math.min(bookTotal, Math.max(1, Math.round(progressRatio * bookTotal)))
-        }
-
+        const { page, pct, total } = computeProgressMetrics(epubInstance, location)
+        setTotalPages(total)
         setProgressPercent(pct)
         setCurrentPage(page)
 
@@ -685,7 +769,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
         pageEnteredAtRef.current = now
 
-        // Cache chapter full text and accurately estimate words visible on the current page/spread
+        // Cache chapter full text and estimate words visible on the current page/spread
         const iframeDoc = (renditionInstance?.getContents()?.[0] as any)?.document
         const pageText = iframeDoc?.body?.innerText || ''
         if (pageText) {
@@ -705,19 +789,25 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           lastWordsOnPageRef.current = visibleWords
         }
 
-        if (book.id) {
-          const isFinished = pct >= 99 || Boolean(location.atEnd)
+        if (persistToDb && book.id) {
+          const isFinished = pct >= 99.5 || Boolean(location.atEnd)
           db.books.update(book.id, {
             progressCfi: cfi,
-            progressPercent: isFinished ? 100 : pct,
+            progressPercent: isFinished ? 100 : Math.round(pct),
             currentPage: page,
+            totalPages: total,
             lastOpenedAt: Date.now(),
             ...(isFinished ? { isRead: true } : {})
           })
         }
+      }
+
+      // Register relocation & selection listeners BEFORE initial display so initial events are never missed
+      renditionInstance.on('relocated', (location: any) => {
+        if (isCancelled || isScrubbingRef.current) return
+        applyLocationState(location, true)
       })
 
-      // Selection listener for notes & highlights (accurate iframe-relative viewport coordinates)
       renditionInstance.on('selected', (cfiRange: string, contents: any) => {
         if (isCancelled) return
         const selection = contents.window.getSelection()
@@ -743,15 +833,137 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           }
         }
       })
+
+      // Display initial position safely (fall back to book start if stored CFI is stale/invalid)
+      const startLocation =
+        typeof book.progressCfi === 'string' && book.progressCfi.trim().length > 0
+          ? book.progressCfi
+          : undefined
+      try {
+        await renditionInstance.display(startLocation)
+      } catch {
+        if (!isCancelled) {
+          try {
+            await renditionInstance.display()
+          } catch (fallbackErr) {
+            console.warn('EPUB initial display failed:', fallbackErr)
+          }
+        }
+      }
+
+      if (isCancelled) return
+
+      // Immediately sync initial page/progress once displayed
+      const initialLoc = renditionInstance.currentLocation() as any
+      if (initialLoc?.start) {
+        applyLocationState(initialLoc, false)
+      }
+
+      // Hydrate all saved annotations/highlights onto the rendition immediately
+      if (book.id && !isCancelled) {
+        try {
+          const saved = await db.annotations.where('bookId').equals(book.id).toArray()
+          annotationsListRef.current = saved
+          hydrateRenditionAnnotations(
+            renditionInstance,
+            saved,
+            themeRef.current,
+            (ann, e) => openAnnotationPopoverRef.current(ann, e)
+          )
+        } catch (err) {
+          console.warn('Annotation hydration failed:', err)
+        }
+      }
+
+      // Hydrate or fast-generate spine locations AFTER initial display (never racing or unloading active section)
+      epubInstance.ready
+        .then(async () => {
+          if (isCancelled || !epubInstance) return
+          const locs = epubInstance.locations as any
+          const canUseCache =
+            book.format === 'epub' &&
+            typeof book.locationsCache === 'string' &&
+            book.locationsCache.length > 2
+
+          if (canUseCache) {
+            try {
+              locs.load(book.locationsCache)
+              if (locs.total > 0 && locs.length() > 1) {
+                locationsReadyRef.current = true
+                const total = locs.length()
+                setTotalPages(total)
+                const curLoc = renditionInstance?.currentLocation() as any
+                if (curLoc?.start && !isScrubbingRef.current) {
+                  applyLocationState(curLoc, false)
+                }
+                return
+              }
+            } catch {
+              // Fall through to clean regeneration if cache is malformed
+            }
+          }
+
+          // Speed up background indexing (default 100ms pause per section stalls 10-60s on large books)
+          locs.pause = 4
+
+          // Protect the currently displayed section from being unloaded mid-read during indexing
+          const origProcess = locs.process.bind(locs)
+          locs.process = (section: any) => {
+            const activeHref = currentHrefRef.current?.split('#')[0]
+            const isActiveSection = Boolean(
+              activeHref && section?.href && (section.href === activeHref || activeHref.endsWith(section.href))
+            )
+            if (!isActiveSection) {
+              return origProcess(section)
+            }
+            const origUnload = section.unload
+            section.unload = () => {}
+            return Promise.resolve(origProcess(section)).finally(() => {
+              section.unload = origUnload
+            })
+          }
+
+          await epubInstance.locations.generate(1000)
+          if (isCancelled || !epubInstance) return
+
+          if (locs.total > 0 && locs.length() > 1) {
+            locationsReadyRef.current = true
+            const total = locs.length()
+            setTotalPages(total)
+
+            if (book.id && book.format === 'epub') {
+              try {
+                const serialized = locs.save()
+                db.books.update(book.id, { locationsCache: serialized, totalPages: total }).catch(() => {})
+              } catch {}
+            }
+
+            const curLoc = renditionInstance?.currentLocation() as any
+            if (curLoc?.start && !isScrubbingRef.current) {
+              applyLocationState(curLoc, true)
+            }
+          }
+        })
+        .catch(() => {})
     }
 
     initReader()
 
     return () => {
       isCancelled = true
+      locationsReadyRef.current = false
       renditionInstance?.destroy()
     }
-  }, [book, activeBookBuffer, pdfViewMode, reflowEpubBuffer, settings.pageSpread, attachIframeHooks])
+  }, [
+    book,
+    activeBookBuffer,
+    pdfViewMode,
+    reflowEpubBuffer,
+    settings.pageSpread,
+    settings.scrollMode,
+    attachIframeHooks,
+    computeProgressMetrics
+  ])
 
   // Load & sync bookmarks list for live current-page ribbon state
   useEffect(() => {
@@ -1031,14 +1243,166 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
   }, [isAutoscrollActive, currentCfi, analyzeVisiblePage, handleNext, setAutoscrollActive])
 
-  // Cleanly stop Auto-Scroll and close Search drawer when exiting the reader back to Library
+  // Cleanly stop Auto-Scroll, Read Aloud (TTS), and close Search drawer when exiting the reader back to Library
   useEffect(() => {
     return () => {
       adaptiveScrollEngine.stop()
-      useAppStore.getState().setAutoscrollActive(false)
-      useAppStore.getState().toggleSearchDrawer(false)
+      ttsService.stop()
+      const st = useAppStore.getState()
+      st.setAutoscrollActive(false)
+      st.setTTSActive(false)
+      st.setTTSMuted(false)
+      st.toggleSearchDrawer(false)
     }
   }, [])
+
+  // Wire F7 (Play/Pause Read Aloud) and F8 (Stop Read Aloud) refs for isolated EPUB iframe keydown
+  handleToggleTTSRef.current = () => {
+    const st = useAppStore.getState()
+    if (st.isTTSActive) {
+      if (st.isTTSMuted) {
+        ttsService.resume()
+        st.setTTSMuted(false)
+        showToast('Read Aloud resumed')
+      } else {
+        ttsService.pause()
+        st.setTTSMuted(true)
+        showToast('Read Aloud paused')
+      }
+      return
+    }
+    const iframeDoc = (renditionRef.current?.getContents()?.[0] as any)?.document
+    const text = iframeDoc?.body?.innerText?.trim() || book.title || 'Reading'
+    st.setTTSActive(true)
+    st.setTTSMuted(false)
+    ttsService.speak(text, {
+      rate: st.settings.ttsSpeed,
+      pitch: st.settings.ttsPitch,
+      voiceURI: st.settings.ttsVoice,
+      onEnd: () => {
+        const cur = useAppStore.getState()
+        cur.setTTSActive(false)
+        cur.setTTSMuted(false)
+      }
+    })
+    showToast('Read Aloud started (F7 pause · F8 stop)')
+  }
+
+  handleStopTTSRef.current = () => {
+    const st = useAppStore.getState()
+    if (!st.isTTSActive) return
+    ttsService.stop()
+    st.setTTSActive(false)
+    st.setTTSMuted(false)
+    showToast('Read Aloud stopped')
+  }
+
+  // Reliable progress bar seeking with strict locations readiness check, CFI validation & spine/scroll fallbacks
+  const handleSeek = useCallback(
+    async (val: number) => {
+      const rendition = renditionRef.current
+      const epub = epubBookRef.current
+      if (!rendition || !epub) return
+
+      const clamped = Math.max(0, Math.min(100, Number.isFinite(val) ? val : 0))
+      const reqId = ++seekRequestIdRef.current
+      isScrubbingRef.current = true
+
+      // Immediate optimistic UI update so the fluid bar & page counter respond instantaneously
+      const safeTotal = Math.max(1, totalPagesRef.current || 1)
+      const optimisticPage =
+        safeTotal <= 1
+          ? 1
+          : clamped <= 0
+          ? 1
+          : clamped >= 100
+          ? safeTotal
+          : Math.max(1, Math.min(safeTotal, Math.round((clamped / 100) * (safeTotal - 1)) + 1))
+      setProgressPercent(clamped)
+      setCurrentPage(optimisticPage)
+
+      let navigated = false
+      try {
+        // 1. Pinpoint CFI seek once locations have finished indexing (total > 0)
+        if (hasReadyLocations(epub)) {
+          const rawCfi = (epub.locations as any).cfiFromPercentage(clamped / 100)
+          if (typeof rawCfi === 'string' && rawCfi.startsWith('epubcfi(')) {
+            await rendition.display(rawCfi)
+            navigated = true
+          }
+        }
+
+        // 2. Fallback: Spine-item navigation (works immediately before locations finish indexing)
+        if (!navigated) {
+          const allSpine: any[] = (epub.spine as any)?.spineItems || []
+          const linearSpine = allSpine.filter(
+            (item) => item && item.linear !== false && item.linear !== 'no'
+          )
+          const spineList = linearSpine.length > 0 ? linearSpine : allSpine
+
+          if (spineList.length > 1) {
+            const targetIdx =
+              clamped >= 100
+                ? spineList.length - 1
+                : Math.min(spineList.length - 1, Math.max(0, Math.round((clamped / 100) * (spineList.length - 1))))
+            const item = spineList[targetIdx]
+            if (item?.href) {
+              await rendition.display(item.href)
+              navigated = true
+            }
+          } else if (spineList.length === 1) {
+            // Single-section EPUB fallback: scroll container proportionally
+            const container = (rendition as any)?.manager?.container as HTMLElement | undefined
+            if (container) {
+              if (scrollModeRef.current === 'vertical') {
+                const maxScrollY = Math.max(0, container.scrollHeight - container.clientHeight)
+                container.scrollTop = Math.round((clamped / 100) * maxScrollY)
+              } else {
+                const delta = (rendition as any)?.manager?.layout?.delta || container.clientWidth || 1
+                const maxScrollX = Math.max(0, container.scrollWidth - container.clientWidth)
+                const rawLeft = (clamped / 100) * maxScrollX
+                const snappedLeft = Math.floor(rawLeft / delta) * delta
+                container.scrollLeft = Math.max(0, Math.min(maxScrollX, snappedLeft))
+              }
+              ;(rendition as any)?.reportLocation?.()
+              navigated = true
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('EPUB seek error:', err)
+      } finally {
+        if (reqId === seekRequestIdRef.current) {
+          isScrubbingRef.current = false
+          const loc = rendition.currentLocation() as any
+          if (loc?.start) {
+            const { page, pct, total } = computeProgressMetrics(epub, loc)
+            setTotalPages(total)
+            setCurrentPage(page)
+            setProgressPercent(pct)
+            if (loc.start.cfi) setCurrentCfi(loc.start.cfi)
+            if (loc.end?.cfi) setCurrentEndCfi(loc.end.cfi)
+            if (book.id) {
+              const isFinished = pct >= 99.5 || Boolean(loc.atEnd)
+              db.books.update(book.id, {
+                progressCfi: loc.start.cfi,
+                progressPercent: isFinished ? 100 : Math.round(pct),
+                currentPage: page,
+                totalPages: total,
+                lastOpenedAt: Date.now(),
+                ...(isFinished ? { isRead: true } : {})
+              })
+            }
+          }
+        }
+      }
+    },
+    [book.id, computeProgressMetrics, hasReadyLocations]
+  )
+
+  handleJumpEndRef.current = () => {
+    handleSeek(100)
+  }
 
   // Keyboard Navigation
   useEffect(() => {
@@ -1052,7 +1416,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      const isVert = scrollModeRef.current === 'vertical'
+      const scrollContainer = (renditionRef.current as any)?.manager?.container as HTMLElement | undefined
+
+      if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ')) {
+        if (scrollContainer) {
+          e.preventDefault()
+          const delta = e.key === 'ArrowDown' ? 140 : Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        }
+      } else if (isVert && (e.key === 'ArrowUp' || e.key === 'PageUp')) {
+        if (scrollContainer) {
+          e.preventDefault()
+          const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        }
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault()
         handleNext()
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
@@ -1061,6 +1440,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if (e.key === 'Home') {
         e.preventDefault()
         renditionRef.current?.display(0)
+      } else if (e.key === 'End') {
+        e.preventDefault()
+        handleJumpEndRef.current()
       } else if (e.key === 'F9') {
         e.preventDefault()
         const themes: Array<'day' | 'night' | 'light-sepia' | 'dark-sepia'> = [
@@ -1148,10 +1530,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         // Fall through to location fallback if CFI fails
       }
     }
-    if (pageNumber && epubBookRef.current?.locations?.length()) {
+    if (pageNumber && hasReadyLocations(epubBookRef.current)) {
       try {
-        const fallbackCfi = (epubBookRef.current.locations as any).cfiFromLocation(pageNumber)
-        if (fallbackCfi) {
+        const locIdx = Math.max(0, pageNumber - 1)
+        const fallbackCfi = (epubBookRef.current!.locations as any).cfiFromLocation(locIdx)
+        if (typeof fallbackCfi === 'string' && fallbackCfi.startsWith('epubcfi(')) {
           await renditionRef.current?.display(fallbackCfi)
         }
       } catch {
@@ -1705,8 +2088,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       <SideNavigation
         onPrev={handlePrev}
         onNext={handleNext}
-        isLeftDisabled={false} // Simplified for plan
-        isRightDisabled={false}
+        isLeftDisabled={currentPage <= 1 && progressPercent <= 0}
+        isRightDisabled={progressPercent >= 100 && currentPage >= totalPages}
+        hidden={isImmersiveFullscreen}
       />
       <div
         onContextMenu={(e) => {
@@ -1737,40 +2121,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           </button>
         )}
 
-        {/* Subtle Left Prev Page button (hidden in immersive fullscreen) */}
-        {!isImmersiveFullscreen && (
-          <button
-            onClick={handlePrev}
-            className="absolute left-2 z-30 w-8 h-12 rounded flex items-center justify-center bg-black/20 hover:bg-black/40 text-white/50 hover:text-white transition-opacity opacity-0 hover:opacity-100"
-            title="Previous Page (Left Arrow / Page Up)"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        )}
-
         {/* EPUB Mount Point */}
         <div
           ref={viewerRef}
           className="w-full h-full max-w-6xl mx-auto relative"
         />
 
-        {/* Center Gutter Divider for Double Page Spread */}
-        {settings.pageSpread === 'double' && !isImmersiveFullscreen && (
+        {/* Center Gutter Divider for Double Page Spread (Horizontal Paginated mode only) */}
+        {settings.pageSpread === 'double' && settings.scrollMode !== 'vertical' && !isImmersiveFullscreen && (
           <div
             style={{ backgroundColor: currentTheme.border }}
             className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40"
           />
-        )}
-
-        {/* Subtle Right Next Page button (hidden in immersive fullscreen) */}
-        {!isImmersiveFullscreen && (
-          <button
-            onClick={handleNext}
-            className="absolute right-2 z-30 w-8 h-12 rounded flex items-center justify-center bg-black/20 hover:bg-black/40 text-white/50 hover:text-white transition-opacity opacity-0 hover:opacity-100"
-            title="Next Page (Right Arrow / Space / Page Down)"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         )}
       </div>
 
@@ -1809,20 +2171,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}
-          onSeek={(val) => {
-            setProgressPercent(val)
-            if (epubBookRef.current?.locations && epubBookRef.current.locations.length() > 0) {
-              const cfi = epubBookRef.current.locations.cfiFromPercentage(val / 100)
-              if (cfi) renditionRef.current?.display(cfi)
-            } else {
-              const spine = (epubBookRef.current?.spine as any)?.spineItems || (epubBookRef.current?.spine as any)
-              if (spine && spine.length) {
-                const targetIdx = Math.min(spine.length - 1, Math.max(0, Math.floor((val / 100) * spine.length)))
-                const item = spine[targetIdx]
-                if (item?.href) renditionRef.current?.display(item.href)
-              }
-            }
-          }}
+          onSeek={handleSeek}
         />
       )}
 
