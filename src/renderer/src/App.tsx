@@ -12,7 +12,15 @@ import fifthSeasonCover from './assets/covers/the_fifth_season.jpg'
 import fifthSeasonEpub from './assets/books/the_fifth_season.epub'
 
 export const App: React.FC = () => {
-  const { currentView, activeBook, setView, setActiveBook, toggleHelpModal } = useAppStore()
+  const {
+    currentView,
+    activeBook,
+    isImmersiveFullscreen,
+    setView,
+    setActiveBook,
+    setImmersiveFullscreen,
+    toggleHelpModal
+  } = useAppStore()
 
   // Seed authentic starter library matching screen recording
   useEffect(() => {
@@ -46,6 +54,16 @@ export const App: React.FC = () => {
     seedDefaults()
   }, [])
 
+  // Sync OS fullscreen events from Electron main process
+  useEffect(() => {
+    const unsubscribe = window.desktopAPI?.onFullscreenChange?.((fs) => {
+      setImmersiveFullscreen(fs)
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [setImmersiveFullscreen])
+
   // Global hotkeys listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,7 +72,13 @@ export const App: React.FC = () => {
         toggleHelpModal()
       } else if (e.key === 'F11') {
         e.preventDefault()
-        window.desktopAPI?.toggleFullscreen?.()
+        const next = !useAppStore.getState().isImmersiveFullscreen
+        setImmersiveFullscreen(next)
+        window.desktopAPI?.setFullscreen?.(next)
+      } else if (e.key === 'Escape' && useAppStore.getState().isImmersiveFullscreen) {
+        e.preventDefault()
+        setImmersiveFullscreen(false)
+        window.desktopAPI?.setFullscreen?.(false)
       } else if (e.ctrlKey || e.metaKey) {
         if (e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
           e.preventDefault()
@@ -74,9 +98,11 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [toggleHelpModal])
 
+  const hideTitleBar = isImmersiveFullscreen && currentView === 'reader' && !!activeBook
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#171a21] text-[#e6edf3] font-sans select-none">
-      <TitleBar />
+      {!hideTitleBar && <TitleBar />}
 
       <main className="flex-1 flex overflow-hidden">
         {currentView === 'library' || !activeBook ? (
@@ -85,6 +111,10 @@ export const App: React.FC = () => {
           <EpubReaderView
             book={activeBook}
             onBack={() => {
+              if (isImmersiveFullscreen) {
+                setImmersiveFullscreen(false)
+                window.desktopAPI?.setFullscreen?.(false)
+              }
               setActiveBook(null)
               setView('library')
             }}

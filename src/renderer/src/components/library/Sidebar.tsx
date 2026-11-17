@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Category } from '../../db'
+import semplyLogo from '../../assets/icons/semply_logo.png'
 
 interface SidebarProps {
   counts: {

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, Menu } from 'electron'
 import { join, extname, basename } from 'path'
 import { readFile, readdir, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
@@ -28,6 +28,14 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreenChanged', true)
+  })
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow?.webContents.send('window:fullscreenChanged', false)
   })
 
   // Global zoom hotkeys: handles Ctrl + - (shrink) and Ctrl + = / Ctrl + + (unshrink) reliably
@@ -61,6 +69,23 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  // Native Cut/Copy/Paste context menu for editable input fields
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    if (params.isEditable) {
+      const editMenu = Menu.buildFromTemplate([
+        { role: 'undo', enabled: params.editFlags.canUndo },
+        { role: 'redo', enabled: params.editFlags.canRedo },
+        { type: 'separator' },
+        { role: 'cut', enabled: params.editFlags.canCut },
+        { role: 'copy', enabled: params.editFlags.canCopy },
+        { role: 'paste', enabled: params.editFlags.canPaste },
+        { type: 'separator' },
+        { role: 'selectAll', enabled: params.editFlags.canSelectAll }
+      ])
+      editMenu.popup({ window: mainWindow || undefined })
+    }
+  })
+
   if (process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -81,7 +106,15 @@ ipcMain.handle('window:close', () => mainWindow?.close())
 ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() || false)
 ipcMain.handle('window:toggleFullscreen', () => {
   if (mainWindow) {
-    mainWindow.setFullScreen(!mainWindow.isFullScreen())
+    const next = !mainWindow.isFullScreen()
+    mainWindow.setFullScreen(next)
+    return next
+  }
+  return false
+})
+ipcMain.handle('window:setFullscreen', (_, active: boolean) => {
+  if (mainWindow) {
+    mainWindow.setFullScreen(active)
   }
 })
 ipcMain.handle('window:setZoomFactor', (_, factor: number) => {

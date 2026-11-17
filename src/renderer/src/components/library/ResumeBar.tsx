@@ -33,7 +33,7 @@ export const ResumeBar: React.FC<ResumeBarProps> = ({ book, onContinue }) => {
       </div>
 
       <div className="text-[12px] text-[#8b949e] shrink-0">
-        p.{book.currentPage || 15} / {book.totalPages || 507}
+        p.{book.currentPage || 1} / {book.totalPages || 1}
       </div>
     </footer>
   )

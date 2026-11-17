@@ -1,6 +1,7 @@
 import React from 'react'
-import { Minus, Square, X, BookOpen } from 'lucide-react'
+import { Minus, Square, X } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
+import semplyLogo from '../../assets/icons/semply_logo.png'
 
 export const TitleBar: React.FC = () => {
   const { currentView, activeBook, currentChapterTitle } = useAppStore()
@@ -14,9 +15,11 @@ export const TitleBar: React.FC = () => {
       {/* Left side */}
       <div className="flex items-center gap-2 min-w-[200px]">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-[2px] bg-[#2a69df] flex items-center justify-center text-white shrink-0">
-            <BookOpen className="w-2.5 h-2.5" />
-          </div>
+          <img
+            src={semplyLogo}
+            alt="Semply Ebook Reader"
+            className="w-4 h-4 rounded-[2px] object-cover shrink-0"
+          />
           <span className="text-[12px] font-medium text-[#c8d1dc]">
             Semply Ebook Reader
           </span>

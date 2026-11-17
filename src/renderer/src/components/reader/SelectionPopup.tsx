@@ -191,6 +191,16 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <Globe className="w-3.5 h-3.5 text-[#f59e0b]" />
           <span>Wiki</span>
         </button>
+
+        {/* Translation (Google Translate & DeepL) */}
+        <button
+          onClick={() => handleOpenExternalProvider('Google Translate')}
+          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+          title="Translate selection (Google Translate / DeepL)"
+        >
+          <Languages className="w-3.5 h-3.5 text-[#4cd964]" />
+          <span>Translate</span>
+        </button>
       </div>
 
       {/* Note input popup */}

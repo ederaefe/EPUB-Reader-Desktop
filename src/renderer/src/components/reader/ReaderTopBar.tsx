@@ -1,39 +1,23 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   ChevronLeft,
   List,
   FileText,
   Bookmark,
   Search,
-  Columns,
-  Square as SinglePageIcon,
-  Volume2,
-  VolumeX,
   Maximize2,
   Minimize2,
-  Settings,
-  Play,
-  Pause,
-  Zap,
-  Gauge,
-  DownloadCloud
+  Settings
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
-import { ttsService } from '../../services/ttsService'
 
 interface ReaderTopBarProps {
   onBack: () => void
   currentChapter?: string
 }
 
-export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapter }) => {
+export function ReaderTopBar({ onBack }: ReaderTopBarProps) {
   const {
-    activeBook,
-    isTTSActive,
-    setTTSActive,
-    isAutoscrollActive,
-    setAutoscrollActive,
-    toggleRSVP,
     isTOCDrawerOpen,
     toggleTOCDrawer,
     isNotesDrawerOpen,
@@ -44,80 +28,24 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapt
     toggleSearchDrawer,
     isSettingsDrawerOpen,
     toggleSettingsDrawer,
-    settings,
-    updateSettings
+    isImmersiveFullscreen,
+    setImmersiveFullscreen
   } = useAppStore()
 
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
-  const [isExportingAudio, setIsExportingAudio] = useState(false)
-  const [exportNotice, setExportNotice] = useState<string | null>(null)
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
+  const handleToggleFullscreen = () => {
+    const next = !isImmersiveFullscreen
+    setImmersiveFullscreen(next)
+    if (window.desktopAPI?.setFullscreen) {
+      window.desktopAPI.setFullscreen(next)
+    } else if (next) {
       document.documentElement.requestFullscreen().catch(() => {})
-      setIsFullscreen(true)
-    } else {
+    } else if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {})
-      setIsFullscreen(false)
-    }
-  }
-
-  const handleToggleTTS = () => {
-    if (isTTSActive) {
-      ttsService.stop()
-      setTTSActive(false)
-    } else {
-      setTTSActive(true)
-      const readerIframe = document.querySelector('iframe')
-      const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Reading'
-      ttsService.speak(text, {
-        rate: settings.ttsSpeed,
-        pitch: settings.ttsPitch,
-        voiceURI: settings.ttsVoice,
-        onEnd: () => setTTSActive(false)
-      })
-    }
-  }
-
-  const cycleTTSSpeed = () => {
-    const speeds = [0.8, 1.0, 1.2, 1.5, 2.0]
-    const nextIdx = (speeds.indexOf(settings.ttsSpeed) + 1) % speeds.length
-    updateSettings({ ttsSpeed: speeds[nextIdx] })
-  }
-
-  const handleToggleAutoScroll = () => {
-    setAutoscrollActive(!isAutoscrollActive)
-  }
-
-  const handleExportAudio = async () => {
-    try {
-      setIsExportingAudio(true)
-      const readerIframe = document.querySelector('iframe')
-      const text = readerIframe?.contentDocument?.body?.innerText || activeBook?.title || 'Chapter content'
-      const title = `${activeBook?.title || 'Audiobook'}_${currentChapter || 'Chapter'}`
-      const res = await ttsService.exportAudioFile(text, title)
-      if (res.success) {
-        setExportNotice('Audio recording saved successfully!')
-      } else {
-        setExportNotice('Audio export cancelled.')
-      }
-    } catch {
-      setExportNotice('Export failed.')
-    } finally {
-      setIsExportingAudio(false)
-      setTimeout(() => setExportNotice(null), 3000)
     }
   }
 
   return (
     <header className="h-9 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0 z-40 relative">
-      {exportNotice && (
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-[#1f232d] border border-[#2a69df] text-white px-3 py-1 rounded-[2px] shadow-lg text-[11px] animate-in fade-in duration-100">
-          {exportNotice}
-        </div>
-      )}
-
       {/* Left Action Group with authentic dividers */}
       <div className="flex items-center text-[12px]">
         {/* Back to Library */}
@@ -186,105 +114,15 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({ onBack, currentChapt
         </button>
       </div>
 
-      {/* Right Controls: Columns, TTS, Autoscroll, RSVP, Fullscreen, Settings */}
+      {/* Right Controls: Only Immersive Fullscreen & Settings */}
       <div className="flex items-center gap-1 text-[12px]">
-        {/* Adaptive Auto-Scroll Toggle */}
+        {/* Immersive Fullscreen Toggle */}
         <button
-          onClick={handleToggleAutoScroll}
-          className={`h-7 px-2 flex items-center gap-1.5 rounded-[2px] transition-colors ${
-            isAutoscrollActive ? 'bg-[#f59e0b] text-black font-semibold' : 'text-[#8b949e] hover:text-white hover:bg-[#282c37]'
-          }`}
-          title="Toggle Adaptive Auto-Scroll (WPM Cadence Engine)"
-        >
-          <Zap className="w-3.5 h-3.5 fill-current" />
-          <span>Auto-Scroll</span>
-        </button>
-
-        {/* RSVP Speed Reader */}
-        <button
-          onClick={() => toggleRSVP(true)}
-          className="h-7 px-2 flex items-center gap-1.5 rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
-          title="RSVP Speed Reading Mode (Optimal Recognition Point)"
-        >
-          <Gauge className="w-3.5 h-3.5 text-[#2a69df]" />
-          <span>RSVP</span>
-        </button>
-
-        {/* Audio Export (isRecordTTS) */}
-        <button
-          onClick={handleExportAudio}
-          disabled={isExportingAudio}
-          className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors disabled:opacity-50"
-          title="Export speech as offline WAV audio file"
-        >
-          <DownloadCloud className="w-3.5 h-3.5" />
-        </button>
-
-        <span className="text-[#2d323f] px-1 font-light">|</span>
-
-        {/* Double Page Spread */}
-        <button
-          onClick={() => updateSettings({ pageSpread: 'double' })}
-          className={`w-7 h-7 flex items-center justify-center rounded-[2px] transition-colors ${
-            settings.pageSpread === 'double' ? 'text-white bg-[#282c37]' : 'text-[#8b949e] hover:text-white'
-          }`}
-          title="Two-page spread"
-        >
-          <Columns className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Single Page Spread */}
-        <button
-          onClick={() => updateSettings({ pageSpread: 'single' })}
-          className={`w-7 h-7 flex items-center justify-center rounded-[2px] transition-colors ${
-            settings.pageSpread === 'single' ? 'text-white bg-[#282c37]' : 'text-[#8b949e] hover:text-white'
-          }`}
-          title="Single page view"
-        >
-          <SinglePageIcon className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Read Aloud button */}
-        <button
-          onClick={handleToggleTTS}
-          className={`h-7 px-2 flex items-center gap-1.5 rounded-[2px] transition-colors ${
-            isTTSActive ? 'bg-[#2a69df] text-white' : 'text-[#8b949e] hover:text-white hover:bg-[#282c37]'
-          }`}
-          title="Start/pause reading aloud (F7)"
-        >
-          {isTTSActive ? (
-            <Pause className="w-3.5 h-3.5 fill-current" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-current" />
-          )}
-          <span>Read Aloud</span>
-        </button>
-
-        {/* Volume icon */}
-        <button
-          onClick={() => setIsMuted(!isMuted)}
+          onClick={handleToggleFullscreen}
           className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
-          title="Volume"
+          title="Immersive Fullscreen (F11)"
         >
-          {isMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-        </button>
-
-        {/* Speed indicator */}
-        <button
-          onClick={cycleTTSSpeed}
-          className="h-7 px-1.5 text-[11px] text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded-[2px] font-mono flex items-center transition-colors"
-          title="Reading speed"
-        >
-          {settings.ttsSpeed.toFixed(1)}x
-        </button>
-
-        {/* Fullscreen Toggle */}
-        <button
-          onClick={toggleFullscreen}
-          className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
-          title="Switch fullscreen (F11)"
-        >
-          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          {isImmersiveFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
         </button>
 
         {/* Settings Flyout Trigger */}

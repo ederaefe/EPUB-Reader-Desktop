@@ -39,6 +39,12 @@ export const RSVPSpeedReaderModal: React.FC<RSVPSpeedReaderModalProps> = ({
   const [wpm, setWpm] = useState(settings.rsvpWpm || 350)
   const timerRef = useRef<number | null>(null)
 
+  // Reset index when changing chapters or text
+  useEffect(() => {
+    setCurrentIndex(0)
+    setIsPlaying(false)
+  }, [initialText])
+
   const currentWord = words[currentIndex] || ''
 
   // Optimal Recognition Point breakdown

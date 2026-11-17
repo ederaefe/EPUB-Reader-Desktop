@@ -12,16 +12,25 @@ import {
   Archive,
   Database,
   Info,
-  BookOpen
+  BookOpen,
+  Timer,
+  Zap,
+  Gauge,
+  RotateCcw,
+  Pilcrow,
+  Power
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { backupService } from '../../services/backupService'
-import { db } from '../../db'
+import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
+import { db, type AutoscrollMode } from '../../db'
 
 export const FullSettingsModal: React.FC = () => {
   const {
     isFullSettingsModalOpen,
     toggleFullSettingsModal,
+    isAutoscrollActive,
+    setAutoscrollActive,
     settings,
     updateSettings
   } = useAppStore()
@@ -409,6 +418,196 @@ export const FullSettingsModal: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Dual-Mode Auto-Scroll Countdown Section (Icon-Only Controls + Rich Tooltips) */}
+              {(() => {
+                const effectiveMode: AutoscrollMode =
+                  settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
+                const countdownSec = settings.autoscrollCountdownSec ?? 20
+                const targetWpm = settings.targetWpm ?? 250
+                const microPauseEnabled = settings.autoscrollMicroPause ?? true
+
+                const handleModeChange = (mode: AutoscrollMode) => {
+                  updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
+                  adaptiveScrollEngine.configure({ mode })
+                }
+
+                const handleCountdownChange = (sec: number) => {
+                  const clamped = Math.max(5, Math.min(120, Math.round(sec)))
+                  updateSettings({ autoscrollCountdownSec: clamped })
+                  adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
+                }
+
+                const handleWpmChange = (wpm: number) => {
+                  const clamped = Math.max(100, Math.min(800, Math.round(wpm)))
+                  updateSettings({ targetWpm: clamped })
+                  adaptiveScrollEngine.configure({ targetWpm: clamped })
+                }
+
+                const handleMicroPauseToggle = () => {
+                  const next = !microPauseEnabled
+                  updateSettings({ autoscrollMicroPause: next })
+                  adaptiveScrollEngine.configure({ microPauseEnabled: next })
+                }
+
+                return (
+                  <div className="p-3 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="flex items-center gap-2"
+                        title="Displays a quiet muted numeric countdown in the bottom-right corner (persists in fullscreen). Auto-pauses when leaving the app or after 5 minutes of inactivity."
+                      >
+                        {effectiveMode === 'countdown' ? (
+                          <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
+                        ) : (
+                          <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
+                        )}
+                        <span className="text-xs font-semibold text-white">Auto-Scroll Countdown</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('countdown')}
+                          aria-label="Countdown Only Mode"
+                          title="Countdown Only: Fixed seconds countdown per page turn (default 20s)"
+                          className={`w-7 h-7 rounded-[2px] flex items-center justify-center border transition-colors ${
+                            effectiveMode === 'countdown'
+                              ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                              : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
+                          }`}
+                        >
+                          <Timer className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('adaptive')}
+                          aria-label="Adaptive Countdown Mode"
+                          title="Adaptive Countdown: Dynamically computes countdown from visible page words and learned WPM (EMA)"
+                          className={`w-7 h-7 rounded-[2px] flex items-center justify-center border transition-colors ${
+                            effectiveMode === 'adaptive'
+                              ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                              : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
+                          }`}
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !isAutoscrollActive
+                            if (!next) adaptiveScrollEngine.stop()
+                            setAutoscrollActive(next)
+                          }}
+                          aria-label={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                          title={
+                            isAutoscrollActive
+                              ? 'Auto-Scroll is ON — Click to disable'
+                              : 'Auto-Scroll is OFF — Click to enable muted bottom-right countdown'
+                          }
+                          className={`w-7 h-7 rounded-[2px] flex items-center justify-center border transition-colors ${
+                            isAutoscrollActive
+                              ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                              : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white'
+                          }`}
+                        >
+                          <Power className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {effectiveMode === 'countdown' ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span
+                            className="flex items-center gap-1.5 text-[#8b949e]"
+                            title={`Fixed countdown interval: ${countdownSec} seconds per page`}
+                          >
+                            <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
+                            <span className="text-white">{countdownSec}s</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCountdownChange(20)}
+                            aria-label="Reset countdown to 20s"
+                            title="Reset fixed countdown interval to default 20s"
+                            className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37]"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <input
+                          type="range"
+                          min="5"
+                          max="120"
+                          step="5"
+                          value={countdownSec}
+                          onChange={(e) => handleCountdownChange(Number(e.target.value))}
+                          aria-label="Fixed countdown seconds per page"
+                          title={`Fixed countdown interval: ${countdownSec} seconds (range 5s to 120s)`}
+                          className="ice-slider w-full"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span
+                            className="flex items-center gap-1.5 text-[#8b949e]"
+                            title={`Target adaptive reading speed: ${targetWpm} WPM`}
+                          >
+                            <Gauge className="w-3.5 h-3.5 text-[#f59e0b]" />
+                            <span className="text-white">{targetWpm}</span>
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={handleMicroPauseToggle}
+                              aria-label="Toggle cognitive micro-pause"
+                              title={
+                                microPauseEnabled
+                                  ? 'Cognitive micro-pause ON (300ms pause at section breaks & blockquotes) — Click to disable'
+                                  : 'Cognitive micro-pause OFF — Click to enable 300ms pause at section breaks'
+                              }
+                              className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
+                                microPauseEnabled
+                                  ? 'bg-[#2a69df]/20 text-[#79c0ff] border border-[#2a69df]/50'
+                                  : 'text-[#6e7681] hover:text-white hover:bg-[#282c37]'
+                              }`}
+                            >
+                              <Pilcrow className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateSettings({ targetWpm: 250 })
+                                adaptiveScrollEngine.reset(250)
+                              }}
+                              aria-label="Reset adaptive pace to 250 WPM"
+                              title="Reset adaptive reading speed to default 250 WPM"
+                              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37]"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                        <input
+                          type="range"
+                          min="100"
+                          max="800"
+                          step="25"
+                          value={targetWpm}
+                          onChange={(e) => handleWpmChange(Number(e.target.value))}
+                          aria-label="Target adaptive reading speed (WPM)"
+                          title={`Target adaptive reading speed: ${targetWpm} WPM (range 100 to 800 WPM)`}
+                          className="ice-slider w-full"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
 

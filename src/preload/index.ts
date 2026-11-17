@@ -5,7 +5,9 @@ export interface DesktopAPI {
   maximize: () => Promise<void>
   close: () => Promise<void>
   isMaximized: () => Promise<boolean>
-  toggleFullscreen: () => Promise<void>
+  toggleFullscreen: () => Promise<boolean>
+  setFullscreen: (active: boolean) => Promise<void>
+  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
   openFiles: () => Promise<string[]>
   openFolder: () => Promise<string | null>
   scanFolder: (folderPath: string) => Promise<string[]>
@@ -26,6 +28,12 @@ const api: DesktopAPI = {
   close: () => ipcRenderer.invoke('window:close'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
+  setFullscreen: (active: boolean) => ipcRenderer.invoke('window:setFullscreen', active),
+  onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, isFullscreen: boolean) => callback(isFullscreen)
+    ipcRenderer.on('window:fullscreenChanged', listener)
+    return () => ipcRenderer.removeListener('window:fullscreenChanged', listener)
+  },
   openFiles: () => ipcRenderer.invoke('dialog:openFiles'),
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   scanFolder: (p) => ipcRenderer.invoke('fs:scanFolder', p),

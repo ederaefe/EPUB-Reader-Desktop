@@ -46,6 +46,8 @@ export interface Bookmark {
   createdAt: number
 }
 
+export type AutoscrollMode = 'countdown' | 'adaptive'
+
 export interface UserSettings {
   id?: number
   theme: 'night' | 'day' | 'light-sepia' | 'dark-sepia'
@@ -59,6 +61,9 @@ export interface UserSettings {
   ttsPitch: number
   ttsVoice: string | null
   autoscrollSpeed: number
+  autoscrollMode?: AutoscrollMode
+  autoscrollCountdownSec?: number
+  autoscrollMicroPause?: boolean
   autoscrollAdaptive?: boolean
   targetWpm?: number
   observedWpm?: number

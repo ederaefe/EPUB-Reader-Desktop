@@ -96,8 +96,93 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
   - **Dynamic Category Management & Book Assignment**: Each user-created category renders with its assigned colored indicator dot, dynamic book count, and an inline delete button on hover that safely unlinks books from deleted categories. Added direct category assignment to `BookCard.tsx` (in both grid and list views) via an action folder menu with color badges on book covers.
   - **Preview & Verification**: Updated `preview.html` with identical interactive creation, swatch selection, and category deletion workflows; validated via Playwright headless captures.
 
+- **Increment 8**: Robust Cadence Learning, Idle Suspension, Spoken Audio Synthesis & Archive Recovery
+  - **Closed-Loop Manual Reading Cadence Profiler**: Wired `recordManualReading(words, elapsedMs)` directly to reader page turn and relocation events. The profiler tracks actual user dwell time per page (clamped between 2s and 300s to avoid idle skews) and feeds word counts into the rolling Exponential Moving Average ($\alpha = 0.15$), making the reading speed metrics dynamically reflect real human reading pace.
+  - **Synchronized Auto-Scroll Lifecycle & Idle Suspension**: Completely resolved the unpaused timer leak by subscribing `EpubReaderView` directly to `AdaptiveScrollEngine`. Window `blur` events (both root window and iframe window) immediately suspend auto-scroll without corrupting the cadence model. Hovering over footnote anchors or opening the footnote popover or text selection HUD cleanly halts auto-scroll, resuming automatically upon dismissal.
+  - **Expanded Break & Divider Detection**: Extended break detection beyond basic classes to include `blockquote`, `hr`, `.section-break`, `.separator`, `.asterism`, and asterism text patterns (`***`, `* * *`), accurately injecting 300ms cognitive pauses.
+  - **Cross-Document Footnote Extraction**: Replaced shallow `doc.getElementById` lookups with asynchronous cross-document spine loading (`section.load`) when footnote references target separate chapter or endnote files, ensuring authentic footnote texts are presented in the docked popover.
+  - **True Spoken Audio Capture (`isRecordTTS`)**: Re-engineered `exportAudioFile` to query Google TTS speech synthesis in sentence-sized chunks (< 180 chars) and seamlessly concatenate MP3 frames into an offline `.mp3` audiobook file, retaining the 16-bit PCM WAV synthesizer as an offline fallback.
+  - **One-Click Translation Action**: Integrated a dedicated `Translate` button with the `Languages` icon into the 36px floating selection action bar, dispatching queries directly to Google Translate and DeepL.
+  - **ZIP Archive Cover Art Recovery**: Enhanced `importAdditiveBackup` to extract cover images from the `covers/` folder within imported `.zip` archives, restoring missing or stripped cover art during additive library migrations.
+  - **Dynamic Titlebar Subtitle**: Removed hardcoded book subtitle strings and wired `TitleBar.tsx` to read `currentChapterTitle` from `useAppStore`.
+
 - **Increment 8**: Sleek Modern Desktop Sliders & Custom Tactile Checkboxes
   - **Eradication of Browser-Default Controls**: Overhauled Chromium's default white track lines, oversized bulbous range thumbs, and square OS tick boxes with high-precision desktop controls.
   - **Sleek Desktop Range Sliders (`.ice-slider`, `input[type="range"]`)**: Custom-engineered WebKit and Mozilla range sliders featuring a 4px dark obsidian track (`#252834`), smooth pill track radius, and a crisp 12px tactile thumb in Icecream Blue (`#2a69df`) bordered by a 2px solid white stroke and soft ambient drop shadow. Integrated dynamic hover scaling (`scale(1.25)`) and active compression (`scale(1.10)`).
   - **Custom Dark-Theme Checkboxes (`.ice-checkbox`, `input[type="checkbox"]`)**: Created bespoke 15px × 15px checkboxes with 3px rounded corners, matte charcoal background (`#171a22`), and subtle border outlines (`#353b4c`). Upon selection, smoothly transitions to accent blue with an ultra-crisp 45-degree white vector tickmark.
   - **Full Settings Integration**: Added the "Send anonymous usage stats" toggle alongside "Copy eBooks from external devices" and "Check for the updates automatically" in `FullSettingsModal.tsx` and `preview.html`. Verified visual rendering via Playwright captures.
+
+- **Increment 9**: Unread Progress Normalization, Metadata Sanitization & Babel Parser Fix
+  - **Unread Progress Bug Elimination**: Eradicated the falsy fallback bug (`book.progressPercent || 3`) and placeholder page numbers (`15 / 507`, `13 / 416`) across `BookCard.tsx`, `EpubReaderView.tsx`, and `ResumeBar.tsx`. Unread books now accurately show `0%` progress with a `0%` width bar, starting on page 1 of their actual total page count.
+  - **Automatic Metadata & Filename Sanitization**: Enhanced `coverService.ts` and `LibraryView.tsx` with `parseBookTitleAndAuthor` and `extractBookMetadata`. Cleans common download prefixes (such as `d-pdf.com - ` and `[z-lib.org]`), parses `Title by Author` patterns, and reads embedded OPF and PDF metadata. Implemented an auto-migration in `loadData` to cleanse existing unread books and metadata without requiring re-import.
+  - **Babel TSX Syntax Disambiguation**: Resolved Vite react-babel compilation errors by converting `ReaderTopBar` to a standard function declaration, removing generic arrow function syntax that previously caused parser ambiguity.
+
+- **Increment 9**: Drawer Dismissal Fix & Absolute Reading Location Synchronization
+  - **Resolution of Unresponsive Drawer Cancel ("X") Buttons**: Diagnosed root cause where drawers set to `fixed inset-y-0` placed their headers and close buttons within `y = 0..32`, directly underneath Electron's native `-webkit-app-region: drag` titlebar. Windows OS was intercepting mouse clicks as window drag attempts, preventing click dispatch to React. Repositioned all sliding drawers (`TOCDrawer`, `BookmarksDrawer`, `NotesDrawer`, `SettingsDrawer`) to `top-8 bottom-0` (32px offset), applied explicit `app-no-drag` to aside containers, headers, and close buttons, and added full-screen click-away backdrops (`fixed inset-0 top-8 bg-black/40`) and `Escape` key dismissal.
+  - **Resolution of Static Page Number Bug ("going further in the book and the numbers are not")**: Fixed issue where `location.start.displayed?.page` (which represents chapter-local page index, e.g. `4`) was being prioritized over global book positions, freezing the bottom display at `4 / 792`. Replaced with global CFI resolution via `locations.locationFromCfi(cfi)` and `locations.percentageFromCfi(cfi)`, paired with immediate recalibration when background location generation completes and a proportional spine progression fallback ($(\text{spineIdx} + \frac{\text{page}-1}{\text{total}}) / \text{spineLength}$) so page numbers and slider dots increment smoothly on every single page turn.
+
+
+---
+
+## Increment 5: Desktop Right-Click Context Menu Subsystem
+
+### Architecture & Trade-offs
+- **Dual-Layer Context Menu Strategy**: Electron frameless applications disable browser context menus by default. We implemented a unified, viewport-clamped custom React `<ContextMenu>` component (`src/renderer/src/components/ui/ContextMenu.tsx`) for domain-specific surfaces (EPUB reader iframe and Library cards) while delegating editable input fields (`<input>`, `<textarea>`) to Electron's native `Menu.buildFromTemplate` in `src/main/index.ts` for standard OS Cut/Copy/Paste/Undo/Redo semantics.
+- **Zero-Reload Iframe Event Bridging**: In `EpubReaderView.tsx`, right-click events inside the isolated `epub.js` iframe are intercepted via `attachIframeHooks`, converted to main-window viewport coordinates using `frameElement.getBoundingClientRect()`, and routed through a stable `openContextMenuRef` ref so fresh reader state is always rendered without re-triggering the EPUB initialization effect.
+- **Surface Coverage**:
+  - **Reader (Text Selected)**: Copy, 5-color inline Highlight swatch bar (with CFI persistence), Add Note, Dictionary lookup, Translation, and Read Aloud selection.
+  - **Reader (Page Area & Margins)**: Previous/Next page navigation, Bookmark page, Toggle Adaptive Auto-Scroll, RSVP Speed Reader, Toggle Fullscreen, and Reading Settings.
+  - **Library Book Cards (Grid & List)**: Open/Continue reading, Toggle Favorite, Mark Read/Unread, Shelf assignment, and Move to Trash/Restore.
+  - **Editable Inputs**: Native Windows Cut/Copy/Paste/Select All menu.
+
+
+---
+
+## Increment 11: Minimalist Reader Top Bar, True Immersive Fullscreen & Complete Audio Export Engine Removal
+
+### Architecture & Design Changes
+1. **Semply Ebook Reader Branding & Removal of Paywall Prompts**:
+   - Unified application branding across `TitleBar.tsx`, `Sidebar.tsx`, `index.html`, and Electron main window to **Semply Ebook Reader** with custom logo assets (`semply_logo.png` / `semply_logo.ico`).
+   - Completely removed all "Upgrade to PRO" buttons, badges, and upgrade prompts.
+2. **Decluttered Reader Top Bar (`ReaderTopBar.tsx` -> `SettingsDrawer.tsx`)**:
+   - Removed Auto-Scroll, RSVP Speed Reader, Page Spread toggles, Read Aloud, Mute/Volume, and Speech Speed buttons from the right side of `ReaderTopBar.tsx`.
+   - Retained exclusively the **Immersive Fullscreen** toggle (`Maximize2`/`Minimize2`) and **Settings** trigger (`Settings`) on the right side of the top bar.
+   - Consolidated all reading tools (**Read Aloud** play/stop, mute/pause toggle, speech speed cycling `0.8x–2.0x`, **Auto-Scroll** start/stop, **RSVP Speed Reader** launch, and Double/Single page spread) into a dedicated **Reading Tools & Speech** section inside `SettingsDrawer.tsx`.
+3. **True Text-Only Immersive Fullscreen Mode**:
+   - Added `isImmersiveFullscreen` to `useAppStore.ts` synchronized bi-directionally with Electron's main process (`window:setFullscreen` IPC and `enter-full-screen` / `leave-full-screen` events in `src/main/index.ts` and `src/preload/index.ts`).
+   - When activated (via the top-bar button, `F11`, or right-click menu), all UI chrome—`TitleBar`, `ReaderTopBar`, bottom progress footer, side navigation arrows, gutter divider, and open drawers—is removed, leaving only the book text.
+   - Added a discreet floating **Exit Fullscreen** button (`top-3 right-3`, translucent until hovered) alongside `Escape` and `F11` keyboard exits (wired in both root window and inside the EPUB `<iframe>`). Automatically triggers `rendition.resize()` to reflow text across the full screen.
+4. **Complete Removal of WAV/MP3 Offline Audio Export Engine**:
+   - Deleted the `exportAudioFile` method (Google TTS MP3 fetcher and 16-bit PCM WAV synthesizer) completely from `src/renderer/src/services/ttsService.ts`.
+   - Removed the `DownloadCloud` export button, state hooks, and export notification toast from `ReaderTopBar.tsx`. Live Web Speech synthesis with Librera pronunciation rules (`normalizeTTSText`) remains intact for Read Aloud.
+
+
+---
+
+## Increment 6: Minimalist Dual-Mode Auto-Scroll Countdown Engine
+
+### Architecture & Design Summary
+1. **Settings-Housed Activation & Icon-Only Controls**:
+   - Auto-Scroll configuration and activation live inside `SettingsDrawer.tsx` and `FullSettingsModal.tsx` (Reading settings tab), keeping the primary reader toolbar uncluttered.
+   - All Auto-Scroll mode switches (`Timer` for Countdown Only, `Zap` for Adaptive Countdown), playback controls (`Play`/`Pause`, `Power`, `RotateCcw`, `Pilcrow` micro-pause), and speed nudges (`Minus`/`Plus`) are strictly icon-only with descriptive hover tooltips and accessible `aria-label` attributes.
+2. **Muted Numeric Bottom-Right Countdown & Tap-to-Open Modal (`AdaptiveScrollOverlay.tsx`)**:
+   - While Auto-Scroll is enabled, a quiet muted numeric countdown (`remainingSec`) appears in the bottom-right corner and **persists even in immersive fullscreen mode**.
+   - Tapping the countdown opens a compact, icon-only Auto-Scroll settings popover directly above it, automatically suspending the countdown until dismissed so pages never turn mid-adjustment.
+3. **Monotonic Dual-Mode Engine (`adaptiveScrollService.ts`)**:
+   - **Countdown Only (`countdown`)**: Fixed deterministic per-page interval (default `20s`, range `5s–120s`), immune to scroll wheel drift.
+   - **Adaptive Countdown (`adaptive`)**: Computes per-page duration strictly from **currently visible on-screen words** via `epub.js` visible CFI ranges (`getRange(start.cfi, end.cfi)` with proportional chapter fallback, clamped `[3s, 180s]`), rolling EMA reading speed (`alpha = 0.15`), optional `300ms` cognitive micro-pause on section breaks/blockquotes, and scroll-wheel nudges (`-15%` / `+10%`).
+   - **Isolated Multi-Reason Auto-Suspension**: Separates explicit `isUserPaused` from transient suspensions (`blur`, `hidden`, `drawer`, `modal`, `footnote`, `selection`) so returning focus or closing panels never overrides a manual pause.
+   - **5-Minute Inactivity & Reader Abandonment Auto-Pause**: Tracks throttled user interaction across both the host window and EPUB iframe; automatically locks into a safe inactivity pause after 5 minutes of idle time or 5+ minutes away from the app, and cleanly terminates timers on end-of-book or reader unmount.
+
+
+---
+
+## Increment 12: Dual-Mode Auto-Scroll Engine, Suspension State Machine & Application Icon Packaging
+
+### Architecture & Enhancements
+1. **Dual-Mode Auto-Scroll Engine (`adaptiveScrollService.ts`, `AdaptiveScrollOverlay.tsx`, `db/index.ts`, `FullSettingsModal.tsx`)**:
+   - Added `AutoscrollMode` (`'countdown' | 'adaptive'`), `autoscrollCountdownSec`, and `autoscrollMicroPause` settings to the persistent Dexie `UserSettings` schema.
+   - Upgraded `AdaptiveScrollEngine` with a multi-reason suspension state machine (`SuspensionReason`: `'blur' | 'hidden' | 'selection' | 'footnote' | 'drawer' | 'modal'`) and explicit user/inactivity pause reasons (`PauseReason`: `'user' | 'inactivity' | null`).
+   - Added live page countdown ticking (`startPageCountdown`, `tick`, `adjustCountdownSec`) and expanded `AdaptiveScrollOverlay.tsx` + `FullSettingsModal.tsx` with direct mode switching, countdown/WPM adjustment, micro-pause toggles, and pause/reset controls.
+2. **Application Packaging & Icon Assets**:
+   - Added desktop branding icons across `build/` (`icon.ico`, `icon.png`), `resources/` (`icon.ico`, `icon.png`), `src/renderer/` (`favicon.ico`, `favicon.png`), and `src/renderer/src/assets/icons/` (`semply_logo.ico`, `semply_logo.png`) for native window chrome and cross-platform packaging.

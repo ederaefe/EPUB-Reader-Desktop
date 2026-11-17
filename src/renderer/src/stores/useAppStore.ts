@@ -27,9 +27,11 @@ interface AppState {
 
   // TTS & Autoscroll
   isTTSActive: boolean
+  isTTSMuted: boolean
   isAutoscrollActive: boolean
   activeTTSWord: string | null
   adaptiveWpm: number
+  isImmersiveFullscreen: boolean
 
   // User Settings (aligned with Semply Reader defaults)
   settings: UserSettings
@@ -52,9 +54,11 @@ interface AppState {
   toggleRSVP: (open?: boolean) => void
   setActiveFootnote: (fn: { id: string; index?: string; text: string; href?: string } | null) => void
   setTTSActive: (active: boolean) => void
+  setTTSMuted: (muted: boolean) => void
   setAutoscrollActive: (active: boolean) => void
   setActiveTTSWord: (word: string | null) => void
   setAdaptiveWpm: (wpm: number) => void
+  setImmersiveFullscreen: (active: boolean) => void
   updateSettings: (newSettings: Partial<UserSettings>) => void
 }
 
@@ -80,9 +84,11 @@ export const useAppStore = create<AppState>((set) => ({
   activeFootnote: null,
 
   isTTSActive: false,
+  isTTSMuted: false,
   isAutoscrollActive: false,
   activeTTSWord: null,
   adaptiveWpm: 250,
+  isImmersiveFullscreen: false,
 
   settings: {
     theme: 'night',
@@ -96,6 +102,9 @@ export const useAppStore = create<AppState>((set) => ({
     ttsPitch: 1.0,
     ttsVoice: null,
     autoscrollSpeed: 40,
+    autoscrollMode: 'adaptive',
+    autoscrollCountdownSec: 20,
+    autoscrollMicroPause: true,
     autoscrollAdaptive: true,
     targetWpm: 250,
     observedWpm: 250,
@@ -159,9 +168,33 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),
+  setTTSMuted: (muted) => set({ isTTSMuted: muted }),
   setAutoscrollActive: (active) => set({ isAutoscrollActive: active }),
   setActiveTTSWord: (word) => set({ activeTTSWord: word }),
   setAdaptiveWpm: (wpm) => set({ adaptiveWpm: wpm }),
+  setImmersiveFullscreen: (active) =>
+    set((s) => ({
+      isImmersiveFullscreen: active,
+      ...(active
+        ? {
+            isTOCDrawerOpen: false,
+            isNotesDrawerOpen: false,
+            isBookmarksDrawerOpen: false,
+            isSettingsDrawerOpen: false,
+            isSearchDrawerOpen: false
+          }
+        : {}),
+      currentView: s.currentView
+    })),
   updateSettings: (newSettings) =>
-    set((s) => ({ settings: { ...s.settings, ...newSettings } }))
+    set((s) => {
+      const merged: UserSettings = { ...s.settings, ...newSettings }
+      // Keep legacy autoscrollAdaptive flag synchronized with autoscrollMode
+      if (newSettings.autoscrollMode !== undefined) {
+        merged.autoscrollAdaptive = newSettings.autoscrollMode === 'adaptive'
+      } else if (newSettings.autoscrollAdaptive !== undefined) {
+        merged.autoscrollMode = newSettings.autoscrollAdaptive ? 'adaptive' : 'countdown'
+      }
+      return { settings: merged }
+    })
 }))

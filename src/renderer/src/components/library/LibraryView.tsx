@@ -6,7 +6,13 @@ import { Sidebar } from './Sidebar'
 import { BookCard } from './BookCard'
 import { ResumeBar } from './ResumeBar'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
-import { extractEpubCover, extractPdfCover, generateCoverCanvas } from '../../services/coverService'
+import {
+  extractEpubCover,
+  extractPdfCover,
+  generateCoverCanvas,
+  extractBookMetadata,
+  parseBookTitleAndAuthor
+} from '../../services/coverService'
 
 export const LibraryView: React.FC = () => {
   const {
@@ -28,6 +34,36 @@ export const LibraryView: React.FC = () => {
   const loadData = async () => {
     const allBooks = await db.books.toArray()
     const allCats = await db.categories.toArray()
+
+    // Auto-cleanse any books with raw scrape prefixes, unknown authors, or accidental 3% unread progress
+    for (const b of allBooks) {
+      let needsUpdate = false
+      const updates: Partial<Book> = {}
+
+      if ((b.title && /^(d-pdf\.com|oceanofpdf\.com|\[z-lib\.org\])/i.test(b.title)) || b.author === 'Unknown Author') {
+        const parsed = parseBookTitleAndAuthor(b.title)
+        if (parsed.title !== b.title) {
+          updates.title = parsed.title
+          needsUpdate = true
+        }
+        if (parsed.author !== 'Unknown Author' && (b.author === 'Unknown Author' || !b.author)) {
+          updates.author = parsed.author
+          needsUpdate = true
+        }
+      }
+
+      if (b.progressPercent === 3 && !b.progressCfi && !b.lastOpenedAt) {
+        updates.progressPercent = 0
+        updates.currentPage = 1
+        needsUpdate = true
+      }
+
+      if (needsUpdate && b.id) {
+        await db.books.update(b.id, updates)
+        Object.assign(b, updates)
+      }
+    }
+
     setBooks(allBooks)
     setCategories(allCats)
   }
@@ -116,26 +152,14 @@ export const LibraryView: React.FC = () => {
 
     try {
       const buffer = await window.desktopAPI.readFileBuffer(targetPath)
-      let title = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Untitled'
-      let author = 'Unknown Author'
-      let coverDataUrl: string | null = null
-
-      // Extract real embedded cover
-      if (ext === 'epub') {
-        coverDataUrl = await extractEpubCover(buffer)
-      } else if (ext === 'pdf') {
-        coverDataUrl = await extractPdfCover(buffer)
-      }
-
-      if (!coverDataUrl) {
-        coverDataUrl = generateCoverCanvas(title, author)
-      }
+      const rawName = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Untitled'
+      const meta = await extractBookMetadata(buffer, ext, rawName)
 
       await db.books.add({
         filePath: targetPath,
-        title,
-        author,
-        coverDataUrl,
+        title: meta.title,
+        author: meta.author,
+        coverDataUrl: meta.coverDataUrl,
         format,
         fileSize: buffer.byteLength,
         addedAt: Date.now(),
@@ -143,7 +167,7 @@ export const LibraryView: React.FC = () => {
         progressCfi: null,
         progressPercent: 0,
         currentPage: 1,
-        totalPages: 100,
+        totalPages: meta.totalPages || 100,
         categoryId: null,
         isFavorite: false,
         isRead: false,

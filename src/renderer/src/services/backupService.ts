@@ -129,7 +129,8 @@ export class BackupService {
   // Non-destructive Additive Merge
   // Never overwrites local data—deduplicates books by filePath/Title, unions custom shelves, and appends new highlights
   public async importAdditiveBackup(
-    backup: LibraryBackupData
+    backup: LibraryBackupData,
+    zipInstance?: JSZip | null
   ): Promise<{ addedBooks: number; addedAnnotations: number; addedBookmarks: number; addedCategories: number }> {
     const existingBooks = await db.books.toArray()
     const existingCategories = await db.categories.toArray()
@@ -173,7 +174,20 @@ export class BackupService {
 
     const bookIdMapping = new Map<number, number>()
 
+    let bookIdx = 0
     for (const remoteBook of backup.books || []) {
+      bookIdx++
+      // Restore cover art from zip archive covers folder if missing or empty in JSON
+      if ((!remoteBook.coverDataUrl || remoteBook.coverDataUrl.length === 0) && zipInstance) {
+        const coverInZip = zipInstance.file(`covers/book_${bookIdx}_cover.jpg`)
+        if (coverInZip) {
+          try {
+            const b64 = await coverInZip.async('base64')
+            if (b64) remoteBook.coverDataUrl = `data:image/jpeg;base64,${b64}`
+          } catch {}
+        }
+      }
+
       const match =
         bookKeyMap.get(remoteBook.filePath) ||
         bookKeyMap.get(`${remoteBook.title}:::${remoteBook.author}`)
@@ -251,6 +265,7 @@ export class BackupService {
   public async promptImport(): Promise<{ success: boolean; message: string }> {
     try {
       let jsonContent = ''
+      let loadedZip: JSZip | null = null
 
       if (window.desktopAPI?.showOpenDialog && window.desktopAPI?.readFileText) {
         const chosenPath = await window.desktopAPI.showOpenDialog({
@@ -266,8 +281,8 @@ export class BackupService {
 
         if (chosenPath.endsWith('.zip')) {
           const buffer = await window.desktopAPI.readFileBuffer(chosenPath)
-          const zip = await JSZip.loadAsync(buffer)
-          const metaFile = zip.file('library_metadata.json')
+          loadedZip = await JSZip.loadAsync(buffer)
+          const metaFile = loadedZip.file('library_metadata.json')
           if (!metaFile) throw new Error('Invalid archive: missing library_metadata.json')
           jsonContent = await metaFile.async('text')
         } else {
@@ -286,8 +301,8 @@ export class BackupService {
         if (!file) return { success: false, message: 'No file selected' }
 
         if (file.name.endsWith('.zip')) {
-          const zip = await JSZip.loadAsync(await file.arrayBuffer())
-          const metaFile = zip.file('library_metadata.json')
+          loadedZip = await JSZip.loadAsync(await file.arrayBuffer())
+          const metaFile = loadedZip.file('library_metadata.json')
           if (!metaFile) throw new Error('Invalid archive: missing library_metadata.json')
           jsonContent = await metaFile.async('text')
         } else {
@@ -296,7 +311,7 @@ export class BackupService {
       }
 
       const parsed: LibraryBackupData = JSON.parse(jsonContent)
-      const res = await this.importAdditiveBackup(parsed)
+      const res = await this.importAdditiveBackup(parsed, loadedZip)
 
       return {
         success: true,

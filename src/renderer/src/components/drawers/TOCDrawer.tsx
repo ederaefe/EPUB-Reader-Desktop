@@ -37,20 +37,29 @@ export const TOCDrawer: React.FC<TOCDrawerProps> = ({ toc, currentHref = '', onS
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-72 bg-[#171a21] border-r border-[#232732] z-50 flex flex-col justify-between shadow-2xl select-none animate-in slide-in-from-left duration-150">
-      <div className="flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3 flex items-center justify-between">
-          <span className="text-[13px] font-semibold text-white">Table of contents</span>
-          <button
-            onClick={() => toggleTOCDrawer(false)}
-            className="w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <>
+      {/* Backdrop for click-outside dismissal */}
+      <div
+        className="fixed inset-0 top-8 bg-black/40 z-40 transition-opacity"
+        onClick={() => toggleTOCDrawer(false)}
+      />
 
-        {/* Chapter List */}
+      <aside className="fixed top-8 bottom-0 left-0 w-72 bg-[#171a21] border-r border-[#232732] z-50 flex flex-col justify-between shadow-2xl select-none app-no-drag animate-in slide-in-from-left duration-150">
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Header */}
+          <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3 flex items-center justify-between app-no-drag">
+            <span className="text-[13px] font-semibold text-white">Table of contents</span>
+            <button
+              type="button"
+              onClick={() => toggleTOCDrawer(false)}
+              className="app-no-drag w-6 h-6 flex items-center justify-center text-[#8b949e] hover:text-white hover:bg-[#282c37] rounded transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-4 h-4 pointer-events-none" />
+            </button>
+          </div>
+
+          {/* Chapter List */}
         <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 text-[12px]">
           {toc.length === 0 ? (
             <div className="text-xs text-[#6e7681] text-center py-8">No chapters found</div>
@@ -84,5 +93,6 @@ export const TOCDrawer: React.FC<TOCDrawerProps> = ({ toc, currentHref = '', onS
         </div>
       </div>
     </aside>
-  )
+  </>
+)
 }

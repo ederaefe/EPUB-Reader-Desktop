@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { BookOpen, Star, Trash2, Folder } from 'lucide-react'
+import { BookOpen, Star, Trash2, Folder, CheckCircle } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 
 interface BookCardProps {
   book: Book
@@ -21,6 +22,7 @@ export const BookCard: React.FC<BookCardProps> = ({
   isSelected = true
 }) => {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false)
+  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -46,12 +48,88 @@ export const BookCard: React.FC<BookCardProps> = ({
 
   const assignedCategory = categories.find((c) => c.id === book.categoryId)
 
+  const handleToggleRead = async () => {
+    if (!book.id) return
+    await db.books.update(book.id, { isRead: !book.isRead })
+    onUpdate()
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenuPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const buildContextMenuItems = (): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [
+      {
+        id: 'open',
+        label: book.progressPercent && book.progressPercent > 0 ? 'Continue Reading' : 'Open Book',
+        icon: <BookOpen className="w-3.5 h-3.5 text-[#2a69df]" />,
+        onClick: () => onOpen(book)
+      },
+      { id: 'div-1', divider: true },
+      {
+        id: 'favorite',
+        label: book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+        icon: <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'text-[#e3b341] fill-current' : ''}`} />,
+        onClick: async () => {
+          if (!book.id) return
+          await db.books.update(book.id, { isFavorite: !book.isFavorite })
+          onUpdate()
+        }
+      },
+      {
+        id: 'read',
+        label: book.isRead ? 'Mark as Unread' : 'Mark as Read',
+        icon: <CheckCircle className={`w-3.5 h-3.5 ${book.isRead ? 'text-[#4cd964]' : ''}`} />,
+        onClick: handleToggleRead
+      }
+    ]
+
+    if (categories.length > 0) {
+      items.push({ id: 'div-cats', divider: true })
+      categories.forEach((cat) => {
+        const isCurrent = book.categoryId === cat.id
+        items.push({
+          id: `cat-${cat.id}`,
+          label: `${isCurrent ? 'In Shelf: ' : 'Move to: '}${cat.name}`,
+          icon: <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: cat.color }} />,
+          onClick: async () => {
+            if (!book.id) return
+            await db.books.update(book.id, { categoryId: isCurrent ? null : cat.id! })
+            onUpdate()
+          }
+        })
+      })
+    }
+
+    items.push(
+      { id: 'div-delete', divider: true },
+      {
+        id: 'delete',
+        label: book.isDeleted ? 'Restore from Trash' : 'Move to Trash',
+        icon: <Trash2 className="w-3.5 h-3.5" />,
+        danger: !book.isDeleted,
+        onClick: async () => {
+          if (!book.id) return
+          await db.books.update(book.id, { isDeleted: !book.isDeleted })
+          onUpdate()
+        }
+      }
+    )
+
+    return items
+  }
+
   if (viewMode === 'list') {
     return (
-      <div
-        onClick={() => onOpen(book)}
-        className="w-full h-11 px-3 bg-[#1f232d] hover:bg-[#282c37] border-b border-[#2b2f3a] flex items-center justify-between text-xs text-[#c9d1d9] cursor-pointer transition-colors group select-none relative"
-      >
+      <>
+        <div
+          onClick={() => onOpen(book)}
+          onContextMenu={handleContextMenu}
+          className="w-full h-11 px-3 bg-[#1f232d] hover:bg-[#282c37] border-b border-[#2b2f3a] flex items-center justify-between text-xs text-[#c9d1d9] cursor-pointer transition-colors group select-none relative"
+        >
         <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
           <div className="w-6 h-8 bg-[#171a21] border border-[#3c404d] rounded-[2px] overflow-hidden shrink-0 flex items-center justify-center">
             {book.coverDataUrl ? (
@@ -75,7 +153,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             {book.format}
           </span>
           <span className="w-20 text-right">
-            p.{book.currentPage || 15} / {book.totalPages || 507}
+            p.{book.currentPage || 1} / {book.totalPages || 1}
           </span>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {categories.length > 0 && (
@@ -138,16 +216,27 @@ export const BookCard: React.FC<BookCardProps> = ({
             </button>
           </div>
         </div>
-      </div>
+        </div>
+        {contextMenuPos && (
+          <ContextMenu
+            x={contextMenuPos.x}
+            y={contextMenuPos.y}
+            items={buildContextMenuItems()}
+            onClose={() => setContextMenuPos(null)}
+          />
+        )}
+      </>
     )
   }
 
   // Grid view (1:1 Icecream Reader book cover display)
   return (
-    <div
-      onClick={() => onOpen(book)}
-      className="w-36 flex flex-col cursor-pointer group select-none transition-transform duration-100 hover:-translate-y-0.5 relative"
-    >
+    <>
+      <div
+        onClick={() => onOpen(book)}
+        onContextMenu={handleContextMenu}
+        className="w-36 flex flex-col cursor-pointer group select-none transition-transform duration-100 hover:-translate-y-0.5 relative"
+      >
       {/* Rectangular Cover Container with Blue Selected Border */}
       <div
         className={`w-full aspect-[3/4.4] rounded-[2px] bg-[#151820] relative overflow-hidden flex flex-col justify-between shadow-md ${
@@ -250,14 +339,16 @@ export const BookCard: React.FC<BookCardProps> = ({
           </button>
         </div>
 
-        {/* Bottom embedded progress indicator (1:1 Icecream Reader) */}
+        {/* Bottom embedded progress indicator */}
         <div className="absolute inset-x-0 bottom-0 h-4 bg-[#14161c]/90 border-t border-[#232732] flex items-center justify-center overflow-hidden">
           <div
             className="absolute left-0 top-0 bottom-0 bg-[#2a69df]/85 transition-all duration-300"
-            style={{ width: `${Math.max(3, book.progressPercent || 3)}%` }}
+            style={{ width: `${Math.min(100, Math.max(0, book.progressPercent || 0))}%` }}
           />
           <span className="relative z-10 text-[10px] font-medium text-white tracking-wide">
-            {book.progressPercent || 3}%
+            {book.progressPercent && book.progressPercent > 0
+              ? `${Math.round(book.progressPercent)}%`
+              : '0%'}
           </span>
         </div>
       </div>
@@ -274,6 +365,15 @@ export const BookCard: React.FC<BookCardProps> = ({
           {book.author || 'Unknown'}
         </div>
       </div>
-    </div>
+      </div>
+      {contextMenuPos && (
+        <ContextMenu
+          x={contextMenuPos.x}
+          y={contextMenuPos.y}
+          items={buildContextMenuItems()}
+          onClose={() => setContextMenuPos(null)}
+        />
+      )}
+    </>
   )
 }
