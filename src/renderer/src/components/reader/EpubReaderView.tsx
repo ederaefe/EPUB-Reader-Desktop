@@ -393,9 +393,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           st.toggleBookmarksDrawer(false)
           st.toggleNotesDrawer(false)
           st.toggleSettingsDrawer(false)
-        } else if (st.isImmersiveFullscreen) {
+        } else if (st.isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
           st.setImmersiveFullscreen(false)
           window.desktopAPI?.setFullscreen?.(false)
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {})
+          }
         }
       } else if (e.key === 'F11') {
         e.preventDefault()
