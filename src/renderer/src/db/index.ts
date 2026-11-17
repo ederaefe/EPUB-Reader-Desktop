@@ -130,6 +130,8 @@ export interface UserSettings {
   lastNoteColor?: NoteColor
   pdfZoom?: number
   scrollMode?: 'horizontal' | 'vertical'
+  /** Timestamp when the user dismissed the Library Continue-reading bar; cleared on next book open. */
+  resumeBarDismissedAt?: number | null
 }
 
 class ReaderDatabase extends Dexie {

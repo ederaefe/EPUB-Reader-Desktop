@@ -1,0 +1,16 @@
+node_modules
+out
+release
+dist
+dist-electron
+.git
+.github
+scratch
+*.mp4
+*.apk
+*.exe
+*.dmg
+*.AppImage
+preview.html
+.DS_Store
+Thumbs.db

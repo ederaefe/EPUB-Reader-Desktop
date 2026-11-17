@@ -180,7 +180,8 @@ export const BookCard: React.FC<BookCardProps> = ({
                 isRead: false,
                 progressPercent: 0,
                 currentPage: 1,
-                progressCfi: null
+                progressCfi: null,
+                lastOpenedAt: null
               })
               .then(onUpdate)
           }

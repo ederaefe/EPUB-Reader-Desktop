@@ -127,7 +127,12 @@ export const App: React.FC = () => {
           book = await db.books.get(id)
           bumpLibraryVersion()
         } else if (book.id) {
-          await db.books.update(book.id, { lastOpenedAt: Date.now() })
+          const openedAt = Date.now()
+          await db.books.update(book.id, { lastOpenedAt: openedAt })
+          book = { ...book, lastOpenedAt: openedAt }
+        }
+        if (useAppStore.getState().settings.resumeBarDismissedAt) {
+          updateSettings({ resumeBarDismissedAt: null })
         }
         if (book) {
           if (book.format === 'pdf' && book.preferredPdfMode === 'reflow') {
@@ -148,7 +153,7 @@ export const App: React.FC = () => {
         showToast(err?.message || 'Could not open file.', 'error')
       }
     },
-    [setActiveBook, setView, showToast, bumpLibraryVersion]
+    [setActiveBook, setView, showToast, bumpLibraryVersion, updateSettings]
   )
 
   // Seed authentic starter library matching screen recording
@@ -168,10 +173,10 @@ export const App: React.FC = () => {
           format: 'epub',
           fileSize: 3200797,
           addedAt: Date.now(),
-          lastOpenedAt: Date.now(),
+          lastOpenedAt: null,
           progressCfi: null,
-          progressPercent: 3,
-          currentPage: 13,
+          progressPercent: 0,
+          currentPage: 1,
           totalPages: 416,
           categoryId: null,
           isFavorite: false,
@@ -378,6 +383,7 @@ export const App: React.FC = () => {
     }
     setActiveBook(null)
     setView('library')
+    bumpLibraryVersion()
   }
 
   const hideTitleBar = isImmersiveFullscreen && currentView === 'reader' && !!activeBook

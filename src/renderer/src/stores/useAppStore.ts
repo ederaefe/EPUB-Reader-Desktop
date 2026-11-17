@@ -41,7 +41,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   viewMode: 'grid',
   lastNoteColor: 'yellow',
   pdfZoom: 1.2,
-  scrollMode: 'horizontal'
+  scrollMode: 'horizontal',
+  resumeBarDismissedAt: null
 }
 
 export function applyDocumentTheme(theme: UserSettings['theme']): void {

@@ -1291,7 +1291,7 @@ app.on('web-contents-created', (_event, contents) => {
 })
 
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.ederaefe.semple-ebook-reader')
+  app.setAppUserModelId('com.ederaefe.semply-ebook-reader')
 }
 
 if (gotSingleInstanceLock) {

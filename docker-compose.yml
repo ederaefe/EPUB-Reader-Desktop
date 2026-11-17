@@ -1,0 +1,17 @@
+services:
+  semply:
+    image: ghcr.io/ederaefe/semply-ebook-reader:latest
+    container_name: semply-ebook-reader
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - TITLE=Semply Ebook Reader
+    volumes:
+      - ./semply-config:/config
+      - ./books:/books
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    shm_size: "1gb"
+    restart: unless-stopped

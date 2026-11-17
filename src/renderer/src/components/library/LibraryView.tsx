@@ -40,6 +40,8 @@ export const LibraryView: React.FC = () => {
     setActiveBook,
     setView,
     libraryVersion,
+    settings,
+    updateSettings,
     showToast,
     openConfirmDialog,
     toggleFullSettingsModal
@@ -404,7 +406,8 @@ export const LibraryView: React.FC = () => {
             isRead: false,
             progressPercent: 0,
             currentPage: 1,
-            progressCfi: null
+            progressCfi: null,
+            lastOpenedAt: null
           })
         )
       )
@@ -548,12 +551,23 @@ export const LibraryView: React.FC = () => {
     handleRequestDeleteBooks
   ])
 
-  // Active book for Quick-Resume bar
+  // Active book for Quick-Resume bar: only genuinely opened, unfinished books opened after dismissal
   const resumeBook = useMemo(() => {
-    const active = books.filter((b) => Boolean(b.lastOpenedAt))
+    const dismissedAt = settings.resumeBarDismissedAt || 0
+    const active = books.filter((b) => {
+      if (!b.lastOpenedAt) return false
+      if (dismissedAt && b.lastOpenedAt <= dismissedAt) return false
+      const isCompleted = Boolean(b.isRead) && Math.round(b.progressPercent || 0) >= 100
+      if (isCompleted) return false
+      return true
+    })
     active.sort((a, b) => (b.lastOpenedAt || 0) - (a.lastOpenedAt || 0))
     return active[0] || null
-  }, [books])
+  }, [books, settings.resumeBarDismissedAt])
+
+  const handleDismissResumeBar = useCallback(() => {
+    updateSettings({ resumeBarDismissedAt: Date.now() })
+  }, [updateSettings])
 
   // Process & add a single file into DB with thumbnail extraction (deduplicated by filePath)
   const processAndAddFile = async (filePath: string, targetCategoryId: number | null = null) => {
@@ -694,31 +708,41 @@ export const LibraryView: React.FC = () => {
     )
   }
 
-  // Open Book in Reader
+  // Open Book in Reader (always hydrates latest saved CFI/page from Dexie so Continue Reading is exact)
   const handleOpenBook = async (book: Book) => {
     setIsLoading(true)
     try {
+      const freshBook = book.id ? (await db.books.get(book.id)) || book : book
       let buffer: ArrayBuffer | null = null
       if (
-        book.filePath.startsWith('http') ||
-        book.filePath.startsWith('/src') ||
-        book.filePath.includes('the_fifth_season')
+        freshBook.filePath.startsWith('http') ||
+        freshBook.filePath.startsWith('/src') ||
+        freshBook.filePath.includes('the_fifth_season')
       ) {
-        const resp = await fetch(book.filePath)
+        const resp = await fetch(freshBook.filePath)
         buffer = await resp.arrayBuffer()
       } else if (window.desktopAPI?.readFileBuffer) {
-        buffer = await window.desktopAPI.readFileBuffer(book.filePath)
+        buffer = await window.desktopAPI.readFileBuffer(freshBook.filePath)
       } else {
-        const resp = await fetch(book.filePath)
+        const resp = await fetch(freshBook.filePath)
         buffer = await resp.arrayBuffer()
       }
 
-      await db.books.update(book.id!, { lastOpenedAt: Date.now() })
+      const openedAt = Date.now()
+      if (freshBook.id) {
+        await db.books.update(freshBook.id, { lastOpenedAt: openedAt })
+      }
+      // Clear any previous ResumeBar dismissal so this genuinely opened book becomes resumable
+      if (useAppStore.getState().settings.resumeBarDismissedAt) {
+        updateSettings({ resumeBarDismissedAt: null })
+      }
+
+      const bookToOpen: Book = { ...freshBook, lastOpenedAt: openedAt }
       // Automatically restore cached reflow EPUB view if user previously chose EPUB for this PDF
-      if (book.format === 'pdf' && book.preferredPdfMode === 'reflow') {
-        const cachedEpubBuf = await loadCachedReflowEpub(book.filePath, false)
+      if (bookToOpen.format === 'pdf' && bookToOpen.preferredPdfMode === 'reflow') {
+        const cachedEpubBuf = await loadCachedReflowEpub(bookToOpen.filePath, false)
         if (cachedEpubBuf) {
-          setActiveBook(book, buffer, {
+          setActiveBook(bookToOpen, buffer, {
             pdfViewMode: 'reflow',
             reflowEpubBuffer: cachedEpubBuf
           })
@@ -726,7 +750,7 @@ export const LibraryView: React.FC = () => {
           return
         }
       }
-      setActiveBook(book, buffer)
+      setActiveBook(bookToOpen, buffer)
       setView('reader')
     } catch (e: any) {
       const msg = String(e?.message || '')
@@ -1226,7 +1250,12 @@ export const LibraryView: React.FC = () => {
         </div>
 
         {/* Bottom Resume Bar */}
-        <ResumeBar book={resumeBook} onContinue={handleOpenBook} />
+        <ResumeBar
+          book={resumeBook}
+          isLoading={isLoading}
+          onContinue={handleOpenBook}
+          onDismiss={handleDismissResumeBar}
+        />
       </div>
 
       <SettingsDrawer />

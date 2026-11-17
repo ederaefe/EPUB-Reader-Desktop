@@ -102,7 +102,7 @@
         "name": "How does Semply talk to external servers?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Semply communicates with external servers solely for two transparent user benefits: (1) querying GitHub Releases via TLS 1.3 to check for new version updates, and (2) downloading Google Fonts web fonts on demand when you explicitly choose an un-downloaded font, which is then cached locally to disk forever."
+          "text": "Semply communicates with external servers solely for optional user-initiated actions: (1) downloading Google Fonts web fonts on demand when you explicitly choose an un-downloaded cloud font (cached locally to disk forever), and (2) optional dictionary/Wikipedia lookups when you look up a selected word. Release downloads and SHA-256 checksums are served over TLS 1.3 from GitHub Releases."
         }
       },
       {
@@ -137,6 +137,7 @@
       </a>
 
       <nav class="header-nav" aria-label="Main Navigation">
+        <a href="#downloads" class="nav-link">Downloads</a>
         <a href="#features" class="nav-link">Features</a>
         <a href="#security" class="nav-link">Security & Privacy</a>
         <a href="#open-source" class="nav-link">Open Source</a>
@@ -211,9 +212,10 @@
           <!-- Direct Platform Links -->
           <div class="platform-links-row" aria-label="Alternative Operating Systems">
             <span style="color: var(--text-tertiary);">Other platforms:</span>
-            <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" class="platform-pill" target="_blank" rel="noopener noreferrer">macOS (.dmg)</a>
-            <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" class="platform-pill" target="_blank" rel="noopener noreferrer">Linux (.AppImage)</a>
-            <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases" class="platform-pill" target="_blank" rel="noopener noreferrer">All Release Assets</a>
+            <a href="#downloads" class="platform-pill" data-select-platform="windows">Windows (.exe)</a>
+            <a href="#downloads" class="platform-pill" data-select-platform="macos">macOS (.dmg)</a>
+            <a href="#downloads" class="platform-pill" data-select-platform="linux">Linux (.AppImage / .deb / .rpm)</a>
+            <a href="#downloads" class="platform-pill" data-select-platform="docker">Docker Container</a>
           </div>
         </div>
 
@@ -284,6 +286,293 @@
       </div>
     </section>
 
+    <!-- Release Colophon & Cross-Platform Download Hub -->
+    <section class="section" id="downloads" aria-labelledby="downloads-heading">
+      <div class="section-container">
+        <div class="ledger-intro">
+          <div>
+            <h2 class="ledger-heading" id="downloads-heading">Download Semply for any system</h2>
+            <p class="ledger-subtitle">
+              Native desktop installers for Windows, macOS, and Linux, plus a browser-streamed Docker container for self-hosted libraries. Every build is compiled publicly on GitHub Actions with SHA-256 checksums and SLSA provenance.
+            </p>
+          </div>
+          <div class="ledger-edition-meta" aria-label="Current release metadata">
+            <div class="ledger-edition-row">
+              <span class="ledger-meta-key">Release</span>
+              <span class="ledger-meta-val" id="ledger-version">v1.0.0</span>
+            </div>
+            <div class="ledger-edition-row">
+              <span class="ledger-meta-key">Published</span>
+              <span class="ledger-meta-val" id="release-date">Latest</span>
+            </div>
+            <div class="ledger-edition-row">
+              <span class="ledger-meta-key">Checksums</span>
+              <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/SHA256SUMS.txt" id="dl-checksums" class="ledger-meta-link" target="_blank" rel="noopener noreferrer">SHA256SUMS.txt</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="release-ledger" role="region" aria-label="Platform downloads and container distribution">
+          <!-- Platform Selector Bar -->
+          <div class="ledger-tabs" role="tablist" aria-label="Choose platform">
+            <button type="button" class="ledger-tab is-active" role="tab" aria-selected="true" aria-controls="panel-windows" id="tab-windows" data-platform-tab="windows">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M3 5.55L10.35 4.5v7.05H3V5.55zm8.45-1.2L21 3v8.55h-9.55V4.35zM3 12.6h7.35v7.05L3 18.6V12.6zm8.45 0H21V21l-9.55-1.35V12.6z"/>
+              </svg>
+              <span>Windows</span>
+            </button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" aria-controls="panel-macos" id="tab-macos" data-platform-tab="macos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                <line x1="2" y1="20" x2="22" y2="20"></line>
+              </svg>
+              <span>macOS</span>
+            </button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" aria-controls="panel-linux" id="tab-linux" data-platform-tab="linux">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="4 17 10 11 4 5"></polyline>
+                <line x1="12" y1="19" x2="20" y2="19"></line>
+              </svg>
+              <span>Linux</span>
+            </button>
+            <button type="button" class="ledger-tab" role="tab" aria-selected="false" aria-controls="panel-docker" id="tab-docker" data-platform-tab="docker">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+              <span>Docker Container</span>
+            </button>
+          </div>
+
+          <div class="ledger-body">
+            <!-- Left Column: Active Platform Downloads -->
+            <div class="ledger-panels">
+
+              <!-- Windows Panel -->
+              <div class="ledger-panel is-active" id="panel-windows" role="tabpanel" aria-labelledby="tab-windows" data-platform-panel="windows">
+                <div class="panel-header-line">
+                  <h3 class="panel-title">Windows 10 & 11 (64-bit)</h3>
+                  <span class="panel-note">Includes .epub & .pdf file associations</span>
+                </div>
+                <div class="asset-list">
+                  <div class="asset-row is-primary">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Standard Installer</span>
+                        <span class="asset-arch">x64 · NSIS .exe</span>
+                      </div>
+                      <span class="asset-filename" id="name-win-setup">Semply-Ebook-Reader-1.0.0-win-x64-setup.exe</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-win-setup">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-win-x64-setup.exe" id="dl-win-setup" class="ledger-dl-btn is-primary">Download installer</a>
+                    </div>
+                  </div>
+                  <div class="asset-row">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Portable Executable</span>
+                        <span class="asset-arch">x64 · No install</span>
+                      </div>
+                      <span class="asset-filename" id="name-win-portable">Semply-Ebook-Reader-1.0.0-win-x64-portable.exe</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-win-portable">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-win-x64-portable.exe" id="dl-win-portable" class="ledger-dl-btn">Download portable</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- macOS Panel -->
+              <div class="ledger-panel" id="panel-macos" role="tabpanel" aria-labelledby="tab-macos" data-platform-panel="macos" hidden>
+                <div class="panel-header-line">
+                  <h3 class="panel-title">macOS 12 Monterey or later</h3>
+                  <span class="panel-note">Native Apple Silicon & Intel builds</span>
+                </div>
+                <div class="asset-list">
+                  <div class="asset-row is-primary">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Apple Silicon Disk Image</span>
+                        <span class="asset-arch">arm64 · M1–M4 · .dmg</span>
+                      </div>
+                      <span class="asset-filename" id="name-mac-arm64">Semply-Ebook-Reader-1.0.0-mac-arm64.dmg</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-mac-arm64">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-mac-arm64.dmg" id="dl-mac-arm64" class="ledger-dl-btn is-primary">Download .dmg</a>
+                    </div>
+                  </div>
+                  <div class="asset-row">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Intel Mac Disk Image</span>
+                        <span class="asset-arch">x64 · .dmg</span>
+                      </div>
+                      <span class="asset-filename" id="name-mac-x64">Semply-Ebook-Reader-1.0.0-mac-x64.dmg</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-mac-x64">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-mac-x64.dmg" id="dl-mac-x64" class="ledger-dl-btn">Download .dmg</a>
+                    </div>
+                  </div>
+                  <div class="asset-row">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Portable ZIP Archive (Apple Silicon)</span>
+                        <span class="asset-arch">arm64 · .zip</span>
+                      </div>
+                      <span class="asset-filename" id="name-mac-arm64-zip">Semply-Ebook-Reader-1.0.0-mac-arm64.zip</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-mac-arm64-zip">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-mac-arm64.zip" id="dl-mac-arm64-zip" class="ledger-dl-btn">Download .zip</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Linux Panel -->
+              <div class="ledger-panel" id="panel-linux" role="tabpanel" aria-labelledby="tab-linux" data-platform-panel="linux" hidden>
+                <div class="panel-header-line">
+                  <h3 class="panel-title">Linux Desktop (x86_64)</h3>
+                  <span class="panel-note">Portable AppImage & native distro packages</span>
+                </div>
+                <div class="asset-list">
+                  <div class="asset-row is-primary">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Universal AppImage</span>
+                        <span class="asset-arch">x64 · Any distro</span>
+                      </div>
+                      <span class="asset-filename" id="name-linux-appimage">Semply-Ebook-Reader-1.0.0-linux-x64.AppImage</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-linux-appimage">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-linux-x64.AppImage" id="dl-linux-appimage" class="ledger-dl-btn is-primary">Download AppImage</a>
+                    </div>
+                  </div>
+                  <div class="asset-row">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Debian / Ubuntu Package</span>
+                        <span class="asset-arch">x64 · .deb</span>
+                      </div>
+                      <span class="asset-filename" id="name-linux-deb">Semply-Ebook-Reader-1.0.0-linux-x64.deb</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-linux-deb">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-linux-x64.deb" id="dl-linux-deb" class="ledger-dl-btn">Download .deb</a>
+                    </div>
+                  </div>
+                  <div class="asset-row">
+                    <div class="asset-info">
+                      <div class="asset-name-line">
+                        <span class="asset-title">Fedora / RHEL / openSUSE</span>
+                        <span class="asset-arch">x64 · .rpm</span>
+                      </div>
+                      <span class="asset-filename" id="name-linux-rpm">Semply-Ebook-Reader-1.0.0-linux-x64.rpm</span>
+                    </div>
+                    <div class="asset-actions">
+                      <span class="asset-size" id="size-linux-rpm">—</span>
+                      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-1.0.0-linux-x64.rpm" id="dl-linux-rpm" class="ledger-dl-btn">Download .rpm</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Docker Container Panel -->
+              <div class="ledger-panel" id="panel-docker" role="tabpanel" aria-labelledby="tab-docker" data-platform-panel="docker" hidden>
+                <div class="panel-header-line">
+                  <h3 class="panel-title">Self-Hosted Docker Container (GHCR)</h3>
+                  <span class="panel-note">Streams full desktop reader to https://localhost:3001</span>
+                </div>
+                <div class="ledger-code-card">
+                  <div class="ledger-code-bar">
+                    <span class="ledger-code-label">ghcr.io/ederaefe/semply-ebook-reader:latest</span>
+                    <button type="button" class="btn-copy-code" data-copy-target="docker-run-cmd" aria-label="Copy Docker command">
+                      <span>Copy command</span>
+                    </button>
+                  </div>
+                  <pre class="ledger-code-pre"><code id="docker-run-cmd">docker run -d \
+  --name semply-ebook-reader \
+  --shm-size=1gb \
+  -p 3001:3001 \
+  -v ./semply-config:/config \
+  -v ./books:/books \
+  ghcr.io/ederaefe/semply-ebook-reader:latest</code></pre>
+                </div>
+                <p class="ledger-panel-hint">
+                  Mount your local library folder to <code>/books</code> and persistent reading state to <code>/config</code>. A ready-to-run <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/blob/main/docker-compose.yml" target="_blank" rel="noopener noreferrer">docker-compose.yml</a> is included in the repository.
+                </p>
+              </div>
+
+            </div>
+
+            <!-- Right Column: Provenance Colophon & OS Trust Guidance -->
+            <aside class="ledger-colophon" aria-label="Build provenance and OS trust details">
+              <div class="colophon-status">
+                <span class="colophon-dot" aria-hidden="true"></span>
+                <span>Built publicly on GitHub Actions</span>
+              </div>
+              <dl class="colophon-facts">
+                <div class="colophon-fact">
+                  <dt>Provenance</dt>
+                  <dd>SLSA Build Attestation (Sigstore)</dd>
+                </div>
+                <div class="colophon-fact">
+                  <dt>Hash Manifest</dt>
+                  <dd>SHA-256 published per release</dd>
+                </div>
+                <div class="colophon-fact">
+                  <dt>Container Registry</dt>
+                  <dd>GitHub Container Registry (OCI)</dd>
+                </div>
+                <div class="colophon-fact">
+                  <dt>License</dt>
+                  <dd>MIT Open Source</dd>
+                </div>
+              </dl>
+
+              <div class="colophon-trust-note">
+                <h4 class="colophon-note-title">About OS security prompts</h4>
+                <p>
+                  Every Semply release is compiled in the open from public source code. While community code-signing certificates are being enrolled (SignPath Foundation for Windows, Apple Developer Notarization for macOS), verify any download against <code>SHA256SUMS.txt</code> or GitHub Build Provenance below before opening.
+                </p>
+              </div>
+
+              <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases" target="_blank" rel="noopener noreferrer" class="colophon-all-releases">
+                Browse all releases on GitHub
+              </a>
+            </aside>
+          </div>
+
+          <!-- Integrity Verification Bar -->
+          <div class="ledger-verify" aria-label="Verify binary checksums and provenance">
+            <div class="verify-top-row">
+              <div class="verify-heading-group">
+                <span class="verify-title">Verify binary integrity</span>
+                <span class="verify-desc">Confirm your download matches the official GitHub Actions build</span>
+              </div>
+              <div class="verify-tabs" role="tablist" aria-label="Verification shell">
+                <button type="button" class="verify-tab is-active" role="tab" aria-selected="true" data-verify-tab="win">Windows PowerShell</button>
+                <button type="button" class="verify-tab" role="tab" aria-selected="false" data-verify-tab="unix">macOS / Linux</button>
+                <button type="button" class="verify-tab" role="tab" aria-selected="false" data-verify-tab="slsa">SLSA Attestation</button>
+              </div>
+            </div>
+            <div class="verify-cmd-row">
+              <pre class="verify-cmd-pre"><code id="verify-cmd-output">Get-FileHash .\Semply-Ebook-Reader-1.0.0-win-x64-setup.exe -Algorithm SHA256</code></pre>
+              <button type="button" class="btn-copy-code" data-copy-target="verify-cmd-output" aria-label="Copy verification command">
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Security & Server Perimeter Section -->
     <section class="section" id="security" aria-labelledby="security-heading">
       <div class="section-container">
@@ -298,21 +587,21 @@
 
         <div class="security-matrix-grid">
           
-          <!-- Card 1: Signed Updates -->
+          <!-- Card 1: Transparent Release Delivery -->
           <article class="security-card">
-            <span class="security-badge blue">Network Channel 01</span>
-            <h3 class="security-card-title">Cryptographic Update Verification</h3>
+            <span class="security-badge blue">Distribution Channel</span>
+            <h3 class="security-card-title">Attested Release Delivery</h3>
             <p class="security-card-desc">
-              To keep your reader secure, Semply queries the GitHub Releases API over TLS 1.3 to check for published patches. If a newer signed version exists, Semply presents a release notification. You maintain 100% discretion over when and how you update.
+              Official desktop installers and container images are built in isolated GitHub Actions runners from public source code and published with SLSA Build Provenance attestations and SHA-256 checksums. You maintain 100% control over when and how you upgrade.
             </p>
             <ul class="security-spec-list">
               <li class="security-spec-item">
                 <span>Target:</span>
-                <span class="security-spec-code">api.github.com/repos/.../releases/latest</span>
+                <span class="security-spec-code">github.com/ederaefe/EPUB-Reader-Desktop/releases</span>
               </li>
               <li class="security-spec-item">
                 <span>Protocol:</span>
-                <span>HTTPS / TLS 1.3 Strict SNI</span>
+                <span>HTTPS / TLS 1.3 + Sigstore SLSA Provenance</span>
               </li>
               <li class="security-spec-item">
                 <span>Payload:</span>
@@ -803,7 +1092,7 @@
             </button>
             <div class="faq-answer-panel">
               <div class="faq-answer-content">
-                Semply connects to external servers for exactly two transparent reasons: (1) querying the GitHub Releases API over TLS 1.3 to check for signed application updates, and (2) downloading Google Fonts font files directly when you explicitly click an un-downloaded cloud font. Once downloaded, fonts are cached to disk and work 100% offline forever.
+                Semply stays offline by default. It only makes an outbound HTTPS request when you explicitly trigger an action that needs the internet: downloading one of the 65 optional cloud fonts (which is then cached to local disk forever) or requesting a dictionary/Wikipedia definition for a selected word. On the website, release versions and file sizes are fetched directly from the public GitHub Releases API.
               </div>
             </div>
           </div>
@@ -865,7 +1154,7 @@
           <p style="font-size: 1.05rem; color: var(--text-secondary); max-width: 580px; margin-bottom: 32px;">
             Download Semply for free on Windows, macOS, or Linux. No accounts, no subscriptions, and complete ownership of your library.
           </p>
-          <a href="#download" class="btn-primary-download" style="max-width: 340px;">
+          <a href="#downloads" class="btn-primary-download" style="max-width: 340px;">
             <span>Get Semply Ebook Reader</span>
           </a>
         </div>

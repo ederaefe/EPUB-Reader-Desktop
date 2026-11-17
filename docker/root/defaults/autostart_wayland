@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+mkdir -p /config/semply-data /books
+
+exec /opt/semply/semply-ebook-reader \
+  --no-sandbox \
+  --disable-dev-shm-usage \
+  --disable-gpu-sandbox \
+  --ozone-platform-hint=auto \
+  --user-data-dir=/config/semply-data
