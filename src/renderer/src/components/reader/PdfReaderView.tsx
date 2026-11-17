@@ -561,6 +561,8 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       {!isImmersiveFullscreen && (
         <FluidClimaxProgressBar
           progressPercent={totalPages > 0 ? (currentPage / totalPages) * 100 : 0}
+          currentPage={currentPage}
+          totalPages={totalPages}
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}

@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   Circle,
   Trash2,
-  X
+  X,
+  Folder,
+  ChevronDown
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, permanentlyDeleteBooks, type Book, type Category } from '../../db'
@@ -51,6 +53,7 @@ export const LibraryView: React.FC = () => {
   // Subtle top-bar Select Mode & multi-select state
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedBookIds, setSelectedBookIds] = useState<Set<number>>(new Set())
+  const [showBulkCategoryMenu, setShowBulkCategoryMenu] = useState(false)
   const lastSelectedIdRef = useRef<number | null>(null)
   const selectAllInputRef = useRef<HTMLInputElement>(null)
 
