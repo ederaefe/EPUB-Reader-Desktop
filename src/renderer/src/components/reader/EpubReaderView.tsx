@@ -178,16 +178,46 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
 
+  // Injects dynamic user typography rules (font family, font size, line height) into an iframe Document
+  const applyDynamicStylesToDoc = useCallback((doc: Document | null | undefined) => {
+    if (!doc || !doc.head) return
+    let styleEl = doc.getElementById('semply-reader-dynamic-style') as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = doc.createElement('style')
+      styleEl.id = 'semply-reader-dynamic-style'
+      doc.head.appendChild(styleEl)
+    }
+
+    const currentSettings = useAppStore.getState().settings
+    const fontFam = getFontCssFamily(currentSettings.fontFamily)
+    const fontRule =
+      fontFam !== 'inherit'
+        ? `body, body p, body div, body span, body li, body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 { font-family: ${fontFam} !important; }`
+        : ''
+
+    styleEl.textContent = `
+      html, body {
+        font-size: ${currentSettings.fontSize}px !important;
+      }
+      body p, body div, body span, body li, body blockquote {
+        font-size: ${currentSettings.fontSize}px !important;
+        line-height: ${Math.round(currentSettings.lineHeight * 100)}% !important;
+      }
+      ${fontRule}
+    `
+  }, [])
+
   // Attach smart footnote click interception, custom downloaded font CSS, and cadence wheel listener to iframe
   const attachIframeHooks = useCallback((contents: any) => {
     const doc = contents.document
     if (!doc) return
 
-    // Inject active downloaded font stylesheet into the isolated EPUB iframe
+    // Inject active downloaded font stylesheet and dynamic typography rules into the isolated EPUB iframe
     const activeFontId = useAppStore.getState().settings.fontFamily
     if (activeFontId) {
       injectFontIntoDocument(doc, activeFontId).catch(() => {})
     }
+    applyDynamicStylesToDoc(doc)
 
     // Feature 4: Smart footnote interception
     const noteLinks = doc.querySelectorAll(
