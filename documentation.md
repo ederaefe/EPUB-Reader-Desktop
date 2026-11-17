@@ -186,3 +186,12 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
    - Added live page countdown ticking (`startPageCountdown`, `tick`, `adjustCountdownSec`) and expanded `AdaptiveScrollOverlay.tsx` + `FullSettingsModal.tsx` with direct mode switching, countdown/WPM adjustment, micro-pause toggles, and pause/reset controls.
 2. **Application Packaging & Icon Assets**:
    - Added desktop branding icons across `build/` (`icon.ico`, `icon.png`), `resources/` (`icon.ico`, `icon.png`), `src/renderer/` (`favicon.ico`, `favicon.png`), and `src/renderer/src/assets/icons/` (`semply_logo.ico`, `semply_logo.png`) for native window chrome and cross-platform packaging.
+
+
+---
+
+## Increment 13: Repository Documentation Update & Engine Verification
+
+### Summary
+- Replaced placeholder `README.md` with complete project documentation covering Semply Ebook Reader's library management, true immersive fullscreen, minimalist Dual-Mode Auto-Scroll Countdown Engine (Countdown Only vs. Adaptive Countdown, muted fullscreen-persistent numeric trigger, tap-to-open icon-only modal, 5-minute inactivity watchdog), Read Aloud TTS, RSVP Speed Reader, footnotes, warm night filter, additive JSON/ZIP backup, and development scripts.
+- Verified with `npm run typecheck`, `npm run build`, and 5/5 automated unit tests against `AdaptiveScrollEngine`.
