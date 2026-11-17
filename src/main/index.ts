@@ -621,6 +621,22 @@ ipcMain.handle(
 )
 
 // Font Library Cache & Downloader IPC
+ipcMain.handle('pdf:clearReflowCache', async (_, rawPdfPath: string) => {
+  try {
+    const safePdfPath = assertSafePath(rawPdfPath, 'read')
+    const pdfName = basename(safePdfPath, extname(safePdfPath))
+    const pathHash = createHash('sha1').update(safePdfPath).digest('hex').slice(0, 12)
+    const cachedPath = join(app.getPath('userData'), 'reflow_cache', `${pdfName}_${pathHash}-reflow.epub`)
+    if (existsSync(cachedPath)) {
+      await unlink(cachedPath)
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
+})
+
 ipcMain.handle('fonts:listDownloaded', async () => {
   return await listDownloadedFontIds()
 })

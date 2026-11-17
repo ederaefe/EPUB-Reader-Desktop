@@ -9,8 +9,7 @@ import {
   Maximize2,
   Bookmark,
   FileCode2,
-  Settings,
-  Download
+  Settings
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Annotation, type Book, type Bookmark as BookmarkItem, type NoteColor } from '../../db'
@@ -39,19 +38,18 @@ interface PdfReaderViewProps {
   book: Book
   onBack: () => void
   onActivateReflow: () => Promise<void>
-  onExportEpub: () => Promise<void>
 }
 
 export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   book,
   onBack,
-  onActivateReflow,
-  onExportEpub
+  onActivateReflow
 }) => {
   const {
     settings,
     updateSettings,
     activeBookBuffer,
+    syncActiveBookProgress,
     setCurrentChapterTitle,
     isImmersiveFullscreen,
     setImmersiveFullscreen,
@@ -322,29 +320,33 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       renderSingleCanvas(currentPage + 1, canvasRightRef.current, renderTaskRightRef, null)
     }
 
-    // Persist reading progress
+    // Persist reading progress and keep activeBook synced for proportional PDF <-> EPUB switching
     if (book.id && totalPages > 0) {
-      const rawExact = (currentPage / totalPages) * 100
-      let pct = 0
-      if (currentPage > 1 || rawExact >= 1) {
-        pct = Math.min(100, Math.max(1, Math.round(rawExact)))
-      } else {
-        pct = 0
-      }
+      const exactPct =
+        totalPages > 1
+          ? Math.max(0, Math.min(100, ((currentPage - 1) / (totalPages - 1)) * 100))
+          : 100
+      const pct =
+        currentPage > 1 || exactPct >= 1
+          ? Math.min(100, Math.max(1, Math.round(exactPct)))
+          : 0
       const isFinished = totalPages > 1 && currentPage >= totalPages
-      db.books.update(book.id, {
+      const progressPatch = {
         currentPage,
         totalPages,
+        pdfOriginalTotalPages: totalPages,
         progressPercent: isFinished ? 100 : pct,
         lastOpenedAt: Date.now(),
         ...(isFinished ? { isRead: true } : {})
-      })
+      }
+      db.books.update(book.id, progressPatch)
+      syncActiveBookProgress(progressPatch)
     }
 
     return () => {
       cancelled = true
     }
-  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageSpread, book.id])
+  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageSpread, book.id, syncActiveBookProgress])
 
   const step = settings.pageSpread === 'double' ? 2 : 1
 
@@ -492,15 +494,9 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       { id: 'div-reflow', divider: true },
       {
         id: 'reflow',
-        label: 'Switch to Reflow Mode (EPUB)',
+        label: 'View as EPUB',
         icon: <FileCode2 className="w-3.5 h-3.5 text-[#2a69df]" />,
         onClick: () => onActivateReflow()
-      },
-      {
-        id: 'export-epub',
-        label: 'Export as EPUB (Offline)...',
-        icon: <Download className="w-3.5 h-3.5 text-[#4cd964]" />,
-        onClick: () => onExportEpub()
       },
       {
         id: 'bookmark',

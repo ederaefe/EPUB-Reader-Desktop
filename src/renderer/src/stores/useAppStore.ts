@@ -111,6 +111,7 @@ interface AppState {
   currentChapterTitle: string
   pdfViewMode: 'original' | 'reflow'
   reflowEpubBuffer: ArrayBuffer | null
+  pendingSeekPercent: number | null
   isConvertingPdf: boolean
   pdfConvertProgress: { percent: number; stage: string } | null
 
@@ -121,6 +122,7 @@ interface AppState {
   isSearchDrawerOpen: boolean
   isSettingsDrawerOpen: boolean
   isFullSettingsModalOpen: boolean
+  isBookMetadataModalOpen: boolean
   isHelpModalOpen: boolean
   activeFootnote: { id: string; index?: string; text: string; href?: string } | null
 
@@ -160,11 +162,17 @@ interface AppState {
   setSearchQuery: (q: string) => void
   setFormatFilter: (fmt: string | null) => void
   setViewMode: (mode: 'grid' | 'list') => void
-  setActiveBook: (book: Book | null, buffer?: ArrayBuffer | null) => void
+  setActiveBook: (
+    book: Book | null,
+    buffer?: ArrayBuffer | null,
+    options?: { pdfViewMode?: 'original' | 'reflow'; reflowEpubBuffer?: ArrayBuffer | null }
+  ) => void
   updateActiveBook: (patch: Partial<Book>) => void
+  syncActiveBookProgress: (patch: Partial<Book>) => void
   setCurrentChapterTitle: (title: string) => void
   setPdfViewMode: (mode: 'original' | 'reflow') => void
   setReflowEpubBuffer: (buffer: ArrayBuffer | null) => void
+  setPendingSeekPercent: (pct: number | null) => void
   setPdfConversionState: (
     converting: boolean,
     progress?: { percent: number; stage: string } | null
@@ -175,6 +183,7 @@ interface AppState {
   toggleSearchDrawer: (open?: boolean) => void
   toggleSettingsDrawer: (open?: boolean) => void
   toggleFullSettingsModal: (open?: boolean) => void
+  toggleBookMetadataModal: (open?: boolean) => void
   toggleHelpModal: (open?: boolean) => void
   setActiveFootnote: (fn: { id: string; index?: string; text: string; href?: string } | null) => void
   setTTSActive: (active: boolean) => void
@@ -224,6 +233,7 @@ export const useAppStore = create<AppState>((set) => ({
   currentChapterTitle: '',
   pdfViewMode: 'original',
   reflowEpubBuffer: null,
+  pendingSeekPercent: null,
   isConvertingPdf: false,
   pdfConvertProgress: null,
 
@@ -233,6 +243,7 @@ export const useAppStore = create<AppState>((set) => ({
   isSearchDrawerOpen: false,
   isSettingsDrawerOpen: false,
   isFullSettingsModalOpen: false,
+  isBookMetadataModalOpen: false,
   isHelpModalOpen: false,
   activeFootnote: null,
 
@@ -263,12 +274,13 @@ export const useAppStore = create<AppState>((set) => ({
       persistSettings(merged)
       return { viewMode: mode, settings: merged }
     }),
-  setActiveBook: (book, buffer = null) =>
+  setActiveBook: (book, buffer = null, options) =>
     set({
       activeBook: book,
       activeBookBuffer: buffer,
-      pdfViewMode: 'original',
-      reflowEpubBuffer: null
+      pdfViewMode: options?.pdfViewMode ?? 'original',
+      reflowEpubBuffer: options?.reflowEpubBuffer ?? null,
+      pendingSeekPercent: null
     }),
   updateActiveBook: (patch) =>
     set((s) =>
@@ -279,9 +291,18 @@ export const useAppStore = create<AppState>((set) => ({
           }
         : s
     ),
+  syncActiveBookProgress: (patch) =>
+    set((s) =>
+      s.activeBook
+        ? {
+            activeBook: { ...s.activeBook, ...patch }
+          }
+        : s
+    ),
   setCurrentChapterTitle: (title) => set({ currentChapterTitle: title }),
   setPdfViewMode: (mode) => set({ pdfViewMode: mode }),
   setReflowEpubBuffer: (buffer) => set({ reflowEpubBuffer: buffer }),
+  setPendingSeekPercent: (pct) => set({ pendingSeekPercent: pct }),
   setPdfConversionState: (converting, progress = null) =>
     set({ isConvertingPdf: converting, pdfConvertProgress: progress }),
   toggleTOCDrawer: (open) =>
@@ -327,6 +348,11 @@ export const useAppStore = create<AppState>((set) => ({
   toggleFullSettingsModal: (open) =>
     set((s) => ({
       isFullSettingsModalOpen: open ?? !s.isFullSettingsModalOpen,
+      isSettingsDrawerOpen: false
+    })),
+  toggleBookMetadataModal: (open) =>
+    set((s) => ({
+      isBookMetadataModalOpen: open ?? !s.isBookMetadataModalOpen,
       isSettingsDrawerOpen: false
     })),
   toggleHelpModal: (open) =>

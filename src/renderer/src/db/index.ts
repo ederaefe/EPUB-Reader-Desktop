@@ -44,6 +44,10 @@ export interface Book {
   climaxGlowTarget?: number
   /** Permanently true once the one-time crimson lightsaber glow has played for this book. */
   climaxGlowTriggered?: boolean
+  /** Preferred reading mode for PDF books ('original' exact PDF or 'reflow' cached EPUB). */
+  preferredPdfMode?: 'original' | 'reflow'
+  /** Preserved original PDF page count when viewing a PDF in reflowable EPUB mode. */
+  pdfOriginalTotalPages?: number
 }
 
 export interface Category {

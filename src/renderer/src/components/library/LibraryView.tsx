@@ -26,6 +26,7 @@ import {
   parseBookTitleAndAuthor,
   generateCoverCanvas
 } from '../../services/coverService'
+import { loadCachedReflowEpub } from '../../services/pdfViewService'
 
 export const LibraryView: React.FC = () => {
   const {
@@ -446,6 +447,12 @@ export const LibraryView: React.FC = () => {
         danger: true,
         onConfirm: async () => {
           await permanentlyDeleteBooks(ids)
+          // Clean up any persistent cached reflow EPUB files for deleted PDFs
+          for (const removed of valid) {
+            if (removed.format === 'pdf') {
+              window.desktopAPI?.clearPdfReflowCache?.(removed.filePath).catch(() => {})
+            }
+          }
           if (activeBook?.id && ids.includes(activeBook.id)) {
             setActiveBook(null, null)
           }
@@ -697,6 +704,18 @@ export const LibraryView: React.FC = () => {
       }
 
       await db.books.update(book.id!, { lastOpenedAt: Date.now() })
+      // Automatically restore cached reflow EPUB view if user previously chose EPUB for this PDF
+      if (book.format === 'pdf' && book.preferredPdfMode === 'reflow') {
+        const cachedEpubBuf = await loadCachedReflowEpub(book.filePath, false)
+        if (cachedEpubBuf) {
+          setActiveBook(book, buffer, {
+            pdfViewMode: 'reflow',
+            reflowEpubBuffer: cachedEpubBuf
+          })
+          setView('reader')
+          return
+        }
+      }
       setActiveBook(book, buffer)
       setView('reader')
     } catch (e: any) {

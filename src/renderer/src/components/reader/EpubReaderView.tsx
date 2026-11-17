@@ -62,6 +62,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     pdfViewMode,
     reflowEpubBuffer,
     setPdfViewMode,
+    syncActiveBookProgress,
+    setPendingSeekPercent,
     isTTSActive,
     setTTSActive,
     isAutoscrollActive,
@@ -892,14 +894,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         if (persistToDb && bookIdRef.current) {
           const isFinished = pct >= 99.5 || Boolean(location.atEnd)
-          db.books.update(bookIdRef.current, {
+          const progressPatch = {
             progressCfi: cfi,
             progressPercent: isFinished ? 100 : Math.round(pct),
             currentPage: page,
             totalPages: total,
             lastOpenedAt: Date.now(),
             ...(isFinished ? { isRead: true } : {})
-          })
+          }
+          db.books.update(bookIdRef.current, progressPatch)
+          syncActiveBookProgress(progressPatch)
         }
       }
 
@@ -940,11 +944,32 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       // resume from the live currentCfiRef so the reader never snaps back to page 1.
       const isSameBook = lastLoadedBookKeyRef.current === bookKey
       lastLoadedBookKeyRef.current = bookKey
+      const pendingPct = useAppStore.getState().pendingSeekPercent
       const resumeCfi = isSameBook ? currentCfiRef.current : bookInitialCfiRef.current
-      const startLocation =
-        typeof resumeCfi === 'string' && resumeCfi.trim().length > 0
+      let startLocation: string | undefined =
+        pendingPct === null && typeof resumeCfi === 'string' && resumeCfi.trim().length > 0
           ? resumeCfi
           : undefined
+
+      // If transitioning from PDF -> EPUB at a proportional percent, pre-select the nearest spine section
+      if (pendingPct !== null && pendingPct > 0.5) {
+        try {
+          await epubInstance.ready
+          const spineItems = ((epubInstance.spine as any)?.spineItems || []) as Array<{ href?: string }>
+          if (spineItems.length > 1) {
+            const idx = Math.max(
+              0,
+              Math.min(spineItems.length - 1, Math.round((pendingPct / 100) * (spineItems.length - 1)))
+            )
+            if (spineItems[idx]?.href) {
+              startLocation = spineItems[idx].href
+            }
+          }
+        } catch {
+          // Fall back to default start if spine isn't inspectable yet
+        }
+      }
+
       try {
         await renditionInstance.display(startLocation)
       } catch {
@@ -988,9 +1013,24 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const locs = epubInstance.locations as any
           const cachedLocs = bookLocationsCacheRef.current
           const canUseCache =
-            bookFormatRef.current === 'epub' &&
+            (bookFormatRef.current === 'epub' || Boolean(reflowEpubBuffer)) &&
             typeof cachedLocs === 'string' &&
             cachedLocs.length > 2
+
+          const applyPendingProportionalSeek = async () => {
+            const targetPct = useAppStore.getState().pendingSeekPercent
+            if (targetPct === null || isCancelled || !epubInstance || !renditionInstance) return
+            setPendingSeekPercent(null)
+            try {
+              const frac = Math.max(0, Math.min(1, targetPct / 100))
+              const targetCfi = locs.cfiFromPercentage?.(frac)
+              if (targetCfi) {
+                await renditionInstance.display(targetCfi)
+              }
+            } catch {
+              // Ignore seek fallback failure
+            }
+          }
 
           if (canUseCache) {
             try {
@@ -999,6 +1039,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
                 locationsReadyRef.current = true
                 const total = locs.length()
                 setTotalPages(total)
+                await applyPendingProportionalSeek()
                 const curLoc = renditionInstance?.currentLocation() as any
                 if (curLoc?.start && !isScrubbingRef.current) {
                   applyLocationState(curLoc, false)
@@ -1038,7 +1079,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             const total = locs.length()
             setTotalPages(total)
 
-            if (bookIdRef.current && bookFormatRef.current === 'epub') {
+            if (bookIdRef.current && (bookFormatRef.current === 'epub' || Boolean(reflowEpubBuffer))) {
               try {
                 const serialized = locs.save()
                 bookLocationsCacheRef.current = serialized
@@ -1046,6 +1087,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
               } catch {}
             }
 
+            await applyPendingProportionalSeek()
             const curLoc = renditionInstance?.currentLocation() as any
             if (curLoc?.start && !isScrubbingRef.current) {
               applyLocationState(curLoc, true)

@@ -8,9 +8,11 @@ import { EpubReaderView } from './components/reader/EpubReaderView'
 import { PdfReaderView } from './components/reader/PdfReaderView'
 import { HelpModal } from './components/ui/HelpModal'
 import { FullSettingsModal } from './components/modals/FullSettingsModal'
+import { BookMetadataModal } from './components/modals/BookMetadataModal'
 import { NativeFeedbackHost } from './components/ui/NativeFeedbackHost'
 import { getWarmFilterOverlay } from './services/colorTempService'
 import { extractBookMetadata } from './services/coverService'
+import { loadCachedReflowEpub, switchActivePdfViewMode } from './services/pdfViewService'
 import { hydrateDownloadedFonts } from './services/fontManager'
 import { ttsService } from './services/ttsService'
 
@@ -128,6 +130,17 @@ export const App: React.FC = () => {
           await db.books.update(book.id, { lastOpenedAt: Date.now() })
         }
         if (book) {
+          if (book.format === 'pdf' && book.preferredPdfMode === 'reflow') {
+            const cachedEpubBuf = await loadCachedReflowEpub(book.filePath, false)
+            if (cachedEpubBuf) {
+              setActiveBook(book, buffer, {
+                pdfViewMode: 'reflow',
+                reflowEpubBuffer: cachedEpubBuf
+              })
+              setView('reader')
+              return
+            }
+          }
           setActiveBook(book, buffer)
           setView('reader')
         }
@@ -340,59 +353,7 @@ export const App: React.FC = () => {
   }, [toggleHelpModal, setImmersiveFullscreen, openLocalBookPath, updateSettings])
 
   const handleActivatePdfReflow = async () => {
-    if (!activeBook || activeBook.format !== 'pdf') return
-    if (reflowEpubBuffer) {
-      setPdfViewMode('reflow')
-      return
-    }
-    if (!window.desktopAPI?.convertToEpub || !window.desktopAPI?.readFileBuffer) return
-    setPdfConversionState(true, { percent: 5, stage: 'Reflowing PDF with MuPDF engine...' })
-    try {
-      const res = await window.desktopAPI.convertToEpub({
-        pdfPath: activeBook.filePath,
-        mode: 'reflow-cache'
-      })
-      if (res.success && res.epubPath) {
-        const epubBuf = await window.desktopAPI.readFileBuffer(res.epubPath)
-        setReflowEpubBuffer(epubBuf)
-        setPdfViewMode('reflow')
-        showToast('Switched to Reflow mode', 'success')
-      } else {
-        showToast(res.error || 'Could not reflow PDF.', 'error')
-      }
-    } catch (err: any) {
-      showToast(err?.message || 'PDF reflow failed.', 'error')
-    } finally {
-      setPdfConversionState(false, null)
-    }
-  }
-
-  const handleExportPdfAsEpub = async () => {
-    if (!activeBook || activeBook.format !== 'pdf') return
-    if (!window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) return
-    const safeName = activeBook.title.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Converted_Book'
-    const chosenPath = await window.desktopAPI.showSaveDialog({
-      title: 'Export PDF as Offline EPUB',
-      defaultPath: `${safeName}.epub`,
-      filters: [{ name: 'EPUB eBook', extensions: ['epub'] }]
-    })
-    if (!chosenPath) return
-
-    setPdfConversionState(true, { percent: 5, stage: 'Converting PDF to EPUB...' })
-    try {
-      const res = await window.desktopAPI.convertToEpub({
-        pdfPath: activeBook.filePath,
-        outputPath: chosenPath,
-        mode: 'export'
-      })
-      if (res.success) {
-        showToast('Exported EPUB successfully', 'success')
-      } else {
-        showToast(res.error || 'PDF to EPUB export failed.', 'error')
-      }
-    } finally {
-      setPdfConversionState(false, null)
-    }
+    await switchActivePdfViewMode('reflow')
   }
 
   const handleBackToLibrary = () => {
@@ -520,7 +481,6 @@ export const App: React.FC = () => {
             book={activeBook}
             onBack={handleBackToLibrary}
             onActivateReflow={handleActivatePdfReflow}
-            onExportEpub={handleExportPdfAsEpub}
           />
         ) : (
           <EpubReaderView
@@ -532,6 +492,7 @@ export const App: React.FC = () => {
 
       <HelpModal />
       <FullSettingsModal />
+      <BookMetadataModal />
       <NativeFeedbackHost />
 
       {/* Full-Window Native File Drag-and-Drop Overlay */}

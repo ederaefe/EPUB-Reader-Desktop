@@ -49,6 +49,7 @@ export interface DesktopAPI {
   onPdfConvertProgress: (
     callback: (progress: { currentPage: number; totalPages: number; stage: string; percent: number }) => void
   ) => () => void
+  clearPdfReflowCache: (pdfPath: string) => Promise<boolean>
   setZoomFactor: (factor: number) => void
   getZoomFactor: () => number
   listDownloadedFonts: () => Promise<string[]>
@@ -114,6 +115,7 @@ const api: DesktopAPI = {
     ipcRenderer.on('pdf:convertProgress', listener)
     return () => ipcRenderer.removeListener('pdf:convertProgress', listener)
   },
+  clearPdfReflowCache: (pdfPath: string) => ipcRenderer.invoke('pdf:clearReflowCache', pdfPath),
   setZoomFactor: (factor: number) => {
     try {
       webFrame.setZoomFactor(factor)
