@@ -23,6 +23,8 @@ The initial glassmorphic web prototype ("Encapsulated Obsidian Glassmorphism") w
 - **Typography**: `"Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif` for UI chrome (`11px–13px`), with customizable reader fonts (`Original`, `Georgia` serif, `Segoe UI` sans, `Consolas` mono).
 - **Control Radii**:
   - Toolbar & drawer buttons / inputs: `2px–4px` (`rounded-[2px]` / `.ice-btn-dark`, `.ice-btn-blue`, `.ice-icon-btn`, `.ice-input`).
+  - Dialogs & floating popovers: `6px–8px` (`rounded-md` for compact menus/toasts, `rounded-lg` for modals and popovers).
+  - Theme preview cards (`ThemePickerGrid.tsx`): `10px` (`rounded-[10px]`) live-preview cards rendered in each theme's authentic paper, ink, and accent palette with serif `Aa` specimen lines and `#2a69df` active ring.
   - Checkboxes (`.ice-checkbox`): `15px × 15px`, `3px` radius, `#171a22` base, `#353b4c` border, `#2a69df` checked fill with crisp white checkmark.
   - Sliders (`.ice-slider`): `4px` `#252834` track with `12px` `#2a69df` circular thumb and `2px` white ring (`scale(1.25)` hover, `scale(1.10)` active).
 - **Frameless Window & Drawer Layering**:

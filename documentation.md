@@ -322,3 +322,31 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
 - **Top Toolbar Declutter (`LibraryView.tsx`)**: Removed the `+ Add book` and `Add folder` buttons from the top catalog header strip, replacing the left slot with a clean active shelf label and item count while preserving Search and Grid/List controls on the right.
 - **First-Slot Book-Shaped Import Card (`AddBookCard.tsx`)**: Added a book-proportioned dashed `+` slot rendered in the very first position of both Grid View and List View (across main shelves and custom categories, hidden in Deleted/Trash and active search).
 - **Unified Import & Bulk Category Modal (`ImportBooksModal.tsx`)**: Clicking the `+` book slot (or pressing `Ctrl+O`) opens a matte desktop dialog offering **Add Book** (file explorer) and **Add Folder** (recursive directory scan), automatically assigning newly imported books to the active custom category when browsing one. When inside a custom category, the modal also provides a **Bulk Add from Main Library** workflow with live filtering, select-all/deselect-all, and multi-select bulk assignment into that category, paired with a contextual bottom-right toast confirmation.
+
+
+---
+
+## Increment 15: Sleek Minimal Auto-Scroll Settings UI Redesign
+
+### UI Polish & Clarity
+- Redesigned Auto-Scroll controls consistently across `SettingsDrawer.tsx`, `FullSettingsModal.tsx`, and `AdaptiveScrollOverlay.tsx`.
+- Replaced cryptic icon-only square buttons (`Power`, `Pilcrow`, unlabeled `Timer`/`Zap`) with a unified sleek segmented control (**Fixed** / **Smart**), concise 1-line micro-captions (*"Turns page on a fixed timer"* / *"Adapts pace to word count & speed"*), crisp unit readouts (`20s`, `250 WPM`), tactile sliding switches (`Auto-Scroll`, `Pause at breaks`), and subtle conditional reset buttons.
+
+
+---
+
+## Increment 16: Curved Theme Preview Cards (`ThemePickerGrid`)
+
+### Summary
+- **Reusable Live-Preview Theme Cards (`src/renderer/src/components/ui/ThemePickerGrid.tsx`)**: Replaced sharp flat theme toggle rectangles in both `FullSettingsModal.tsx` (System tab) and `SettingsDrawer.tsx` with curved (`rounded-[10px]`) live-preview cards rendered directly in each reading theme's authentic background, ink, and accent palette (`Day`, `Night`, `Light sepia`, `Dark sepia`).
+- **Typography Specimen & Active State**: Each card displays a miniature serif `Aa` specimen alongside simulated accent/body text lines, the theme icon, and a crisp `#2a69df` check indicator + focus ring when selected, maintaining AAA contrast across all four palettes and proper `radiogroup` / `radio` accessibility roles.
+
+
+---
+
+## Increment 17: Slightly Curved Desktop Modal & Popover Corners
+
+### Summary
+- Softened all sharp `2px–3px` corners across dialogs and floating overlays to a consistent, slightly curved native desktop radius:
+  - **`rounded-lg` (`8px`)**: `FullSettingsModal.tsx`, `ImportBooksModal.tsx`, `HelpModal.tsx`, `RSVPSpeedReaderModal.tsx`, `AnnotationPopover.tsx`, `FootnotePopover.tsx`, `SelectionPopup.tsx` (Note Composer, Dictionary, and Wikipedia modals), and `PdfReaderView.tsx` (Offline Reflow progress dialog).
+  - **`rounded-md` (`6px`)**: Compact floating surfaces (`SelectionPopup.tsx` action bar, `ContextMenu.tsx`, and `EpubReaderView.tsx` contextual toasts).

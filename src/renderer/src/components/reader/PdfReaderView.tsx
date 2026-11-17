@@ -650,7 +650,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       {/* Offline Reflow Conversion Progress Overlay */}
       {isConvertingPdf && (
         <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-[1px] flex items-center justify-center">
-          <div className="w-80 bg-[#171a21] border border-[#2d323f] rounded-[2px] p-4 shadow-2xl space-y-2.5">
+          <div className="w-80 bg-[#171a21] border border-[#2d323f] rounded-lg p-4 shadow-2xl space-y-2.5">
             <div className="flex items-center justify-between text-xs font-semibold text-white">
               <span>Reflowing PDF to EPUB (Offline)</span>
               <span className="font-mono text-[#2a69df]">{pdfConvertProgress?.percent ?? 0}%</span>

@@ -218,47 +218,49 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </div>
           </div>
 
-          {/* Row 2: Mode Selector (Countdown Only vs Adaptive Countdown — Icons Only) */}
-          <div className="grid grid-cols-2 gap-1.5">
+          {/* Row 2: Sleek Segmented Mode Selector (Fixed vs Smart) */}
+          <div className="grid grid-cols-2 p-0.5 bg-[#0d0f14] rounded-[3px] border border-[#1f232d]">
             <button
               type="button"
               onClick={() => handleModeChange('countdown')}
-              aria-label="Countdown Only Mode"
-              title="Countdown Only: Fixed seconds per page turn"
-              className={`h-8 rounded-[2px] flex items-center justify-center border transition-colors ${
+              className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                 effectiveMode === 'countdown'
-                  ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                  : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white hover:bg-[#323745]'
+                  ? 'bg-[#2a69df] text-white shadow-sm'
+                  : 'text-[#8b949e] hover:text-white'
               }`}
             >
-              <Timer className="w-4 h-4" />
+              <Timer className="w-3 h-3" />
+              <span>Fixed</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleModeChange('adaptive')}
-              aria-label="Adaptive Countdown Mode"
-              title="Adaptive Countdown: Dynamically adjusts countdown from visible words and reading cadence (EMA)"
-              className={`h-8 rounded-[2px] flex items-center justify-center border transition-colors ${
+              className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                 effectiveMode === 'adaptive'
-                  ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                  : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white hover:bg-[#323745]'
+                  ? 'bg-[#2a69df] text-white shadow-sm'
+                  : 'text-[#8b949e] hover:text-white'
               }`}
             >
-              <Zap className="w-4 h-4" />
+              <Zap className="w-3 h-3" />
+              <span>Smart</span>
             </button>
           </div>
 
           {/* Row 3: Mode-Specific Speed / Parameter Controls */}
           {effectiveMode === 'countdown' ? (
             <div className="space-y-1.5 pt-0.5">
+              <div className="flex items-center justify-between px-0.5 text-[11px]">
+                <span className="text-[#8b949e]">Timer</span>
+                <span className="font-mono text-white">{countdownSec}s</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleCountdownChange(countdownSec - 5)}
                   aria-label="Decrease countdown seconds"
-                  title="Faster page turn (-5 seconds)"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#282c37] text-[#8b949e] hover:text-white hover:bg-[#323745]"
+                  title="-5s"
+                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -271,7 +273,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   value={countdownSec}
                   onChange={(e) => handleCountdownChange(Number(e.target.value))}
                   aria-label="Fixed countdown seconds per page"
-                  title={`Fixed countdown interval: ${countdownSec} seconds per page`}
                   className="ice-slider flex-1"
                 />
 
@@ -279,35 +280,26 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   type="button"
                   onClick={() => handleCountdownChange(countdownSec + 5)}
                   aria-label="Increase countdown seconds"
-                  title="Slower page turn (+5 seconds)"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#282c37] text-[#8b949e] hover:text-white hover:bg-[#323745]"
+                  title="+5s"
+                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
-
-              <div className="flex items-center justify-between px-0.5 text-[11px] font-mono text-[#8b949e]">
-                <span
-                  className="flex items-center gap-1"
-                  title="Countdown Only interval per page"
-                >
-                  <Timer className="w-3 h-3 text-[#2a69df]" />
-                  <span className="text-white">{countdownSec}s</span>
-                </span>
-                <span title="Seconds left on current page">
-                  {metrics.remainingSec}s
-                </span>
-              </div>
             </div>
           ) : (
-            <div className="space-y-1.5 pt-0.5">
+            <div className="space-y-2 pt-0.5">
+              <div className="flex items-center justify-between px-0.5 text-[11px]">
+                <span className="text-[#8b949e]">Pace</span>
+                <span className="font-mono text-white">{metrics.currentWpm} WPM</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleWpmChange(targetWpm - 25)}
                   aria-label="Slower reading speed"
-                  title="Slower adaptive pace (-25 WPM)"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#282c37] text-[#8b949e] hover:text-white hover:bg-[#323745]"
+                  title="-25 WPM"
+                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
@@ -320,7 +312,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   value={targetWpm}
                   onChange={(e) => handleWpmChange(Number(e.target.value))}
                   aria-label="Target adaptive reading speed"
-                  title={`Target adaptive reading speed: ${targetWpm} WPM`}
                   className="ice-slider flex-1"
                 />
 
@@ -328,38 +319,25 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   type="button"
                   onClick={() => handleWpmChange(targetWpm + 25)}
                   aria-label="Faster reading speed"
-                  title="Faster adaptive pace (+25 WPM)"
-                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#282c37] text-[#8b949e] hover:text-white hover:bg-[#323745]"
+                  title="+25 WPM"
+                  className="w-6 h-6 shrink-0 flex items-center justify-center rounded-[2px] bg-[#232732] text-[#8b949e] hover:text-white hover:bg-[#2d323f] cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
 
-              <div className="flex items-center justify-between px-0.5 text-[11px] font-mono text-[#8b949e]">
-                <span
-                  className="flex items-center gap-1"
-                  title={`Current learned pace: ${metrics.currentWpm} WPM (Target: ${metrics.targetWpm} WPM, ${metrics.remainingSec}s left on this page)`}
-                >
-                  <Gauge className="w-3 h-3 text-[#f59e0b]" />
-                  <span className="text-white">{metrics.currentWpm}</span>
-                </span>
-
+              <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c] px-0.5">
+                <span className="text-[10px] text-[#8b949e]">Pause at breaks</span>
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={microPauseEnabled}
                   onClick={handleToggleMicroPause}
-                  aria-label="Toggle cognitive micro-pause on section breaks"
-                  title={
-                    microPauseEnabled
-                      ? 'Cognitive micro-pause ON (300ms pause at section breaks & blockquotes) — Click to disable'
-                      : 'Cognitive micro-pause OFF — Click to enable 300ms pause at section breaks'
-                  }
-                  className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                    microPauseEnabled
-                      ? 'bg-[#2a69df]/20 text-[#79c0ff] border border-[#2a69df]/50'
-                      : 'bg-[#282c37] text-[#6e7681] hover:text-white'
+                  className={`w-7 h-4 rounded-[2px] transition-colors p-0.5 flex items-center cursor-pointer ${
+                    microPauseEnabled ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
                   }`}
                 >
-                  <Pilcrow className="w-3 h-3" />
+                  <span className="w-3 h-3 bg-white rounded-[1px] block" />
                 </button>
               </div>
             </div>

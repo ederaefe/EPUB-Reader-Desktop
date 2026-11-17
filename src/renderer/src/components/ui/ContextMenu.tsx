@@ -69,7 +69,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       ref={menuRef}
       style={{ left: coords.left, top: coords.top }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-[100] min-w-[200px] max-w-[260px] bg-[#171a21] border border-[#2d323f] rounded-[2px] shadow-2xl py-1 text-[12px] text-[#e6edf3] select-none app-no-drag animate-in fade-in duration-75"
+      className="fixed z-[100] min-w-[200px] max-w-[260px] bg-[#171a21] border border-[#2d323f] rounded-md shadow-2xl py-1 text-[12px] text-[#e6edf3] select-none app-no-drag animate-in fade-in duration-75"
     >
       {items.map((item) => {
         if (item.divider) {

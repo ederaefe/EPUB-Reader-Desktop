@@ -98,7 +98,7 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
           width: `${width}px`,
           transform: showBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'
         }}
-        className="fixed z-50 bg-[#171a21] border border-[#2d323f] rounded-[3px] shadow-2xl overflow-hidden text-xs text-[#c9d1d9] select-none app-no-drag animate-in fade-in duration-100"
+        className="fixed z-50 bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl overflow-hidden text-xs text-[#c9d1d9] select-none app-no-drag animate-in fade-in duration-100"
       >
         {/* Top Bar: Color Switcher + Quick Actions */}
         <div className="h-9 bg-[#14161c] border-b border-[#232732] px-2.5 flex items-center justify-between gap-2">

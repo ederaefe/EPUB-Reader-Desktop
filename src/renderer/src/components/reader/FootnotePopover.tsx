@@ -18,7 +18,7 @@ export const FootnotePopover: React.FC<FootnotePopoverProps> = ({
   onJumpToNote
 }) => {
   return (
-    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 w-[480px] max-w-[90vw] bg-[#171a21] border border-[#2d323f] rounded-[3px] shadow-2xl p-3.5 text-xs text-[#c9d1d9] select-none animate-in fade-in slide-in-from-bottom-2 duration-150">
+    <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-40 w-[480px] max-w-[90vw] bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl p-3.5 text-xs text-[#c9d1d9] select-none animate-in fade-in slide-in-from-bottom-2 duration-150">
       <div className="flex items-center justify-between border-b border-[#232732] pb-2 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-[2px] bg-[#2a69df]/20 text-[#79c0ff] flex items-center justify-center font-mono text-[11px] font-semibold border border-[#2a69df]/30">

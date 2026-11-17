@@ -1637,7 +1637,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       {/* Custom Contextual Toast Notification */}
       {readerToast && (
-        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-[#171a21] border border-[#2d323f] text-[#e6edf3] text-xs px-3.5 py-2 rounded-[3px] shadow-2xl flex items-center gap-3 app-no-drag animate-in fade-in duration-100">
+        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-[#171a21] border border-[#2d323f] text-[#e6edf3] text-xs px-3.5 py-2 rounded-md shadow-2xl flex items-center gap-3 app-no-drag animate-in fade-in duration-100">
           <span>{readerToast.message}</span>
           {readerToast.actionLabel && readerToast.onAction && (
             <button

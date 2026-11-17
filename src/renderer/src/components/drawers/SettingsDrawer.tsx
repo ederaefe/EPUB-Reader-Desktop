@@ -3,9 +3,6 @@ import {
   X,
   Columns,
   Square,
-  Sun,
-  Moon,
-  Coffee,
   AlignJustify,
   ArrowRight,
   Zap,
@@ -26,6 +23,7 @@ import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import type { AutoscrollMode } from '../../db'
+import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 
 export const SettingsDrawer: React.FC = () => {
   const {
@@ -246,64 +244,16 @@ export const SettingsDrawer: React.FC = () => {
             </div>
           )}
 
-          {/* 1. Theme (2x2 grid with authentic icons, 1:1 rec_12.jpg) */}
+          {/* 1. Theme (2x2 curved live-preview cards) */}
           <div>
             <label className="text-[11px] font-medium text-[#8b949e] block mb-2">
               Theme
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {/* Day */}
-              <button
-                onClick={() => updateSettings({ theme: 'day' })}
-                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.theme === 'day'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-              >
-                <Sun className="w-3.5 h-3.5" />
-                <span>Day</span>
-              </button>
-
-              {/* Night */}
-              <button
-                onClick={() => updateSettings({ theme: 'night' })}
-                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.theme === 'night'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-              >
-                <Moon className="w-3.5 h-3.5" />
-                <span>Night</span>
-              </button>
-
-              {/* Light Sepia */}
-              <button
-                onClick={() => updateSettings({ theme: 'light-sepia' })}
-                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.theme === 'light-sepia'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-              >
-                <Coffee className="w-3.5 h-3.5" />
-                <span>Light sepia</span>
-              </button>
-
-              {/* Dark Sepia */}
-              <button
-                onClick={() => updateSettings({ theme: 'dark-sepia' })}
-                className={`h-9 rounded-[2px] flex items-center justify-center gap-2 border text-xs font-medium transition-colors ${
-                  settings.theme === 'dark-sepia'
-                    ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                    : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
-                }`}
-              >
-                <Coffee className="w-3.5 h-3.5" />
-                <span>Dark sepia</span>
-              </button>
-            </div>
+            <ThemePickerGrid
+              activeTheme={settings.theme}
+              onSelect={(theme) => updateSettings({ theme })}
+              compact
+            />
           </div>
 
           {/* 2. Dimming Slider */}
@@ -570,91 +520,89 @@ export const SettingsDrawer: React.FC = () => {
               }
 
               return (
-                <div className="space-y-2 pt-0.5">
+                <div className="space-y-2.5 pt-0.5">
+                  {/* Sleek Header + Native Toggle Switch */}
                   <div className="flex items-center justify-between">
-                    <span
-                      className="text-[11px] font-medium text-white flex items-center gap-1.5"
-                      title="Auto-Scroll displays a muted bottom-right countdown (even in fullscreen). Tap the number to pause or tweak parameters. Auto-pauses when leaving the app or after 5 minutes of inactivity."
-                    >
+                    <div className="flex items-center gap-1.5">
                       {effectiveMode === 'countdown' ? (
                         <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
                       ) : (
                         <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
                       )}
-                      <span>Auto-Scroll</span>
-                    </span>
+                      <span className="text-[11px] font-medium text-white">Auto-Scroll</span>
+                    </div>
 
                     <button
                       type="button"
+                      role="switch"
+                      aria-checked={isAutoscrollActive}
                       onClick={handleToggleAutoScroll}
-                      aria-label={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
-                      title={
-                        isAutoscrollActive
-                          ? 'Auto-Scroll is ON — Click to stop and hide bottom-right countdown'
-                          : 'Auto-Scroll is OFF — Click to start muted bottom-right countdown'
-                      }
-                      className={`w-7 h-7 rounded-[2px] flex items-center justify-center border transition-colors ${
-                        isAutoscrollActive
-                          ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                          : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white hover:bg-[#323745]'
+                      className={`w-9 h-5 rounded-[3px] transition-colors p-0.5 flex items-center cursor-pointer ${
+                        isAutoscrollActive ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
                       }`}
+                      title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
                     >
-                      <Power className="w-3.5 h-3.5" />
+                      <span className="w-4 h-4 bg-white rounded-[2px] shadow-sm block" />
                     </button>
                   </div>
 
-                  {/* Icon-Only Mode Switcher: Countdown Only vs Adaptive Countdown */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleModeChange('countdown')}
-                      aria-label="Countdown Only Mode"
-                      title="Countdown Only: Fixed seconds countdown per page turn (default 20s)"
-                      className={`h-8 rounded-[2px] flex items-center justify-center border transition-colors ${
-                        effectiveMode === 'countdown'
-                          ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                          : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white hover:bg-[#323745]'
-                      }`}
-                    >
-                      <Timer className="w-3.5 h-3.5" />
-                    </button>
+                  {/* Unified Sleek Card */}
+                  <div className="bg-[#12141a] p-2.5 rounded-[4px] border border-[#232732] space-y-3">
+                    {/* Sleek Segmented Mode Bar */}
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-2 p-0.5 bg-[#0d0f14] rounded-[3px] border border-[#1f232d]">
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('countdown')}
+                          className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                            effectiveMode === 'countdown'
+                              ? 'bg-[#2a69df] text-white shadow-sm'
+                              : 'text-[#8b949e] hover:text-white'
+                          }`}
+                        >
+                          <Timer className="w-3 h-3" />
+                          <span>Fixed</span>
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleModeChange('adaptive')}
-                      aria-label="Adaptive Countdown Mode"
-                      title="Adaptive Countdown: Dynamically adjusts countdown based on visible page word count and your reading pace (EMA)"
-                      className={`h-8 rounded-[2px] flex items-center justify-center border transition-colors ${
-                        effectiveMode === 'adaptive'
-                          ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                          : 'bg-[#282c37] border-[#3c404d] text-[#8b949e] hover:text-white hover:bg-[#323745]'
-                      }`}
-                    >
-                      <Zap className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('adaptive')}
+                          className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                            effectiveMode === 'adaptive'
+                              ? 'bg-[#2a69df] text-white shadow-sm'
+                              : 'text-[#8b949e] hover:text-white'
+                          }`}
+                        >
+                          <Zap className="w-3 h-3" />
+                          <span>Smart</span>
+                        </button>
+                      </div>
 
-                  {/* Parameter Controls */}
-                  <div className="bg-[#12141a] p-2.5 rounded-[2px] border border-[#232732] space-y-2">
+                      <p className="text-[10px] text-[#6e7681] px-0.5">
+                        {effectiveMode === 'countdown'
+                          ? 'Turns page on a fixed timer'
+                          : 'Adapts pace to word count & speed'}
+                      </p>
+                    </div>
+
+                    {/* Parameter Slider */}
                     {effectiveMode === 'countdown' ? (
-                      <>
-                        <div className="flex items-center justify-between text-[11px] font-mono">
-                          <span
-                            className="flex items-center gap-1.5 text-[#8b949e]"
-                            title={`Fixed countdown interval: ${countdownSec} seconds per page`}
-                          >
-                            <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
-                            <span className="text-white">{countdownSec}s</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleCountdownChange(20)}
-                            aria-label="Reset countdown interval to 20s"
-                            title="Reset fixed countdown interval to default 20s"
-                            className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                          </button>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-[#8b949e]">Page timer</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-white font-medium">{countdownSec}s</span>
+                            {countdownSec !== 20 && (
+                              <button
+                                type="button"
+                                onClick={() => handleCountdownChange(20)}
+                                title="Reset to 20s"
+                                className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <input
                           type="range"
@@ -663,65 +611,67 @@ export const SettingsDrawer: React.FC = () => {
                           step="5"
                           value={countdownSec}
                           onChange={(e) => handleCountdownChange(Number(e.target.value))}
-                          aria-label="Fixed countdown seconds per page"
-                          title={`Fixed countdown interval: ${countdownSec} seconds per page (5s to 120s)`}
                           className="ice-slider w-full"
                         />
-                      </>
+                        <div className="flex justify-between text-[9px] text-[#6e7681] font-mono">
+                          <span>5s</span>
+                          <span>120s</span>
+                        </div>
+                      </div>
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between text-[11px] font-mono">
-                          <span
-                            className="flex items-center gap-1.5 text-[#8b949e]"
-                            title={`Target adaptive reading pace: ${targetWpm} WPM`}
-                          >
-                            <Gauge className="w-3.5 h-3.5 text-[#f59e0b]" />
-                            <span className="text-white">{targetWpm}</span>
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={handleMicroPauseToggle}
-                              aria-label="Toggle cognitive micro-pause"
-                              title={
-                                microPauseEnabled
-                                  ? 'Cognitive micro-pause ON (300ms pause at section breaks & blockquotes) — Click to disable'
-                                  : 'Cognitive micro-pause OFF — Click to enable 300ms pause at section breaks'
-                              }
-                              className={`w-6 h-6 flex items-center justify-center rounded-[2px] transition-colors ${
-                                microPauseEnabled
-                                  ? 'bg-[#2a69df]/20 text-[#79c0ff] border border-[#2a69df]/50'
-                                  : 'text-[#6e7681] hover:text-white hover:bg-[#282c37]'
-                              }`}
-                            >
-                              <Pilcrow className="w-3 h-3" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateSettings({ targetWpm: 250 })
-                                adaptiveScrollEngine.reset(250)
-                              }}
-                              aria-label="Reset adaptive pace to 250 WPM"
-                              title="Reset adaptive reading pace to default 250 WPM"
-                              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                            </button>
+                      <div className="space-y-2.5">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-[#8b949e]">Reading pace</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-white font-medium">{targetWpm} WPM</span>
+                              {targetWpm !== 250 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateSettings({ targetWpm: 250 })
+                                    adaptiveScrollEngine.reset(250)
+                                  }}
+                                  title="Reset to 250 WPM"
+                                  className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <input
+                            type="range"
+                            min="100"
+                            max="800"
+                            step="25"
+                            value={targetWpm}
+                            onChange={(e) => handleWpmChange(Number(e.target.value))}
+                            className="ice-slider w-full"
+                          />
+                          <div className="flex justify-between text-[9px] text-[#6e7681]">
+                            <span>Relaxed</span>
+                            <span>Fast</span>
                           </div>
                         </div>
-                        <input
-                          type="range"
-                          min="100"
-                          max="800"
-                          step="25"
-                          value={targetWpm}
-                          onChange={(e) => handleWpmChange(Number(e.target.value))}
-                          aria-label="Target adaptive reading speed (WPM)"
-                          title={`Target adaptive reading pace: ${targetWpm} WPM (100 to 800 WPM)`}
-                          className="ice-slider w-full"
-                        />
-                      </>
+
+                        {/* Minimal Inline Toggle for Section Breaks */}
+                        <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c]">
+                          <span className="text-[11px] text-[#8b949e]">Pause at breaks</span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={microPauseEnabled}
+                            onClick={handleMicroPauseToggle}
+                            className={`w-7 h-4 rounded-[2px] transition-colors p-0.5 flex items-center cursor-pointer ${
+                              microPauseEnabled ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
+                            }`}
+                            title="Brief pause at chapter & section breaks"
+                          >
+                            <span className="w-3 h-3 bg-white rounded-[1px] block" />
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

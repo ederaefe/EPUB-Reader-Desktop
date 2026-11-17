@@ -132,7 +132,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       {!showNoteInput && (
         <div
           style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
-          className="fixed z-50 transform -translate-x-1/2 h-9 bg-[#171a21] border border-[#2d323f] rounded-[3px] p-1 flex items-center gap-1 shadow-2xl select-none app-no-drag animate-in fade-in duration-100"
+          className="fixed z-50 transform -translate-x-1/2 h-9 bg-[#171a21] border border-[#2d323f] rounded-md p-1 flex items-center gap-1 shadow-2xl select-none app-no-drag animate-in fade-in duration-100"
         >
           {/* Copy button */}
           <button
@@ -233,7 +233,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
           <form
             onSubmit={handleSaveNote}
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#171a21] border border-[#2d323f] rounded-[3px] p-4 w-[420px] shadow-2xl space-y-3"
+            className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[420px] shadow-2xl space-y-3"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -327,7 +327,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       {/* Feature 2: Inline Contextual Dictionary Modal */}
       {showDictModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#171a21] border border-[#2d323f] rounded-[3px] p-4 w-[460px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
+          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[460px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
             <div className="flex items-center justify-between border-b border-[#232732] pb-2">
               <div className="flex items-center gap-2">
                 <BookMarked className="w-4 h-4 text-[#2a69df]" />
@@ -403,7 +403,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       {/* Feature 2: Encyclopedic Wikipedia Modal */}
       {showWikiModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#171a21] border border-[#2d323f] rounded-[3px] p-4 w-[500px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
+          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[500px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
             <div className="flex items-center justify-between border-b border-[#232732] pb-2">
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-[#f59e0b]" />

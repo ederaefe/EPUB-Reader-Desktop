@@ -154,7 +154,7 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
         aria-label={targetCategory ? `Add to ${targetCategory.name}` : 'Add to Library'}
         className={`${
           step === 'library' ? 'w-[520px]' : 'w-[440px]'
-        } max-w-full bg-[#171a21] border border-[#2d323f] rounded-[3px] shadow-2xl flex flex-col overflow-hidden text-xs text-[#c9d1d9] transition-[width] duration-150`}
+        } max-w-full bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl flex flex-col overflow-hidden text-xs text-[#c9d1d9] transition-[width] duration-150`}
       >
         {/* Top Modal Header */}
         <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3.5 flex items-center justify-between shrink-0">
