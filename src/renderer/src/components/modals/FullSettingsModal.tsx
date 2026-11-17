@@ -315,13 +315,14 @@ export const FullSettingsModal: React.FC = () => {
                   <span>Default Font Size</span>
                   <span className="font-mono text-white">{settings.fontSize}px</span>
                 </div>
-                <input
-                  type="range"
-                  min="12"
-                  max="42"
+                <ValueStepper
                   value={settings.fontSize}
-                  onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-                  className="ice-slider w-full"
+                  min={12}
+                  max={42}
+                  step={1}
+                  unit="px"
+                  ariaLabel="Default Font Size"
+                  onChange={(val) => updateSettings({ fontSize: val })}
                 />
               </div>
 
@@ -330,14 +331,14 @@ export const FullSettingsModal: React.FC = () => {
                   <span>Line Spacing</span>
                   <span className="font-mono text-white">{Math.round(settings.lineHeight * 100)}%</span>
                 </div>
-                <input
-                  type="range"
-                  min="100"
-                  max="250"
-                  step="10"
+                <ValueStepper
                   value={Math.round(settings.lineHeight * 100)}
-                  onChange={(e) => updateSettings({ lineHeight: Number(e.target.value) / 100 })}
-                  className="ice-slider w-full"
+                  min={100}
+                  max={250}
+                  step={10}
+                  unit="%"
+                  ariaLabel="Line Spacing"
+                  onChange={(val) => updateSettings({ lineHeight: val / 100 })}
                 />
               </div>
 
@@ -365,14 +366,15 @@ export const FullSettingsModal: React.FC = () => {
                         <span>Color Temperature</span>
                         <span className="font-mono text-[#f59e0b]">{settings.warmFilterTemp || 3200}K</span>
                       </div>
-                      <input
-                        type="range"
-                        min="2000"
-                        max="4500"
-                        step="100"
+                      <ValueStepper
                         value={settings.warmFilterTemp || 3200}
-                        onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
-                        className="ice-slider w-full"
+                        min={2000}
+                        max={4500}
+                        step={100}
+                        unit="K"
+                        ariaLabel="Color Temperature"
+                        onChange={(val) => updateSettings({ warmFilterTemp: val })}
+                        compact
                       />
                     </div>
 
@@ -381,14 +383,15 @@ export const FullSettingsModal: React.FC = () => {
                         <span>Filter Intensity</span>
                         <span className="font-mono text-white">{settings.warmFilterIntensity || 40}%</span>
                       </div>
-                      <input
-                        type="range"
-                        min="10"
-                        max="90"
-                        step="5"
+                      <ValueStepper
                         value={settings.warmFilterIntensity || 40}
-                        onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
-                        className="ice-slider w-full"
+                        min={10}
+                        max={90}
+                        step={5}
+                        unit="%"
+                        ariaLabel="Filter Intensity"
+                        onChange={(val) => updateSettings({ warmFilterIntensity: val })}
+                        compact
                       />
                     </div>
                   </div>
@@ -578,14 +581,15 @@ export const FullSettingsModal: React.FC = () => {
                   <span>Speech Speed</span>
                   <span className="font-mono text-white">{settings.ttsSpeed.toFixed(1)}x</span>
                 </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.5"
-                  step="0.1"
+                <ValueStepper
                   value={settings.ttsSpeed}
-                  onChange={(e) => updateSettings({ ttsSpeed: Number(e.target.value) })}
-                  className="ice-slider w-full"
+                  min={0.5}
+                  max={2.5}
+                  step={0.1}
+                  decimals={1}
+                  unit="x"
+                  ariaLabel="Speech Speed"
+                  onChange={(val) => updateSettings({ ttsSpeed: val })}
                 />
               </div>
 
@@ -594,14 +598,14 @@ export const FullSettingsModal: React.FC = () => {
                   <span>Speech Pitch</span>
                   <span className="font-mono text-white">{settings.ttsPitch.toFixed(1)}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="1.5"
-                  step="0.1"
+                <ValueStepper
                   value={settings.ttsPitch}
-                  onChange={(e) => updateSettings({ ttsPitch: Number(e.target.value) })}
-                  className="ice-slider w-full"
+                  min={0.5}
+                  max={1.5}
+                  step={0.1}
+                  decimals={1}
+                  ariaLabel="Speech Pitch"
+                  onChange={(val) => updateSettings({ ttsPitch: val })}
                 />
               </div>
 
