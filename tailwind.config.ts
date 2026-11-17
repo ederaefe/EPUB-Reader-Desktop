@@ -45,9 +45,9 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Baskerville', 'Georgia', 'serif'],
-        readingSerif: ['Baskerville', 'Georgia', 'serif'],
-        readingSans: ['Baskerville', 'Georgia', 'sans-serif']
+        sans: ['"Libre Baskerville"', 'Baskerville', '"Baskerville Old Face"', 'Georgia', 'serif'],
+        readingSerif: ['"Libre Baskerville"', 'Baskerville', 'Georgia', 'serif'],
+        readingSans: ['"Segoe UI"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif']
       },
       borderRadius: {
         sm: '2px',

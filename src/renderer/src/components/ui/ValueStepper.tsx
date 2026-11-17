@@ -78,23 +78,26 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
     }
   }
 
-  const btnSize = compact ? 'w-5 h-5' : 'w-6 h-6'
-  const inputHeight = compact ? 'h-5' : 'h-6'
+  const heightClass = compact ? 'h-[26px]' : 'h-7'
+  const btnWidth = compact ? 'w-6' : 'w-7'
+  const centerWidth = unit ? (unit.length > 2 ? 'w-[72px]' : 'w-[64px]') : 'w-[52px]'
 
   return (
-    <div className="flex items-center gap-1">
+    <div
+      className={`inline-flex items-center ${heightClass} rounded-md border border-[var(--app-border-strong)] bg-[var(--app-input-bg)] overflow-hidden shrink-0 focus-within:border-[var(--app-accent)] focus-within:ring-2 focus-within:ring-[var(--app-accent-soft)] transition-colors`}
+    >
       <button
         type="button"
         onClick={() => onChange(clamp(value - step))}
         disabled={value <= min}
         aria-label={`Decrease ${ariaLabel}`}
         title={`-${step}${unit}`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-[3px] bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnWidth} h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Minus className="w-2.5 h-2.5" />
+        <Minus className="w-3 h-3" />
       </button>
 
-      <div className="relative w-16 flex items-center">
+      <div className={`${centerWidth} h-full flex items-center justify-center px-1.5 gap-0.5`}>
         <input
           type="text"
           inputMode={decimals > 0 ? 'decimal' : 'numeric'}
@@ -104,10 +107,12 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={(e) => e.target.select()}
           aria-label={ariaLabel}
-          className={`ice-input w-full ${inputHeight} px-1 text-center font-mono text-[11px] font-medium text-white tabular-nums select-text`}
+          className={`bg-transparent border-0 outline-none p-0 min-w-0 ${
+            unit ? 'w-[36px] text-right' : 'w-full text-center'
+          } font-mono text-[12px] font-bold text-[var(--app-text-strong)] tabular-nums select-text`}
         />
         {unit && (
-          <span className="absolute right-1 text-[9px] font-mono text-[#6e7681] pointer-events-none select-none">
+          <span className="text-[10.5px] font-mono font-semibold text-[var(--app-text-muted)] pointer-events-none select-none shrink-0">
             {unit}
           </span>
         )}
@@ -119,9 +124,9 @@ export const ValueStepper: React.FC<ValueStepperProps> = ({
         disabled={value >= max}
         aria-label={`Increase ${ariaLabel}`}
         title={`+${step}${unit}`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-[3px] bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnWidth} h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Plus className="w-2.5 h-2.5" />
+        <Plus className="w-3 h-3" />
       </button>
     </div>
   )

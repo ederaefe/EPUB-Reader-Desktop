@@ -34,7 +34,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   warmFilterTemp: 3200,
   warmFilterIntensity: 40,
   rsvpWpm: 350,
-  language: 'en',
   copyExternal: false,
   autoUpdate: true,
   sendStats: false,

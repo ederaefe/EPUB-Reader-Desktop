@@ -4,18 +4,15 @@ import {
   Upload,
   Download,
   Trash2,
-  ChevronRight,
-  Check,
   Archive,
   Database,
-  Info,
   BookOpen,
   Timer,
   Zap,
-  Gauge,
   RotateCcw,
-  Pilcrow,
-  Power
+  ExternalLink,
+  Globe,
+  FileText
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { backupService } from '../../services/backupService'
@@ -25,6 +22,32 @@ import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
+
+type FullSettingsTab = 'system' | 'reading' | 'hotkeys' | 'backup' | 'about'
+
+const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
+  { id: 'system', label: 'System' },
+  { id: 'reading', label: 'Reading settings' },
+  { id: 'hotkeys', label: 'Hotkeys' },
+  { id: 'backup', label: 'Backup & Sync' },
+  { id: 'about', label: 'About' }
+]
+
+const HOTKEYS_LEFT: Array<{ label: string; keys: string[] }> = [
+  { label: 'Show hotkeys', keys: ['F1'] },
+  { label: 'Go to previous page', keys: ['Left', 'PgUp'] },
+  { label: 'Go to next page', keys: ['Right', 'Space'] },
+  { label: 'Start/pause reading aloud', keys: ['F7'] },
+  { label: 'Stop reading aloud', keys: ['F8'] }
+]
+
+const HOTKEYS_RIGHT: Array<{ label: string; keys: string[] }> = [
+  { label: 'Add bookmark', keys: ['Ctrl + B'] },
+  { label: 'Search in book', keys: ['Ctrl + F'] },
+  { label: 'Switch theme', keys: ['F9'] },
+  { label: 'Switch column count', keys: ['F10'] },
+  { label: 'Switch fullscreen', keys: ['F11'] }
+]
 
 export const FullSettingsModal: React.FC = () => {
   const {
@@ -39,10 +62,7 @@ export const FullSettingsModal: React.FC = () => {
     bumpLibraryVersion
   } = useAppStore()
 
-  const [activeTab, setActiveTab] = useState<
-    'system' | 'reading' | 'tts' | 'hotkeys' | 'backup' | 'about'
-  >('system')
-
+  const [activeTab, setActiveTab] = useState<FullSettingsTab>('system')
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -85,7 +105,8 @@ export const FullSettingsModal: React.FC = () => {
   const handleEmptyLibrary = () => {
     openConfirmDialog({
       title: 'Empty Library?',
-      message: 'All imported books, highlights, and bookmarks will be removed from Semply. Your original files on disk will not be deleted.',
+      message:
+        'All imported books, highlights, and bookmarks will be removed from Semply. Your original files on disk will not be deleted.',
       confirmLabel: 'Empty Library',
       danger: true,
       onConfirm: async () => {
@@ -106,90 +127,52 @@ export const FullSettingsModal: React.FC = () => {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[780px] max-w-[92vw] h-[580px] max-h-[85vh] bg-[#111111] border border-white/[0.1] rounded-xl shadow-[0_24px_72px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden text-xs text-[#d4d4d4] animate-in fade-in zoom-in-95 duration-100"
+        className="w-[780px] max-w-[92vw] h-[580px] max-h-[85vh] bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-xl shadow-[0_24px_72px_rgba(0,0,0,0.45)] flex flex-col overflow-hidden text-xs text-[var(--app-text)] animate-in fade-in zoom-in-95 duration-100"
       >
         {/* Top Header & Tabs */}
-        <div className="h-11 bg-[#0a0a0a] border-b border-white/[0.08] flex items-center justify-between px-3 shrink-0">
-          <div className="flex items-center h-full gap-0.5">
-            <button
-              onClick={() => setActiveTab('system')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'system'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              System
-            </button>
-            <button
-              onClick={() => setActiveTab('reading')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'reading'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              Reading settings
-            </button>
-            <button
-              onClick={() => setActiveTab('tts')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'tts'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              Text to speech
-            </button>
-            <button
-              onClick={() => setActiveTab('hotkeys')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'hotkeys'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              Hotkeys
-            </button>
-            <button
-              onClick={() => setActiveTab('backup')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'backup'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              Backup & Sync
-            </button>
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`h-full px-3.5 text-xs font-medium border-b-2 transition-colors flex items-center cursor-pointer ${
-                activeTab === 'about'
-                  ? 'border-white text-white'
-                  : 'border-transparent text-[#888888] hover:text-white'
-              }`}
-            >
-              About
-            </button>
+        <div className="h-12 bg-[var(--app-chrome)] border-b border-[var(--app-border)] flex items-center justify-between px-3 shrink-0">
+          <div className="flex items-center gap-1" role="tablist" aria-label="Settings sections">
+            {SETTINGS_TABS.map((tab) => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  data-active={isActive ? 'true' : 'false'}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`settings-tab h-8 px-3 text-[12.5px] flex items-center cursor-pointer ${
+                    isActive ? 'font-bold' : 'font-semibold'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
           </div>
 
           <button
+            type="button"
             onClick={() => toggleFullSettingsModal(false)}
-            className="w-7 h-7 flex items-center justify-center text-[#777777] hover:text-white hover:bg-white/[0.08] rounded-md transition-colors cursor-pointer"
+            className="settings-close-btn w-7 h-7 flex items-center justify-center rounded-md cursor-pointer"
             title="Close (Esc)"
+            aria-label="Close settings"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Fixed-Frame Scrollable Tab Content Area */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto p-5">
           {backupStatus && (
-            <div className="mb-4 px-3 py-2 bg-[#1f232d] border border-[#2a69df]/50 text-[#79c0ff] text-xs rounded-[2px] flex items-center justify-between">
-              <span>{backupStatus}</span>
+            <div className="mb-3.5 px-3.5 py-2 bg-[var(--app-accent-soft)] border border-[var(--app-accent)]/40 text-[var(--app-accent-text)] text-xs rounded-lg flex items-center justify-between animate-fadeIn">
+              <span className="font-semibold">{backupStatus}</span>
               <button
+                type="button"
                 onClick={() => setBackupStatus(null)}
-                className="text-[#8b949e] hover:text-white"
+                className="w-5 h-5 rounded flex items-center justify-center hover:bg-[var(--app-overlay-tint-strong)] active:scale-90 transition-all cursor-pointer"
+                aria-label="Dismiss status message"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -198,35 +181,28 @@ export const FullSettingsModal: React.FC = () => {
 
           {/* 1. SYSTEM TAB */}
           {activeTab === 'system' && (
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fadeIn">
               {/* Left Column */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Language</label>
-                  <select
-                    value={settings.language || 'en'}
-                    onChange={(e) => updateSettings({ language: e.target.value })}
-                    className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px]"
-                  >
-                    <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                    <option value="de">Deutsch</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-2">Theme</label>
+              <div className="space-y-3.5">
+                <div className="settings-card p-3.5 rounded-lg space-y-2.5">
+                  <label className="text-[13.5px] font-bold text-[var(--app-text-strong)] block">
+                    Theme
+                  </label>
                   <ThemePickerGrid
                     activeTheme={settings.theme}
                     onSelect={(theme) => updateSettings({ theme })}
+                    compact
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-                    <span>Dimming</span>
-                    <span className="font-mono text-white text-[11px]">{settings.dimming}%</span>
+                <div className="settings-card px-3.5 py-2.5 rounded-lg flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[13px] font-bold text-[var(--app-text-strong)] block">
+                      Screen Dimming
+                    </span>
+                    <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                      Soften overall window brightness
+                    </span>
                   </div>
                   <ValueStepper
                     value={settings.dimming}
@@ -239,67 +215,85 @@ export const FullSettingsModal: React.FC = () => {
                   />
                 </div>
 
-                {/* Toggles (Sleek Modern Desktop Checkboxes) */}
-                <div className="space-y-2.5 pt-2">
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+                {/* Interactive Checkbox Rows */}
+                <div className="settings-card p-2 rounded-lg space-y-0.5">
+                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={Boolean(settings.copyExternal)}
                       onChange={(e) => updateSettings({ copyExternal: e.target.checked })}
                       className="ice-checkbox"
                     />
-                    <span className="group-hover:text-white transition-colors">Copy eBooks from external devices</span>
+                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
+                      Copy eBooks from external devices
+                    </span>
                   </label>
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={settings.autoUpdate ?? true}
                       onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
                       className="ice-checkbox"
                     />
-                    <span className="group-hover:text-white transition-colors">Check for the updates automatically</span>
+                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
+                      Check for updates automatically
+                    </span>
                   </label>
-                  <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
+                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={Boolean(settings.sendStats)}
                       onChange={(e) => updateSettings({ sendStats: e.target.checked })}
                       className="ice-checkbox"
                     />
-                    <span className="group-hover:text-white transition-colors">Send anonymous usage stats</span>
+                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
+                      Send anonymous usage stats
+                    </span>
                   </label>
                 </div>
               </div>
 
               {/* Right Column */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[11px] text-[#8b949e] block mb-1.5">Quick Backup Actions</label>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="space-y-3.5">
+                <div className="settings-card p-4 rounded-lg space-y-3">
+                  <div>
+                    <label className="text-[13.5px] font-bold text-[var(--app-text-strong)] block">
+                      Quick Backup Actions
+                    </label>
+                    <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
+                      Export or merge your shelves, notes, and reading progress.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
+                      type="button"
                       onClick={handleExportJson}
                       disabled={isProcessing}
-                      className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]"
+                      className="settings-btn-primary h-8 px-3 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span>Export JSON</span>
                     </button>
                     <button
+                      type="button"
                       onClick={handleImportBackup}
                       disabled={isProcessing}
-                      className="ice-btn-blue h-8 flex items-center justify-center gap-1.5 rounded-[2px]"
+                      className="settings-btn-secondary h-8 px-3 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-semibold cursor-pointer"
                     >
                       <Download className="w-3.5 h-3.5" />
                       <span>Import Additive</span>
                     </button>
                   </div>
-                  <button
-                    onClick={handleEmptyLibrary}
-                    className="ice-btn-dark w-full h-8 flex items-center justify-center gap-1.5 text-xs text-[#f85149] hover:bg-[#332225] rounded-[2px]"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Empty Library</span>
-                  </button>
+                  <div className="pt-2 border-t border-[var(--app-border)]">
+                    <button
+                      type="button"
+                      onClick={handleEmptyLibrary}
+                      className="settings-btn-danger w-full h-8 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Empty Library</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -307,65 +301,82 @@ export const FullSettingsModal: React.FC = () => {
 
           {/* 2. READING SETTINGS TAB */}
           {activeTab === 'reading' && (
-            <div className="space-y-5 max-w-lg">
-              <FontPicker />
-
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-                  <span>Default Font Size</span>
-                  <span className="font-mono text-white">{settings.fontSize}px</span>
+            <div className="space-y-3 max-w-[600px] animate-fadeIn">
+              {/* Compact Unified Typography Card */}
+              <div className="settings-card rounded-lg divide-y divide-[var(--app-border)]">
+                <div className="px-3.5 py-2.5">
+                  <FontPicker inline />
                 </div>
-                <ValueStepper
-                  value={settings.fontSize}
-                  min={12}
-                  max={42}
-                  step={1}
-                  unit="px"
-                  ariaLabel="Default Font Size"
-                  onChange={(val) => updateSettings({ fontSize: val })}
-                />
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-                  <span>Line Spacing</span>
-                  <span className="font-mono text-white">{Math.round(settings.lineHeight * 100)}%</span>
+                <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
+                  <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
+                    Default Font Size
+                  </span>
+                  <ValueStepper
+                    value={settings.fontSize}
+                    min={12}
+                    max={42}
+                    step={1}
+                    unit="px"
+                    ariaLabel="Default Font Size"
+                    onChange={(val) => updateSettings({ fontSize: val })}
+                  />
                 </div>
-                <ValueStepper
-                  value={Math.round(settings.lineHeight * 100)}
-                  min={100}
-                  max={250}
-                  step={10}
-                  unit="%"
-                  ariaLabel="Line Spacing"
-                  onChange={(val) => updateSettings({ lineHeight: val / 100 })}
-                />
+
+                <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
+                  <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
+                    Line Spacing
+                  </span>
+                  <ValueStepper
+                    value={Math.round(settings.lineHeight * 100)}
+                    min={100}
+                    max={250}
+                    step={10}
+                    unit="%"
+                    ariaLabel="Line Spacing"
+                    onChange={(val) => updateSettings({ lineHeight: val / 100 })}
+                  />
+                </div>
               </div>
 
               {/* Warm Blue Light Night Filter Section */}
-              <div className="p-3 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-white">Warm Blue Light Night Filter</span>
-                    <span className="text-[10px] text-[#f59e0b] font-mono">Candlelight - Daylight</span>
+              <div className="settings-card p-3.5 rounded-lg space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
+                      Warm Blue Light Night Filter
+                    </span>
+                    <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-semibold">
+                      Candlelight – Daylight
+                    </span>
                   </div>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(settings.warmFilterEnabled)}
+                    data-preserve-theme="true"
                     onClick={() => updateSettings({ warmFilterEnabled: !settings.warmFilterEnabled })}
-                    className={`w-9 h-5 rounded-[2px] transition-colors p-0.5 flex items-center ${
-                      settings.warmFilterEnabled ? 'bg-[#f59e0b] justify-end' : 'bg-[#282c37] justify-start'
-                    }`}
+                    style={{
+                      backgroundColor: settings.warmFilterEnabled
+                        ? '#f59e0b'
+                        : 'var(--app-border-strong)'
+                    }}
+                    className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
                   >
-                    <span className="w-4 h-4 bg-white rounded-[1px] shadow-sm block" />
+                    <span
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
+                        settings.warmFilterEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
                   </button>
                 </div>
 
                 {settings.warmFilterEnabled && (
-                  <div className="space-y-3 pt-1">
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1">
-                        <span>Color Temperature</span>
-                        <span className="font-mono text-[#f59e0b]">{settings.warmFilterTemp || 3200}K</span>
-                      </div>
+                  <div className="pt-2 border-t border-[var(--app-border)] space-y-2 animate-fadeIn">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-[12.5px] font-bold text-[var(--app-text)]">
+                        Color Temperature
+                      </span>
                       <ValueStepper
                         value={settings.warmFilterTemp || 3200}
                         min={2000}
@@ -378,11 +389,10 @@ export const FullSettingsModal: React.FC = () => {
                       />
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1">
-                        <span>Filter Intensity</span>
-                        <span className="font-mono text-white">{settings.warmFilterIntensity || 40}%</span>
-                      </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-[12.5px] font-bold text-[var(--app-text)]">
+                        Filter Intensity
+                      </span>
                       <ValueStepper
                         value={settings.warmFilterIntensity || 40}
                         min={10}
@@ -398,10 +408,11 @@ export const FullSettingsModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Dual-Mode Auto-Scroll Countdown Section (Manual Seconds Input in Both Modes) */}
+              {/* Dual-Mode Auto-Scroll Countdown Section */}
               {(() => {
                 const effectiveMode: AutoscrollMode =
-                  settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
+                  settings.autoscrollMode ??
+                  (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
                 const countdownSec = settings.autoscrollCountdownSec ?? 20
                 const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
                 const microPauseEnabled = settings.autoscrollMicroPause ?? true
@@ -430,19 +441,21 @@ export const FullSettingsModal: React.FC = () => {
                 }
 
                 return (
-                  <div className="p-3.5 bg-[#12141a] border border-[#232732] rounded-[4px] space-y-3">
-                    {/* Header + Sleek Switch */}
-                    <div className="flex items-center justify-between">
+                  <div className="settings-card p-3.5 rounded-lg space-y-3">
+                    {/* Header + Switch */}
+                    <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-1.5">
                           {effectiveMode === 'countdown' ? (
-                            <Timer className="w-3.5 h-3.5 text-[#2a69df]" />
+                            <Timer className="w-4 h-4 text-[var(--app-accent)]" />
                           ) : (
-                            <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
+                            <Zap className="w-4 h-4 text-amber-500" />
                           )}
-                          <span className="text-xs font-semibold text-white">Auto-Scroll</span>
+                          <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
+                            Auto-Scroll
+                          </span>
                         </div>
-                        <p className="text-[11px] text-[#6e7681] mt-0.5">
+                        <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
                           {effectiveMode === 'countdown'
                             ? 'Turns page automatically on a fixed timer'
                             : 'Scales your base seconds dynamically to each page word count'}
@@ -453,6 +466,7 @@ export const FullSettingsModal: React.FC = () => {
                         type="button"
                         role="switch"
                         aria-checked={isAutoscrollActive}
+                        data-preserve-theme="true"
                         onClick={() => {
                           const next = !isAutoscrollActive
                           if (!next) {
@@ -462,25 +476,29 @@ export const FullSettingsModal: React.FC = () => {
                           }
                           setAutoscrollActive(next)
                         }}
-                        className={`w-9 h-5 rounded-[3px] transition-colors p-0.5 flex items-center cursor-pointer shrink-0 ${
-                          isAutoscrollActive ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
-                        }`}
+                        style={{
+                          backgroundColor: isAutoscrollActive
+                            ? 'var(--app-accent)'
+                            : 'var(--app-border-strong)'
+                        }}
+                        className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
                         title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
                       >
-                        <span className="w-4 h-4 bg-white rounded-[2px] shadow-sm block" />
+                        <span
+                          className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
+                            isAutoscrollActive ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
                       </button>
                     </div>
 
-                    {/* Sleek Segmented Mode Selector */}
-                    <div className="grid grid-cols-2 p-0.5 bg-[#0d0f14] rounded-[3px] border border-[#1f232d]">
+                    {/* Segmented Mode Selector */}
+                    <div className="grid grid-cols-2 gap-1 p-1 bg-[var(--app-surface-2)] rounded-lg border border-[var(--app-border)]">
                       <button
                         type="button"
+                        data-active={effectiveMode === 'countdown' ? 'true' : 'false'}
                         onClick={() => handleModeChange('countdown')}
-                        className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                          effectiveMode === 'countdown'
-                            ? 'bg-[#2a69df] text-white shadow-sm'
-                            : 'text-[#8b949e] hover:text-white'
-                        }`}
+                        className="settings-segment-btn h-7 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
                       >
                         <Timer className="w-3.5 h-3.5" />
                         <span>Fixed Timer</span>
@@ -488,29 +506,31 @@ export const FullSettingsModal: React.FC = () => {
 
                       <button
                         type="button"
+                        data-active={effectiveMode === 'adaptive' ? 'true' : 'false'}
                         onClick={() => handleModeChange('adaptive')}
-                        className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                          effectiveMode === 'adaptive'
-                            ? 'bg-[#2a69df] text-white shadow-sm'
-                            : 'text-[#8b949e] hover:text-white'
-                        }`}
+                        className="settings-segment-btn h-7 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5" />
                         <span>Smart Pace</span>
                       </button>
                     </div>
 
-                    {/* Mode Controls (Manual Numeric Seconds in Both Modes) */}
+                    {/* Inline Compact Mode Controls */}
                     {effectiveMode === 'countdown' ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-[#8b949e]">Seconds per page (3–600s)</span>
+                      <div className="flex items-center justify-between gap-3 pt-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                            Seconds per page
+                          </span>
+                          <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                            (3–600s)
+                          </span>
                           {countdownSec !== 20 && (
                             <button
                               type="button"
                               onClick={() => handleCountdownChange(20)}
                               title="Reset to 20s"
-                              className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
+                              className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
                             >
                               <RotateCcw className="w-3 h-3" />
                             </button>
@@ -526,16 +546,21 @@ export const FullSettingsModal: React.FC = () => {
                         />
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-[#8b949e]">Base seconds per page (3–600s)</span>
+                      <div className="space-y-2.5 pt-0.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                              Base seconds per page
+                            </span>
+                            <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                              (3–600s)
+                            </span>
                             {adaptiveSec !== 25 && (
                               <button
                                 type="button"
                                 onClick={() => handleAdaptiveSecChange(25)}
                                 title="Reset to 25s"
-                                className="text-[#6e7681] hover:text-white transition-colors cursor-pointer"
+                                className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
                               >
                                 <RotateCcw className="w-3 h-3" />
                               </button>
@@ -551,18 +576,28 @@ export const FullSettingsModal: React.FC = () => {
                           />
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-[#1e222c]">
-                          <span className="text-[11px] text-[#8b949e]">Pause at section breaks</span>
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--app-border)]">
+                          <span className="text-[12.5px] font-bold text-[var(--app-text)]">
+                            Pause at section breaks
+                          </span>
                           <button
                             type="button"
                             role="switch"
                             aria-checked={microPauseEnabled}
+                            data-preserve-theme="true"
                             onClick={handleMicroPauseToggle}
-                            className={`w-7 h-4 rounded-[2px] transition-colors p-0.5 flex items-center cursor-pointer ${
-                              microPauseEnabled ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
-                            }`}
+                            style={{
+                              backgroundColor: microPauseEnabled
+                                ? 'var(--app-accent)'
+                                : 'var(--app-border-strong)'
+                            }}
+                            className="settings-switch w-8 h-4 rounded-full p-0.5 flex items-center cursor-pointer"
                           >
-                            <span className="w-3 h-3 bg-white rounded-[1px] block" />
+                            <span
+                              className={`w-3 h-3 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
+                                microPauseEnabled ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
                           </button>
                         </div>
                       </div>
@@ -573,154 +608,105 @@ export const FullSettingsModal: React.FC = () => {
             </div>
           )}
 
-          {/* 3. TEXT TO SPEECH TAB */}
-          {activeTab === 'tts' && (
-            <div className="space-y-4 max-w-md">
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-                  <span>Speech Speed</span>
-                  <span className="font-mono text-white">{settings.ttsSpeed.toFixed(1)}x</span>
-                </div>
-                <ValueStepper
-                  value={settings.ttsSpeed}
-                  min={0.5}
-                  max={2.5}
-                  step={0.1}
-                  decimals={1}
-                  unit="x"
-                  ariaLabel="Speech Speed"
-                  onChange={(val) => updateSettings({ ttsSpeed: val })}
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">
-                  <span>Speech Pitch</span>
-                  <span className="font-mono text-white">{settings.ttsPitch.toFixed(1)}</span>
-                </div>
-                <ValueStepper
-                  value={settings.ttsPitch}
-                  min={0.5}
-                  max={1.5}
-                  step={0.1}
-                  decimals={1}
-                  ariaLabel="Speech Pitch"
-                  onChange={(val) => updateSettings({ ttsPitch: val })}
-                />
-              </div>
-
-              <div className="p-3 bg-[#14161c] border border-[#232732] rounded-[3px] text-[11px] text-[#8b949e] space-y-1">
-                <p className="font-medium text-white">Smart Pronunciation Normalization</p>
-                <p>
-                  Automatic translation for decimals (3.14 &rarr; 3 point 14), abbreviations (Dr., Mr., etc., e.g., i.e.), and Roman numerals (Chapter IV &rarr; Chapter 4).
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 4. HOTKEYS TAB */}
+          {/* 3. HOTKEYS TAB */}
           {activeTab === 'hotkeys' && (
-            <div className="grid grid-cols-2 gap-x-10 gap-y-2 text-xs">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Show hotkeys</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F1</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Go to previous page</span>
-                  <div className="flex gap-1">
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Left</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">PgUp</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] animate-fadeIn">
+              <div className="space-y-1">
+                {HOTKEYS_LEFT.map((item) => (
+                  <div
+                    key={item.label}
+                    className="settings-row-interactive flex items-center justify-between px-2.5 py-2"
+                  >
+                    <span className="font-semibold text-[var(--app-text-strong)]">{item.label}</span>
+                    <div className="flex gap-1.5">
+                      {item.keys.map((keyLabel) => (
+                        <kbd
+                          key={keyLabel}
+                          className="settings-kbd px-2 py-0.5 rounded font-mono text-[11px] font-bold"
+                        >
+                          {keyLabel}
+                        </kbd>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Go to next page</span>
-                  <div className="flex gap-1">
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Right</span>
-                    <span className="px-1.5 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Space</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Start/pause reading aloud</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F7</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Stop reading aloud</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F8</span>
-                </div>
+                ))}
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Add bookmark</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + B</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Search in book</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">Ctrl + F</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Switch theme</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F9</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Switch column count</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F10</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-[#232732]">
-                  <span>Switch fullscreen</span>
-                  <span className="px-2 py-0.5 bg-[#282c37] border border-[#3c404d] rounded-[2px] font-mono text-[11px]">F11</span>
-                </div>
+              <div className="space-y-1">
+                {HOTKEYS_RIGHT.map((item) => (
+                  <div
+                    key={item.label}
+                    className="settings-row-interactive flex items-center justify-between px-2.5 py-2"
+                  >
+                    <span className="font-semibold text-[var(--app-text-strong)]">{item.label}</span>
+                    <div className="flex gap-1.5">
+                      {item.keys.map((keyLabel) => (
+                        <kbd
+                          key={keyLabel}
+                          className="settings-kbd px-2 py-0.5 rounded font-mono text-[11px] font-bold"
+                        >
+                          {keyLabel}
+                        </kbd>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* 5. BACKUP & SYNC TAB (Feature 6: Additive Universal Library Backup) */}
+          {/* 4. BACKUP & SYNC TAB */}
           {activeTab === 'backup' && (
-            <div className="space-y-5 max-w-xl">
-              <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
-                <div className="flex items-center gap-2 text-white">
-                  <Database className="w-4 h-4 text-[#2a69df]" />
-                  <span className="text-sm font-semibold">Universal Additive Library Backup</span>
+            <div className="space-y-3.5 max-w-xl animate-fadeIn">
+              <div className="settings-card p-4 rounded-lg space-y-2.5">
+                <div className="flex items-center gap-2 text-[var(--app-text-strong)]">
+                  <Database className="w-4 h-4 text-[var(--app-accent)]" />
+                  <span className="text-[14px] font-bold">Universal Additive Library Backup</span>
                 </div>
-                <p className="text-xs text-[#8b949e] leading-relaxed">
-                  Export your complete library, custom shelves, notes, highlights, and bookmarks into portable format. When importing, the engine performs a non-destructive additive merge that preserves all local data.
+                <p className="text-[12px] font-normal text-[var(--app-text-muted)] leading-relaxed">
+                  Export your complete library, custom shelves, notes, highlights, and bookmarks
+                  into portable format. When importing, the engine performs a non-destructive
+                  additive merge that preserves all local data.
                 </p>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1.5">
                   <button
+                    type="button"
                     onClick={handleExportJson}
                     disabled={isProcessing}
-                    className="ice-btn-dark h-9 flex items-center justify-center gap-2 rounded-[2px]"
+                    className="settings-btn-secondary h-8 px-3 rounded-md flex items-center justify-center gap-2 text-[12px] font-semibold cursor-pointer"
                   >
-                    <Upload className="w-3.5 h-3.5 text-[#2a69df]" />
+                    <Upload className="w-3.5 h-3.5 text-[var(--app-accent)]" />
                     <span>Export Metadata (JSON)</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={handleExportZip}
                     disabled={isProcessing}
-                    className="ice-btn-dark h-9 flex items-center justify-center gap-2 rounded-[2px]"
+                    className="settings-btn-secondary h-8 px-3 rounded-md flex items-center justify-center gap-2 text-[12px] font-semibold cursor-pointer"
                   >
-                    <Archive className="w-3.5 h-3.5 text-[#f59e0b]" />
+                    <Archive className="w-3.5 h-3.5 text-amber-500" />
                     <span>Export Archive with Covers (ZIP)</span>
                   </button>
                 </div>
               </div>
 
-              <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
-                <div className="flex items-center gap-2 text-white">
-                  <Download className="w-4 h-4 text-[#4cd964]" />
-                  <span className="text-sm font-semibold">Additive Import & Restore</span>
+              <div className="settings-card p-4 rounded-lg space-y-2.5">
+                <div className="flex items-center gap-2 text-[var(--app-text-strong)]">
+                  <Download className="w-4 h-4 text-emerald-500" />
+                  <span className="text-[14px] font-bold">Additive Import &amp; Restore</span>
                 </div>
-                <p className="text-xs text-[#8b949e] leading-relaxed">
-                  Select a previously exported .json or .zip backup. Existing reading progress is retained, books are deduplicated, and new categories and annotations are appended.
+                <p className="text-[12px] font-normal text-[var(--app-text-muted)] leading-relaxed">
+                  Select a previously exported .json or .zip backup. Existing reading progress is
+                  retained, books are deduplicated, and new categories and annotations are appended.
                 </p>
 
                 <button
+                  type="button"
                   onClick={handleImportBackup}
                   disabled={isProcessing}
-                  className="ice-btn-blue h-9 px-4 flex items-center justify-center gap-2 rounded-[2px]"
+                  className="settings-btn-primary h-8 px-4 rounded-md flex items-center justify-center gap-2 text-[12px] font-bold cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Choose Backup File to Import</span>
@@ -729,43 +715,56 @@ export const FullSettingsModal: React.FC = () => {
             </div>
           )}
 
-          {/* 6. ABOUT TAB */}
+          {/* 5. ABOUT TAB */}
           {activeTab === 'about' && (
-            <div className="space-y-4 max-w-lg">
-              <div className="p-4 bg-[#14161c] border border-[#232732] rounded-[3px] space-y-3">
-                <div className="flex items-center gap-2 text-white">
-                  <BookOpen className="w-5 h-5 text-[#2a69df]" />
+            <div className="space-y-3.5 max-w-lg animate-fadeIn">
+              <div className="settings-card p-4 rounded-lg space-y-3.5">
+                <div className="flex items-center gap-3 text-[var(--app-text-strong)]">
+                  <div className="p-2.5 bg-[var(--app-accent-soft)] rounded-lg">
+                    <BookOpen className="w-6 h-6 text-[var(--app-accent)]" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white">Semply Ebook Reader</h3>
-                    <p className="text-[11px] text-[#8b949e]">Version 1.0.0 (Native Desktop Edition)</p>
+                    <h3 className="text-[15px] font-bold text-[var(--app-text-strong)]">
+                      Semply Ebook Reader
+                    </h3>
+                    <p className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                      Version 1.0.0 (Native Desktop Edition)
+                    </p>
                   </div>
                 </div>
 
-                <p className="text-xs text-[#c9d1d9] leading-relaxed">
-                  Semply Ebook Reader is a modern, high-performance desktop reading workstation engineered with native Windows design principles, free from generic web rounded pill buttons or paywalled feature gates.
+                <p className="text-[12.5px] font-normal text-[var(--app-text)] leading-relaxed">
+                  Semply is designed to be your primary reading workstation. We prioritize
+                  performance, accessibility, and focus—providing a clean, distraction-free
+                  environment for deep reading.
                 </p>
 
-                <div className="pt-2 border-t border-[#232732] space-y-1.5 text-[11px] text-[#8b949e]">
-                  <div className="flex items-center justify-between">
-                    <span>Adaptive Auto-Scroll Engine</span>
-                    <span className="text-[#4cd964]">Active (EMA &alpha; = 0.15)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Speech Normalization</span>
-                    <span className="text-[#4cd964]">Librera Regex Matrix</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Footnote Handling</span>
-                    <span className="text-[#4cd964]">Non-Destructive Popover</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Night Filter</span>
-                    <span className="text-[#4cd964]">Chromatic Warm Amber (2000K-4500K)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Universal Backup</span>
-                    <span className="text-[#4cd964]">Additive JSON &amp; ZIP Sync</span>
-                  </div>
+                <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--app-border)] text-xs">
+                  <a
+                    href="https://github.com/ederaefe/EPUB-Reader-Desktop"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>GitHub</span>
+                  </a>
+                  <a
+                    href="documentations/index.html"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>User Manual</span>
+                  </a>
+                  <a
+                    href="https://github.com/ederaefe/EPUB-Reader-Desktop#readme"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    <span>Website</span>
+                  </a>
                 </div>
               </div>
             </div>

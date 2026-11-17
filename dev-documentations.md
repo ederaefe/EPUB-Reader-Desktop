@@ -2,6 +2,13 @@
 
 > **Permanent Technical Reference** — Verified against the live Electron + React 19 + TypeScript + MuPDF WASM codebase. Every IPC channel, database schema, state slice, algorithmic threshold, design token, and invariant documented below reflects the current production architecture.
 
+## Documentation Style Guide (Developer Reference)
+All future technical updates appended to `dev-documentations.md` must follow these rules:
+- **Audience**: Maintainers and contributors working directly on the Electron, React, TypeScript, and CSS layers.
+- **Depth & Precision**: Cite exact file paths, component/prop signatures, CSS custom properties, typography/spacing values, Zustand/Dexie schema changes, IPC contracts, and architectural invariants.
+- **Append-Only Revision Log**: Record each completed increment as a sequentially numbered `## Increment N: <Title>` section at the end of the file, grouped under `### Architecture & Implementation` with numbered subsystems.
+- **Separation of Concerns**: Keep plain-language user summaries in `documentation.md`; keep code-level specifics and engineering trade-offs here in `dev-documentations.md`.
+
 ## Table of Contents
 1. [Product Overview & System Topology](#1-product-overview--system-topology)
 2. [Technology Stack & Dependency Matrix](#2-technology-stack--dependency-matrix)
@@ -1232,5 +1239,29 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - Added direct contributor links to Star, Fork, Issue Tracking, and the Developer Manual.
 3. **Application Icon Hygiene & Compiler Certification (`BookCard.tsx`)**:
    - Restored missing `Pin`, `PinOff`, and `ImageIcon` imports from `lucide-react`, ensuring zero compiler diagnostics in `tsc --noEmit`.
+
+---
+
+## Increment 29: App-Wide Libre Baskerville Typography, Compact Inline Steppers, Settings Hierarchy Overhaul & Language Removal
+
+### Architecture & Implementation
+1. **Offline-Bundled App-Wide Roman Typography (`src/renderer/src/assets/fonts/`, `src/renderer/src/index.css`, `tailwind.config.ts`)**:
+   - Bundled official SIL-OFL **Libre Baskerville** variable `.woff2` font assets (`libre-baskerville-400-normal-latin.woff2`, `libre-baskerville-400-normal-latin-ext.woff2`, `libre-baskerville-400-italic-latin.woff2`, `libre-baskerville-400-italic-latin-ext.woff2`, supporting native `font-weight: 400 700` without faux-bold degradation) directly in `src/renderer/src/assets/fonts/` for 100% offline cross-OS rendering (Windows, macOS, Linux).
+   - Registered `@font-face` rules in `src/renderer/src/index.css`, updated `body` `font-family` and Tailwind `theme.extend.fontFamily.sans` / `readingSerif` to `'Libre Baskerville', Baskerville, 'Baskerville Old Face', Georgia, serif`, and reset `body` `letter-spacing` from `-0.01em` to `0` so Roman serif glyphs remain open and crisp at UI scale.
+   - Strengthened `--app-text-muted` and `--app-text-subtle` contrast tokens across all 4 themes (`night`, `day`, `light-sepia`, `dark-sepia`) and added a zero-specificity `:where(...)` rule in `index.css` applying `font-weight: 600` to muted UI text classes (cleanly overridden whenever `.font-normal` or `.font-bold` is explicitly applied).
+2. **Unified Compact Segmented Stepper Controls (`ValueStepper.tsx`, `SecondsNumberInput.tsx`)**:
+   - Refactored both `ValueStepper` and `SecondsNumberInput` into a single cohesive inline segmented control (`h-7` standard, `h-[26px]` compact; `w-7` / `w-6` `-` and `+` buttons; side-by-side flex value + unit container eliminating absolute-positioned unit collisions and full-width horizontal bloat).
+   - Styled natively against CSS theme tokens (`--app-input-bg`, `--app-surface-2`, `--app-border-strong`, `--app-accent`) with tactile hover/active transitions across all 4 themes.
+3. **Zero-Waste Inline Settings Layout & Selective Typography Hierarchy (`FullSettingsModal.tsx`, `SettingsDrawer.tsx`, `FontPicker.tsx`, `AdaptiveScrollOverlay.tsx`)**:
+   - Added an `inline?: boolean` layout mode to `FontPicker.tsx` rendering a horizontal label + `w-[240px] h-8` trigger row with a right-anchored `w-[290px]` theme-native popover for `FullSettingsModal`.
+   - Rebuilt `FullSettingsModal.tsx` (`System`, `Reading settings`, `Hotkeys`, `Backup & Sync`, `About`) with inline label-to-stepper rows (`Default Font Size`, `Line Spacing`, `Screen Dimming`, `Color Temperature`, `Filter Intensity`, `Seconds per page` / `Base seconds per page`), removing redundant duplicate value readouts and dead horizontal voids.
+   - Applied selective typographic hierarchy: primary setting labels and card headings use `text-[13px]`–`text-[15px]` `font-bold text-[var(--app-text-strong)]`, while multi-word helper descriptions explicitly opt into `font-normal text-[var(--app-text-muted)]` for effortless scanning.
+   - Applied the same compact inline stepper rows and bold label hierarchy across `SettingsDrawer.tsx` (`Display` and `Flow` tabs) and `AdaptiveScrollOverlay.tsx`.
+4. **Complete Removal of Unused Language Setting (`FullSettingsModal.tsx`, `src/renderer/src/db/index.ts`, `src/renderer/src/stores/useAppStore.ts`)**:
+   - Removed the non-functional Language `<select>` dropdown from `FullSettingsModal.tsx` (`System` tab).
+   - Removed `language?: string` from the `UserSettings` interface (`src/renderer/src/db/index.ts`) and `language: 'en'` from `DEFAULT_SETTINGS` (`src/renderer/src/stores/useAppStore.ts`).
+5. **Dual-Track Documentation Standards (`documentation.md`, `dev-documentations.md`)**:
+   - Added explicit **Documentation Style Guides** to both `documentation.md` (concise, jargon-free user-facing summaries) and `dev-documentations.md` (comprehensive, append-only technical architecture specs) so subsequent updates stay cleanly separated and consistent.
+
 
 

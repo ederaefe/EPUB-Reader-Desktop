@@ -12,6 +12,7 @@ import { selectOrDownloadFont } from '../../services/fontManager'
 
 interface FontPickerProps {
   compact?: boolean
+  inline?: boolean
 }
 
 const FILTER_CATEGORIES: Array<FontCategory | 'all'> = [
@@ -23,7 +24,7 @@ const FILTER_CATEGORIES: Array<FontCategory | 'all'> = [
   'mono'
 ]
 
-export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
+export const FontPicker: React.FC<FontPickerProps> = ({ compact = false, inline = false }) => {
   const { settings, downloadedFontIds, downloadingFontId, isOnline } = useAppStore()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -119,7 +120,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
         role="option"
         aria-selected={isActive}
         onClick={() => handleSelect(font)}
-        className={`group h-8 px-2.5 rounded-md flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+        className={`group h-8 px-2.5 rounded-md flex items-center justify-between gap-2 transition-all duration-100 cursor-pointer active:scale-[0.985] ${
           isActive
             ? 'bg-[var(--app-accent-soft)] text-[var(--app-text-strong)] border border-[var(--app-accent)]/40 font-medium'
             : 'border border-transparent hover:bg-[var(--app-surface-hover)] text-[var(--app-text)]'
@@ -181,12 +182,27 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
   }
 
   return (
-    <div ref={containerRef} className="relative space-y-1.5 select-none">
+    <div
+      ref={containerRef}
+      className={
+        inline
+          ? 'relative flex items-center justify-between gap-4 select-none'
+          : 'relative space-y-1.5 select-none'
+      }
+    >
       {/* Label & Indicator Header */}
-      <div className="flex items-center justify-between text-[11px]">
-        <span className="font-medium text-[var(--app-text-muted)]">Typeface</span>
+      <div className={`flex items-center gap-2 ${inline ? 'shrink-0' : 'justify-between'}`}>
+        <span
+          className={
+            inline
+              ? 'text-[13px] font-bold text-[var(--app-text-strong)]'
+              : 'text-[12px] font-bold text-[var(--app-text-strong)]'
+          }
+        >
+          Typeface
+        </span>
         {!isOnline && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-[#f59e0b]">
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#f59e0b]">
             <WifiOff className="w-3 h-3" />
             <span>Offline</span>
           </span>
@@ -199,15 +215,15 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
         onClick={() => setIsOpen(!isOpen)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`w-full h-9 px-3 rounded-md bg-[#161616] border transition-colors flex items-center justify-between gap-2 text-left cursor-pointer ${
+        className={`${inline ? 'w-[240px]' : 'w-full'} h-8 px-2.5 rounded-md border transition-all duration-150 flex items-center justify-between gap-2 text-left cursor-pointer active:scale-[0.985] ${
           isOpen
-            ? 'border-white/30 bg-[#1c1c1c] text-white shadow-sm'
-            : 'border-white/[0.09] text-[var(--app-text-strong)] hover:border-white/20 hover:bg-[#1a1a1a]'
+            ? 'border-[var(--app-accent)] bg-[var(--app-accent-soft)] text-[var(--app-text-strong)] shadow-sm'
+            : 'border-[var(--app-border-strong)] bg-[var(--app-input-bg)] text-[var(--app-text-strong)] hover:border-[var(--app-accent)] hover:bg-[var(--app-surface-hover)]'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0">
           <span
-            className="text-[12.5px] truncate font-medium text-white"
+            className="text-[12.5px] truncate font-semibold text-[var(--app-text-strong)]"
             style={{
               fontFamily: activeEntry.cssFamily
             }}
@@ -215,7 +231,7 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
             {activeEntry.name}
           </span>
           <span
-            className="text-[11px] text-[#888888] shrink-0"
+            className="text-[11px] text-[var(--app-text-muted)] shrink-0"
             style={{
               fontFamily: activeEntry.cssFamily
             }}
@@ -224,8 +240,8 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
           </span>
         </div>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-[#888888] shrink-0 transition-transform duration-150 ${
-            isOpen ? 'rotate-180 text-white' : ''
+          className={`w-3.5 h-3.5 text-[var(--app-text-muted)] shrink-0 transition-transform duration-150 ${
+            isOpen ? 'rotate-180 text-[var(--app-accent)]' : ''
           }`}
         />
       </button>
@@ -235,7 +251,9 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
         <div
           role="dialog"
           aria-label="Select font"
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 p-2 bg-[#121212] border border-white/[0.12] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.85)] space-y-2 animate-in fade-in zoom-in-95 duration-100"
+          className={`absolute ${
+            inline ? 'right-0 w-[290px]' : 'left-0 right-0'
+          } top-full mt-1.5 z-50 p-2 bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.45)] space-y-2 animate-in fade-in zoom-in-95 duration-100`}
         >
           {/* Offline Notice */}
           {offlineNotice && (
@@ -290,11 +308,12 @@ export const FontPicker: React.FC<FontPickerProps> = ({ compact = false }) => {
                 <button
                   key={cat}
                   type="button"
+                  data-preserve-theme={active ? 'true' : undefined}
                   onClick={() => setCategory(cat)}
-                  className={`h-5 px-2 rounded text-[10px] font-medium transition-colors cursor-pointer ${
+                  className={`h-5 px-2 rounded text-[10px] font-medium transition-all duration-100 cursor-pointer active:scale-95 ${
                     active
-                      ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                      : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
+                      ? 'bg-[var(--app-accent)] text-white shadow-sm'
+                      : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)]'
                   }`}
                 >
                   {FONT_CATEGORY_LABELS[cat]}

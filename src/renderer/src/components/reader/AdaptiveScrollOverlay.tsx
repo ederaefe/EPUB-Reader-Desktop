@@ -244,10 +244,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
           {/* Row 3: Mode-Specific Manual Seconds Controls */}
           {effectiveMode === 'countdown' ? (
-            <div className="space-y-1.5 pt-0.5">
-              <div className="flex items-center justify-between px-0.5 text-[11px]">
-                <span className="text-[#8b949e]">Seconds per page</span>
-                <span className="font-mono text-[#6e7681] text-[10px]">3–600s</span>
+            <div className="flex items-center justify-between gap-2 pt-0.5">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold text-[#ededed] block">Seconds</span>
+                <span className="font-mono text-[#8b949e] text-[9.5px] font-normal">3–600s</span>
               </div>
               <SecondsNumberInput
                 value={countdownSec}
@@ -261,22 +261,24 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </div>
           ) : (
             <div className="space-y-2 pt-0.5">
-              <div className="flex items-center justify-between px-0.5 text-[11px]">
-                <span className="text-[#8b949e]">Base seconds / page</span>
-                <span className="font-mono text-[#6e7681] text-[10px]">Scales by words</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold text-[#ededed] block">Base sec</span>
+                  <span className="font-mono text-[#8b949e] text-[9.5px] font-normal">Scales by words</span>
+                </div>
+                <SecondsNumberInput
+                  value={adaptiveSec}
+                  min={3}
+                  max={600}
+                  step={5}
+                  compact
+                  onChange={handleAdaptiveSecChange}
+                  ariaLabel="Smart base seconds per page"
+                />
               </div>
-              <SecondsNumberInput
-                value={adaptiveSec}
-                min={3}
-                max={600}
-                step={5}
-                compact
-                onChange={handleAdaptiveSecChange}
-                ariaLabel="Smart base seconds per page"
-              />
 
               <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c] px-0.5">
-                <span className="text-[10px] text-[#8b949e]">Pause at breaks</span>
+                <span className="text-[11px] font-bold text-[#ededed]">Pause at breaks</span>
                 <button
                   type="button"
                   role="switch"

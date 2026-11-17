@@ -96,7 +96,6 @@ export interface UserSettings {
   warmFilterTemp?: number
   warmFilterIntensity?: number
   rsvpWpm?: number
-  language?: string
   copyExternal?: boolean
   autoUpdate?: boolean
   sendStats?: boolean

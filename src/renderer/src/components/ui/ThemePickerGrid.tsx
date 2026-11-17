@@ -97,12 +97,12 @@ export const ThemePickerGrid: React.FC<ThemePickerGridProps> = ({
               color: t.text,
               borderColor: isActive ? '#2a69df' : t.border
             }}
-            className={`group relative rounded-[10px] border text-left transition-all duration-150 cursor-pointer overflow-hidden ${
+            className={`group relative rounded-[10px] border text-left transition-all duration-150 cursor-pointer overflow-hidden active:scale-[0.97] ${
               compact ? 'p-2.5' : 'p-3'
             } ${
               isActive
                 ? 'ring-2 ring-[#2a69df]/80 ring-offset-1 ring-offset-[var(--app-surface)] shadow-md'
-                : 'hover:brightness-[1.04] hover:shadow-sm'
+                : 'hover:-translate-y-[1px] hover:brightness-[1.04] hover:shadow-md'
             }`}
           >
             {/* Top Row: Mini Page Typography Specimen & Active Check */}

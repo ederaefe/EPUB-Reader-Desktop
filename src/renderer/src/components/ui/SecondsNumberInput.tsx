@@ -68,23 +68,25 @@ export const SecondsNumberInput: React.FC<SecondsNumberInputProps> = ({
     }
   }
 
-  const btnSize = compact ? 'w-7 h-7' : 'w-8 h-8'
-  const inputHeight = compact ? 'h-7' : 'h-8'
+  const heightClass = compact ? 'h-[26px]' : 'h-7'
+  const btnWidth = compact ? 'w-6' : 'w-7'
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div
+      className={`inline-flex items-center ${heightClass} rounded-md border border-[var(--app-border-strong)] bg-[var(--app-input-bg)] overflow-hidden shrink-0 focus-within:border-[var(--app-accent)] focus-within:ring-2 focus-within:ring-[var(--app-accent-soft)] transition-colors`}
+    >
       <button
         type="button"
         onClick={() => onChange(clamp(value - step))}
         disabled={value <= min}
         aria-label={`Decrease by ${step} seconds`}
         title={`-${step}s`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-md bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnWidth} h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Minus className="w-3.5 h-3.5" />
+        <Minus className="w-3 h-3" />
       </button>
 
-      <div className="relative flex-1 flex items-center">
+      <div className="w-[66px] h-full flex items-center justify-center px-1.5 gap-0.5">
         <input
           type="text"
           inputMode="numeric"
@@ -94,9 +96,9 @@ export const SecondsNumberInput: React.FC<SecondsNumberInputProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={(e) => e.target.select()}
           aria-label={ariaLabel}
-          className={`ice-input w-full ${inputHeight} pl-3 pr-9 text-center font-mono text-[12px] font-medium text-white tabular-nums select-text`}
+          className="bg-transparent border-0 outline-none p-0 min-w-0 w-[34px] text-right font-mono text-[12px] font-bold text-[var(--app-text-strong)] tabular-nums select-text"
         />
-        <span className="absolute right-2.5 text-[10px] font-mono text-[#6e7681] pointer-events-none">
+        <span className="text-[10.5px] font-mono font-semibold text-[var(--app-text-muted)] pointer-events-none select-none shrink-0">
           sec
         </span>
       </div>
@@ -107,9 +109,9 @@ export const SecondsNumberInput: React.FC<SecondsNumberInputProps> = ({
         disabled={value >= max}
         aria-label={`Increase by ${step} seconds`}
         title={`+${step}s`}
-        className={`${btnSize} shrink-0 flex items-center justify-center rounded-md bg-[#161616] border border-white/[0.09] text-[#999999] hover:text-white hover:bg-[#1f1f1f] hover:border-white/20 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
+        className={`${btnWidth} h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer`}
       >
-        <Plus className="w-3.5 h-3.5" />
+        <Plus className="w-3 h-3" />
       </button>
     </div>
   )

@@ -293,26 +293,26 @@ export const SettingsDrawer: React.FC = () => {
         </div>
 
         {/* Tab Body */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {/* ===================== TAB 1: DISPLAY (Aa) ===================== */}
           {activeTab === 'display' && (
             <>
-              {/* Visual Theme Swatches */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-medium text-[#888888]">Scroll Mode</span>
-                <div className="bg-[#1a1a1a] rounded-md border border-white/[0.05]">
+              {/* Scroll Mode + Surface */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[12px] font-bold text-[#ededed]">Scroll Mode</span>
+                <div className="bg-[#1a1a1a] rounded-md border border-white/[0.08] w-36">
                   <select
                     value={settings.scrollMode || 'horizontal'}
                     onChange={(e) => setScrollMode(e.target.value as 'horizontal' | 'vertical')}
-                    className="w-full bg-transparent text-[13px] text-white p-2 outline-none cursor-pointer"
+                    className="w-full bg-transparent text-[12px] font-semibold text-white px-2 py-1 outline-none cursor-pointer"
                   >
                     <option value="horizontal">Horizontal</option>
                     <option value="vertical">Vertical</option>
                   </select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <span className="text-[11px] font-medium text-[#888888]">Surface</span>
+              <div className="space-y-1.5">
+                <span className="text-[12px] font-bold text-[#ededed]">Surface</span>
                 <div className="grid grid-cols-4 gap-2">
                   {THEME_SWATCHES.map((t) => {
                     const active = settings.theme === t.id
@@ -321,23 +321,23 @@ export const SettingsDrawer: React.FC = () => {
                         key={t.id}
                         type="button"
                         onClick={() => updateSettings({ theme: t.id })}
-                        className={`flex flex-col items-center gap-1.5 group cursor-pointer`}
+                        className={`flex flex-col items-center gap-1 group cursor-pointer`}
                       >
                         <div
                           data-preserve-theme="true"
                           style={{ backgroundColor: t.bg, color: t.ink, borderColor: active ? 'var(--app-accent)' : t.border }}
-                          className={`w-full h-11 rounded-md border flex items-center justify-center relative transition-all ${
+                          className={`w-full h-10 rounded-md border flex items-center justify-center relative transition-all ${
                             active ? 'ring-2 ring-[var(--app-accent)]/40 scale-[1.02]' : 'opacity-85 group-hover:opacity-100'
                           }`}
                         >
-                          <span className="text-[14px] font-serif font-medium">Aa</span>
+                          <span className="text-[14px] font-serif font-semibold">Aa</span>
                           {active && (
                             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#2a69df] text-white flex items-center justify-center shadow">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </span>
                           )}
                         </div>
-                        <span className={`text-[10px] ${active ? 'text-white font-medium' : 'text-[#777777]'}`}>
+                        <span className={`text-[10.5px] font-semibold ${active ? 'text-white' : 'text-[#888888]'}`}>
                           {t.label}
                         </span>
                       </button>
@@ -349,33 +349,28 @@ export const SettingsDrawer: React.FC = () => {
               {/* Expanded Downloadable Font Library Picker */}
               <FontPicker compact />
 
-              {/* Font Size Tactile Stepper + Slider */}
-              <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-[#ededed]">Text size</span>
-                  <span className="font-mono text-[#ededed] text-[11px] tabular-nums">{settings.fontSize}px</span>
-                </div>
-                <ValueStepper
-                  value={settings.fontSize}
-                  min={12}
-                  max={42}
-                  step={1}
-                  unit="px"
-                  ariaLabel="Font size"
-                  onChange={(val) => updateSettings({ fontSize: val })}
-                  compact
-                />
-
-                {/* Line Spacing */}
-                <div className="pt-2 border-t border-white/[0.06] space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#ededed]">Line spacing</span>
-                    <span className="font-mono text-[#ededed] tabular-nums">{settings.lineHeight.toFixed(1)}×</span>
-                  </div>
+              {/* Compact Inline Typography Steppers */}
+              <div className="px-3 py-2 bg-[#161616] border border-white/[0.07] rounded-lg divide-y divide-white/[0.06]">
+                <div className="py-1.5 flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-bold text-[#ededed]">Text size</span>
                   <ValueStepper
-                    value={settings.lineHeight * 100}
+                    value={settings.fontSize}
+                    min={12}
+                    max={42}
+                    step={1}
+                    unit="px"
+                    ariaLabel="Font size"
+                    onChange={(val) => updateSettings({ fontSize: val })}
+                    compact
+                  />
+                </div>
+
+                <div className="py-1.5 flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-bold text-[#ededed]">Line spacing</span>
+                  <ValueStepper
+                    value={Math.round(settings.lineHeight * 100)}
                     min={100}
-                    max={200}
+                    max={250}
                     step={10}
                     unit="%"
                     ariaLabel="Line spacing"
@@ -386,15 +381,15 @@ export const SettingsDrawer: React.FC = () => {
               </div>
 
               {/* Page Layout & Lighting */}
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-[#888888]">Page layout</span>
-                  <div className="grid grid-cols-2 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07] w-40">
+                  <span className="text-[12px] font-bold text-[#ededed]">Page layout</span>
+                  <div className="grid grid-cols-2 p-0.5 bg-[#0a0a0a] rounded-md border border-white/[0.07] w-36">
                     <button
                       type="button"
                       onClick={() => updateSettings({ pageSpread: 'single' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-medium transition-all cursor-pointer ${
-                        settings.pageSpread === 'single' ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-white'
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                        settings.pageSpread === 'single' ? 'bg-[#222222] text-white' : 'text-[#888888] hover:text-white'
                       }`}
                     >
                       <Square className="w-3 h-3" />
@@ -403,8 +398,8 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => updateSettings({ pageSpread: 'double' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-medium transition-all cursor-pointer ${
-                        settings.pageSpread === 'double' ? 'bg-[#222222] text-white' : 'text-[#777777] hover:text-white'
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                        settings.pageSpread === 'double' ? 'bg-[#222222] text-white' : 'text-[#888888] hover:text-white'
                       }`}
                     >
                       <Columns className="w-3 h-3" />
@@ -414,12 +409,9 @@ export const SettingsDrawer: React.FC = () => {
                 </div>
 
                 {/* Dimming + Warm Light */}
-                <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#888888]">Screen dim</span>
-                      <span className="font-mono text-[#ededed] tabular-nums">{settings.dimming}%</span>
-                    </div>
+                <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-bold text-[#ededed]">Screen dim</span>
                     <ValueStepper
                       value={settings.dimming}
                       min={0}
@@ -428,14 +420,15 @@ export const SettingsDrawer: React.FC = () => {
                       unit="%"
                       ariaLabel="Screen dimming"
                       onChange={(val) => updateSettings({ dimming: val })}
+                      compact
                     />
                   </div>
 
-                  <div className="pt-2 border-t border-white/[0.06] space-y-2.5">
+                  <div className="pt-2 border-t border-white/[0.06] space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-[11px] font-medium text-[#ededed]">Warm eye filter</div>
-                        <div className="text-[10px] text-[#666666]">Reduces blue light at night</div>
+                        <div className="text-[12px] font-bold text-[#ededed]">Warm eye filter</div>
+                        <div className="text-[10.5px] font-normal text-[#888888]">Reduces blue light at night</div>
                       </div>
                       <button
                         type="button"
@@ -451,35 +444,33 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
 
                     {settings.warmFilterEnabled && (
-                      <div className="space-y-2 pt-1">
-                        <div className="flex items-center justify-between text-[10px] text-[#888888]">
-                          <span>Warmth</span>
-                          <span className="font-mono text-[#f59e0b] tabular-nums">{settings.warmFilterTemp || 3200}K</span>
+                      <div className="space-y-2 pt-1.5 border-t border-white/[0.06]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11.5px] font-bold text-[#ededed]">Warmth</span>
+                          <ValueStepper
+                            value={settings.warmFilterTemp || 3200}
+                            min={2000}
+                            max={4500}
+                            step={100}
+                            unit="K"
+                            ariaLabel="Color temperature"
+                            onChange={(val) => updateSettings({ warmFilterTemp: val })}
+                            compact
+                          />
                         </div>
-                        <ValueStepper
-                          value={settings.warmFilterTemp || 3200}
-                          min={2000}
-                          max={4500}
-                          step={100}
-                          unit="K"
-                          ariaLabel="Color temperature"
-                          onChange={(val) => updateSettings({ warmFilterTemp: val })}
-                          compact
-                        />
-                        <div className="flex items-center justify-between text-[10px] text-[#888888]">
-                          <span>Strength</span>
-                          <span className="font-mono text-white tabular-nums">{settings.warmFilterIntensity || 40}%</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11.5px] font-bold text-[#ededed]">Strength</span>
+                          <ValueStepper
+                            value={settings.warmFilterIntensity || 40}
+                            min={10}
+                            max={90}
+                            step={5}
+                            unit="%"
+                            ariaLabel="Warm filter strength"
+                            onChange={(val) => updateSettings({ warmFilterIntensity: val })}
+                            compact
+                          />
                         </div>
-                        <ValueStepper
-                          value={settings.warmFilterIntensity || 40}
-                          min={10}
-                          max={90}
-                          step={5}
-                          unit="%"
-                          ariaLabel="Warm filter strength"
-                          onChange={(val) => updateSettings({ warmFilterIntensity: val })}
-                          compact
-                        />
                       </div>
                     )}
                   </div>
@@ -586,29 +577,31 @@ export const SettingsDrawer: React.FC = () => {
 
                 {/* One-Tap Presets + Manual Seconds Input */}
                 {effectiveMode === 'countdown' ? (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#888888]">Turn every (seconds)</span>
-                      {countdownSec !== 20 && (
-                        <button
-                          type="button"
-                          onClick={() => handleCountdownChange(20)}
-                          title="Reset to 20s"
-                          className="text-[#666666] hover:text-white cursor-pointer"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </button>
-                      )}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11.5px] font-bold text-[#ededed]">Turn every</span>
+                        {countdownSec !== 20 && (
+                          <button
+                            type="button"
+                            onClick={() => handleCountdownChange(20)}
+                            title="Reset to 20s"
+                            className="text-[#888888] hover:text-white cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <SecondsNumberInput
+                        value={countdownSec}
+                        min={3}
+                        max={600}
+                        step={5}
+                        compact
+                        onChange={handleCountdownChange}
+                        ariaLabel="Fixed seconds per page"
+                      />
                     </div>
-
-                    <SecondsNumberInput
-                      value={countdownSec}
-                      min={3}
-                      max={600}
-                      step={5}
-                      onChange={handleCountdownChange}
-                      ariaLabel="Fixed seconds per page"
-                    />
 
                     <div className="grid grid-cols-4 gap-1">
                       {TIMER_PRESETS.map((sec) => (
@@ -618,8 +611,8 @@ export const SettingsDrawer: React.FC = () => {
                           onClick={() => handleCountdownChange(sec)}
                           className={`h-7 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
                             countdownSec === sec
-                              ? 'bg-[#262626] border-white/25 text-white font-medium'
-                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#777777] hover:text-white'
+                              ? 'bg-[#262626] border-white/25 text-white font-bold'
+                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#888888] hover:text-white'
                           }`}
                         >
                           {sec}s
@@ -628,29 +621,31 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#888888]">Base seconds / page</span>
-                      {adaptiveSec !== 25 && (
-                        <button
-                          type="button"
-                          onClick={() => handleAdaptiveSecChange(25)}
-                          title="Reset to 25s"
-                          className="text-[#666666] hover:text-white cursor-pointer"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </button>
-                      )}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11.5px] font-bold text-[#ededed]">Base / page</span>
+                        {adaptiveSec !== 25 && (
+                          <button
+                            type="button"
+                            onClick={() => handleAdaptiveSecChange(25)}
+                            title="Reset to 25s"
+                            className="text-[#888888] hover:text-white cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                      <SecondsNumberInput
+                        value={adaptiveSec}
+                        min={3}
+                        max={600}
+                        step={5}
+                        compact
+                        onChange={handleAdaptiveSecChange}
+                        ariaLabel="Smart base seconds per page"
+                      />
                     </div>
-
-                    <SecondsNumberInput
-                      value={adaptiveSec}
-                      min={3}
-                      max={600}
-                      step={5}
-                      onChange={handleAdaptiveSecChange}
-                      ariaLabel="Smart base seconds per page"
-                    />
 
                     <div className="grid grid-cols-4 gap-1">
                       {SMART_SEC_PRESETS.map((sec) => (
@@ -660,8 +655,8 @@ export const SettingsDrawer: React.FC = () => {
                           onClick={() => handleAdaptiveSecChange(sec)}
                           className={`h-7 rounded text-[11px] font-mono tabular-nums border transition-colors cursor-pointer ${
                             adaptiveSec === sec
-                              ? 'bg-[#262626] border-white/25 text-white font-medium'
-                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#777777] hover:text-white'
+                              ? 'bg-[#262626] border-white/25 text-white font-bold'
+                              : 'bg-[#0f0f0f] border-white/[0.06] text-[#888888] hover:text-white'
                           }`}
                         >
                           {sec}s
@@ -670,7 +665,7 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                      <span className="text-[11px] text-[#888888]">Pause at breaks</span>
+                      <span className="text-[11.5px] font-bold text-[#ededed]">Pause at breaks</span>
                       <button
                         type="button"
                         role="switch"
@@ -791,39 +786,6 @@ export const SettingsDrawer: React.FC = () => {
                         Fluid text &amp; fonts
                       </div>
                     </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) return
-                        const savePath = await window.desktopAPI.showSaveDialog({
-                          title: 'Save EPUB',
-                          filters: [{ name: 'EPUB Files', extensions: ['epub'] }]
-                        })
-                        if (savePath) {
-                          setPdfConversionState(true, { percent: 10, stage: 'Converting...' })
-                          const res = await window.desktopAPI.convertToEpub({
-                            pdfPath: activeBook!.filePath,
-                            outputPath: savePath,
-                            mode: 'export'
-                          })
-                          setPdfConversionState(false)
-                          if (res.success) {
-                            showToast('Saved as EPUB', 'success')
-                          } else {
-                            showToast(res.error || 'Conversion failed', 'error')
-                          }
-                        }
-                      }}
-                      className="p-2.5 rounded-md border text-left transition-all cursor-pointer bg-[#0f0f0f] border-white/[0.07] text-[#cccccc] hover:border-white/20 hover:bg-[#1a1a1a]"
-                    >
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold">
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Convert to EPUB</span>
-                      </div>
-                      <div className="text-[10px] mt-0.5 text-[#666666]">
-                        Export to file
-                      </div>
-                    </button>
                   </div>
 
                   {isConvertingPdf && pdfConvertProgress && (
@@ -840,18 +802,47 @@ export const SettingsDrawer: React.FC = () => {
                       </div>
                     </div>
                   )}
-
-                  <button
-                    type="button"
-                    disabled={isConvertingPdf}
-                    onClick={handleExportPdfAsEpub}
-                    className="ice-btn-dark w-full h-8 gap-1.5 text-[11px] disabled:opacity-50 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 text-[#ededed]" />
-                    <span>Export as EPUB (Offline)</span>
-                  </button>
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!isPdf || !window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) {
+                    showToast('PDF conversion is only available for PDF files.', 'error')
+                    return
+                  }
+                  const savePath = await window.desktopAPI.showSaveDialog({
+                    title: 'Save EPUB',
+                    filters: [{ name: 'EPUB Files', extensions: ['epub'] }]
+                  })
+                  if (savePath) {
+                    setPdfConversionState(true, { percent: 10, stage: 'Converting...' })
+                    const res = await window.desktopAPI.convertToEpub({
+                      pdfPath: activeBook!.filePath,
+                      outputPath: savePath,
+                      mode: 'export'
+                    })
+                    setPdfConversionState(false)
+                    if (res.success) {
+                      showToast('Saved as EPUB', 'success')
+                    } else {
+                      showToast(res.error || 'Conversion failed', 'error')
+                    }
+                  }
+                }}
+                className={`w-full flex items-center justify-between p-3.5 rounded-lg transition-all cursor-pointer active:scale-[0.98] ${
+                  isPdf
+                    ? 'settings-btn-secondary'
+                    : 'bg-[var(--app-surface-2)] border border-[var(--app-border)] text-[var(--app-text-muted)] opacity-55'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  <span className="text-[12px] font-semibold">Convert to EPUB</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 opacity-70" />
+              </button>
 
               <div className="space-y-2">
                 <button
@@ -860,16 +851,16 @@ export const SettingsDrawer: React.FC = () => {
                     toggleSettingsDrawer(false)
                     toggleFullSettingsModal(true)
                   }}
-                  className="w-full p-3 bg-[#161616] hover:bg-[#1c1c1c] border border-white/[0.08] rounded-lg flex items-center justify-between transition-colors cursor-pointer group"
+                  className="settings-btn-secondary w-full p-3 rounded-lg flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 text-left">
-                    <SlidersHorizontal className="w-4 h-4 text-[#888888] group-hover:text-white" />
+                    <SlidersHorizontal className="w-4 h-4 opacity-75 group-hover:opacity-100" />
                     <div>
-                      <div className="text-[12px] font-medium text-[#ededed]">All Preferences</div>
-                      <div className="text-[10px] text-[#666666]">Backup, voice, system options</div>
+                      <div className="text-[12px] font-medium">All Preferences</div>
+                      <div className="text-[10px] opacity-65">Backup, hotkeys, system options</div>
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#666666] group-hover:text-white" />
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
                 <button
@@ -878,16 +869,16 @@ export const SettingsDrawer: React.FC = () => {
                     toggleSettingsDrawer(false)
                     toggleHelpModal(true)
                   }}
-                  className="w-full p-3 bg-[#161616] hover:bg-[#1c1c1c] border border-white/[0.08] rounded-lg flex items-center justify-between transition-colors cursor-pointer group"
+                  className="settings-btn-secondary w-full p-3 rounded-lg flex items-center justify-between cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5 text-left">
-                    <Keyboard className="w-4 h-4 text-[#888888] group-hover:text-white" />
+                    <Keyboard className="w-4 h-4 opacity-75 group-hover:opacity-100" />
                     <div>
-                      <div className="text-[12px] font-medium text-[#ededed]">Keyboard Shortcuts</div>
-                      <div className="text-[10px] text-[#666666]">Navigation &amp; quick commands</div>
+                      <div className="text-[12px] font-medium">Keyboard Shortcuts</div>
+                      <div className="text-[10px] opacity-65">Navigation &amp; quick commands</div>
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#666666] group-hover:text-white" />
+                  <ArrowRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             </>

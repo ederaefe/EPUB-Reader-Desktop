@@ -2,6 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Offline-Bundled Libre Baskerville (Roman Serif Variable Font, 400-700)
+   ============================================================================ */
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-400-normal-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-400-normal-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-400-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/libre-baskerville-400-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @layer utilities {
   .app-drag-region {
     -webkit-app-region: drag;
@@ -26,8 +65,8 @@ html[data-theme="night"] {
   --app-border-strong: rgba(255, 255, 255, 0.16);
   --app-text: #ededed;
   --app-text-strong: #ffffff;
-  --app-text-muted: #8a8a8a;
-  --app-text-subtle: #666666;
+  --app-text-muted: #a3a3a3;
+  --app-text-subtle: #808080;
   --app-accent: #2a69df;
   --app-accent-soft: rgba(42, 105, 223, 0.18);
   --app-accent-text: #79c0ff;
@@ -57,8 +96,8 @@ html[data-theme="day"] {
   --app-border-strong: rgba(15, 23, 42, 0.20);
   --app-text: #1f2328;
   --app-text-strong: #0d1117;
-  --app-text-muted: #57606a;
-  --app-text-subtle: #76808a;
+  --app-text-muted: #3d444d;
+  --app-text-subtle: #57606a;
   --app-accent: #2a69df;
   --app-accent-soft: rgba(42, 105, 223, 0.12);
   --app-accent-text: #1d56c4;
@@ -88,8 +127,8 @@ html[data-theme="light-sepia"] {
   --app-border-strong: rgba(95, 75, 50, 0.30);
   --app-text: #4a3b28;
   --app-text-strong: #2b2013;
-  --app-text-muted: #786348;
-  --app-text-subtle: #968065;
+  --app-text-muted: #5c4932;
+  --app-text-subtle: #756046;
   --app-accent: #8b5a2b;
   --app-accent-soft: rgba(139, 90, 43, 0.14);
   --app-accent-text: #7a4b1f;
@@ -119,8 +158,8 @@ html[data-theme="dark-sepia"] {
   --app-border-strong: rgba(230, 200, 165, 0.24);
   --app-text: #e2d5c3;
   --app-text-strong: #f6ede0;
-  --app-text-muted: #a69580;
-  --app-text-subtle: #7f705e;
+  --app-text-muted: #bfb09c;
+  --app-text-subtle: #9a8b78;
   --app-accent: #c8965d;
   --app-accent-soft: rgba(200, 150, 93, 0.18);
   --app-accent-text: #e6c8a5;
@@ -146,7 +185,7 @@ body {
 }
 
 body {
-  font-family: "Geist", "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Libre Baskerville", Baskerville, "Baskerville Old Face", Georgia, serif;
   background-color: var(--app-bg);
   color: var(--app-text);
   user-select: none;
@@ -155,8 +194,25 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   transition: background-color 180ms ease, color 180ms ease;
+}
+
+/* Strengthen muted UI labels for legibility in Baskerville (opt out via .font-normal) */
+:where(
+  .text-\[\#b4bec8\],
+  .text-\[\#aaaaaa\],
+  .text-\[\#9da7b3\],
+  .text-\[\#999999\],
+  .text-\[\#8b949e\],
+  .text-\[\#888888\],
+  .text-\[\#777777\],
+  .text-\[\#6e7681\],
+  .text-\[\#666666\],
+  .text-\[var\(--app-text-muted\)\],
+  .text-\[var\(--app-text-subtle\)\]
+):not(.font-normal):not(.font-bold):not(.font-extrabold) {
+  font-weight: 600;
 }
 
 /* Native desktop cursor ergonomics (default arrow on app controls; pointer only on external links) */
@@ -569,6 +625,11 @@ input[type="checkbox"]:indeterminate::after,
 
 /* Hover surface remaps */
 :is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .hover\:bg-\[\#1a1a1a\]:hover,
+    .hover\:bg-\[\#1c1c1c\]:hover,
+    .hover\:bg-\[\#1f1f1f\]:hover,
+    .hover\:bg-\[\#222222\]:hover,
+    .hover\:bg-\[\#262626\]:hover,
     .hover\:bg-\[\#1f232c\]:hover,
     .hover\:bg-\[\#1f232d\]:hover,
     .hover\:bg-\[\#232732\]:hover,
@@ -796,6 +857,279 @@ span.speechActive {
 
 button:not(:disabled) {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================================
+   Tactile Interactive Primitives for Settings Modal & Shared Controls
+   Theme-native across Night, Day, Light Sepia, and Dark Sepia
+   ============================================================================ */
+.settings-tab {
+  position: relative;
+  border-radius: 6px;
+  color: var(--app-text-muted);
+  background-color: transparent;
+  transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 140ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-tab:hover {
+  background-color: var(--app-overlay-tint);
+  color: var(--app-text-strong);
+}
+
+.settings-tab:active {
+  transform: scale(0.96);
+}
+
+.settings-tab[data-active="true"] {
+  background-color: var(--app-accent-soft);
+  color: var(--app-accent-text);
+  font-weight: 600;
+}
+
+.settings-tab[data-active="true"]::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background-color: var(--app-accent);
+}
+
+.settings-close-btn {
+  color: var(--app-text-muted);
+  background-color: transparent;
+  transition: background-color 140ms ease,
+    color 140ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-close-btn:hover {
+  background-color: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+.settings-close-btn:active {
+  transform: scale(0.9);
+}
+
+.settings-btn-primary {
+  background-color: var(--app-accent);
+  border: 1px solid var(--app-accent);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: filter 140ms ease,
+    box-shadow 150ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 14px var(--app-accent-soft), 0 1px 3px rgba(0, 0, 0, 0.18);
+  transform: translateY(-0.5px);
+}
+
+.settings-btn-primary:active:not(:disabled) {
+  transform: scale(0.97) translateY(0);
+  filter: brightness(0.96);
+}
+
+.settings-btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.settings-btn-secondary {
+  background-color: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-strong);
+  font-weight: 500;
+  transition: background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-btn-secondary:hover:not(:disabled) {
+  background-color: var(--app-accent-soft);
+  border-color: var(--app-accent);
+  color: var(--app-accent-text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.settings-btn-secondary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.settings-btn-secondary:disabled {
+  opacity: 0.5;
+}
+
+.settings-btn-danger {
+  background-color: rgba(220, 38, 38, 0.09);
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #dc2626;
+  font-weight: 600;
+  transition: background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-theme="night"] .settings-btn-danger,
+html[data-theme="dark-sepia"] .settings-btn-danger,
+:root:not([data-theme]) .settings-btn-danger {
+  background-color: rgba(248, 81, 73, 0.12);
+  border-color: rgba(248, 81, 73, 0.32);
+  color: #f87171;
+}
+
+.settings-btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.28);
+}
+
+.settings-btn-danger:active:not(:disabled) {
+  transform: scale(0.97);
+  background-color: #b91c1c;
+}
+
+.settings-stepper-btn {
+  background-color: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  transition: background-color 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease,
+    transform 90ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 130ms ease;
+}
+
+.settings-stepper-btn:hover:not(:disabled) {
+  background-color: var(--app-accent);
+  border-color: var(--app-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 6px var(--app-accent-soft);
+}
+
+.settings-stepper-btn:active:not(:disabled) {
+  transform: scale(0.88);
+}
+
+.settings-stepper-btn:disabled {
+  opacity: 0.35;
+}
+
+.settings-card {
+  background-color: var(--app-surface);
+  border: 1px solid var(--app-border);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.settings-card:hover {
+  border-color: var(--app-border-strong);
+}
+
+.settings-row-interactive {
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background-color 130ms ease,
+    border-color 130ms ease,
+    transform 90ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-row-interactive:hover {
+  background-color: var(--app-overlay-tint);
+  border-color: var(--app-border);
+}
+
+.settings-row-interactive:active {
+  transform: scale(0.99);
+}
+
+.settings-kbd {
+  background-color: var(--app-surface-2);
+  border: 1px solid var(--app-border-strong);
+  color: var(--app-text-strong);
+  box-shadow: 0 1.5px 0 var(--app-border-strong);
+  transition: background-color 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease,
+    transform 100ms ease,
+    box-shadow 100ms ease;
+}
+
+.settings-row-interactive:hover .settings-kbd {
+  background-color: var(--app-accent-soft);
+  border-color: var(--app-accent);
+  color: var(--app-accent-text);
+  box-shadow: 0 1px 0 var(--app-accent);
+  transform: translateY(0.5px);
+}
+
+.settings-select {
+  background-color: var(--app-input-bg);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-strong);
+  transition: background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.settings-select:hover {
+  background-color: var(--app-surface-hover);
+  border-color: var(--app-border-strong);
+}
+
+.settings-select:focus {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-accent-soft);
+  outline: none;
+}
+
+.settings-switch {
+  transition: background-color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 150ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-switch:hover {
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
+
+.settings-switch:active {
+  transform: scale(0.93);
+}
+
+.settings-segment-btn {
+  color: var(--app-text-muted);
+  background-color: transparent;
+  transition: background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.settings-segment-btn:hover:not([data-active="true"]) {
+  background-color: var(--app-overlay-tint);
+  color: var(--app-text-strong);
+}
+
+.settings-segment-btn:active {
+  transform: scale(0.97);
+}
+
+.settings-segment-btn[data-active="true"] {
+  background-color: var(--app-accent);
+  color: #ffffff;
+  box-shadow: 0 2px 6px var(--app-accent-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {
