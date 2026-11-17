@@ -76,7 +76,43 @@ export async function listDownloadedFontIds(): Promise<string[]> {
   }
 }
 
+const ALLOWED_FONT_EXTS = new Set(['woff2', 'woff', 'ttf', 'otf'])
+
+function assertGoogleFontUrl(url: string): void {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') {
+      throw new Error(`Insecure protocol: ${parsed.protocol}`)
+    }
+    const hostname = parsed.hostname.toLowerCase()
+    const isGoogle =
+      hostname === 'fonts.gstatic.com' ||
+      hostname === 'fonts.googleapis.com' ||
+      hostname.endsWith('.fonts.gstatic.com') ||
+      hostname.endsWith('.fonts.googleapis.com')
+    if (!isGoogle) {
+      throw new Error(`Untrusted font host: ${hostname}`)
+    }
+  } catch (e: any) {
+    throw new Error(`Invalid or disallowed font URL: ${e?.message}`)
+  }
+}
+
+function resolveSafeFontExtension(url: string): string {
+  try {
+    const pathname = new URL(url).pathname
+    const match = pathname.match(/\.(woff2|woff|ttf|otf)$/i)
+    if (match && ALLOWED_FONT_EXTS.has(match[1].toLowerCase())) {
+      return match[1].toLowerCase()
+    }
+  } catch {}
+  return 'woff2'
+}
+
 async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Response> {
+  if (!url || typeof url !== 'string' || !url.startsWith('https://')) {
+    throw new Error(`Security violation: font requests must use HTTPS: ${url}`)
+  }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -218,6 +254,7 @@ export async function downloadFont(fontId: string): Promise<{
     const cachedFaces: CachedFace[] = []
 
     for (const face of parsedFaces) {
+      assertGoogleFontUrl(face.url)
       let fileName = downloadedFiles.get(face.url)
       if (!fileName) {
         const resp = await fetchWithTimeout(face.url, 15000)
@@ -226,7 +263,7 @@ export async function downloadFont(fontId: string): Promise<{
         }
         const buf = Buffer.from(await resp.arrayBuffer())
         const hash = createHash('sha1').update(face.url).digest('hex').slice(0, 12)
-        const ext = face.url.includes('.woff2') ? 'woff2' : face.url.includes('.woff') ? 'woff' : 'ttf'
+        const ext = resolveSafeFontExtension(face.url)
         fileName = `${hash}.${ext}`
         await writeFile(join(fontDir, fileName), buf)
         downloadedFiles.set(face.url, fileName)

@@ -113,7 +113,14 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   const handleOpenExternalProvider = (providerName: string) => {
     const url = getDefinitionUrl(providerName, selectedText)
-    window.open(url, '_blank')
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol === 'https:') {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } catch {
+      // Ignore invalid or non-HTTPS URLs
+    }
     setShowDictModal(false)
     onClose()
   }

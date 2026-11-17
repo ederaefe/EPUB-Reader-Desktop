@@ -24,3 +24,8 @@ All future updates appended to `documentation.md` must follow these rules:
 - **App-Wide Roman (Baskerville) Typography & Higher Legibility**: Updated the entire application interface to use **Libre Baskerville** for a classic book-first Roman aesthetic, bolded muted labels for clearer readability across all themes, and established a clear visual hierarchy in Settings with bolder, larger section titles alongside clean regular-weight helper descriptions.
 - **Compact Inline Settings Controls**: Redesigned every numeric stepper control (Font Size, Line Spacing, Screen Dimming, Warm Filter Temperature & Intensity, and Auto-Scroll timers) into compact inline `- / value / +` inputs aligned beside their labels, eliminating wasted space and duplicate readouts.
 - **Language Selector Removed**: Removed the unused Language dropdown from System preferences for a cleaner, clutter-free settings layout.
+
+- **Link & Protocol Hardening**: Outgoing hyperlink clicks inside eBooks now strictly allow standard web addresses (`http` and `https`), blocking local file execution or unwanted system URI handlers.
+- **Dynamic Book Page & Progress Calculation**: EPUB page counts and reading progress now adapt smoothly to individual book sizes rather than assuming preset page totals before indexing completes.
+- **Dedicated Read Aloud (TTS) Hotkeys**: Added quick-access keyboard hotkeys for text-to-speech — press `F7` to play or pause reading aloud, and `F8` to stop reading immediately.
+- **Restored About Dialog**: Re-connected the "About Semply" dialog in the library sidebar with clean links and verified asset rendering.

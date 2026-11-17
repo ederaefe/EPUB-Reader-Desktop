@@ -16,6 +16,62 @@ export interface LibraryBackupData {
   settings?: UserSettings
 }
 
+function isPlainObject(val: unknown): val is Record<string, any> {
+  return typeof val === 'object' && val !== null && !Array.isArray(val)
+}
+
+function hasPrototypePollutionKey(obj: Record<string, any>): boolean {
+  for (const key of Object.keys(obj)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      return true
+    }
+  }
+  return false
+}
+
+export function validateBackupStructure(raw: unknown): raw is LibraryBackupData {
+  if (!isPlainObject(raw)) return false
+  if (hasPrototypePollutionKey(raw)) return false
+
+  if (typeof raw.version !== 'number' || !Number.isFinite(raw.version)) return false
+  if (!Array.isArray(raw.books)) return false
+
+  for (const b of raw.books) {
+    if (!isPlainObject(b) || hasPrototypePollutionKey(b)) return false
+    if (typeof b.title !== 'string' || typeof b.filePath !== 'string') return false
+  }
+
+  if (raw.categories !== undefined) {
+    if (!Array.isArray(raw.categories)) return false
+    for (const c of raw.categories) {
+      if (!isPlainObject(c) || hasPrototypePollutionKey(c)) return false
+      if (typeof c.name !== 'string') return false
+    }
+  }
+
+  if (raw.annotations !== undefined) {
+    if (!Array.isArray(raw.annotations)) return false
+    for (const a of raw.annotations) {
+      if (!isPlainObject(a) || hasPrototypePollutionKey(a)) return false
+      if (typeof a.bookId !== 'number' || typeof a.cfiRange !== 'string') return false
+    }
+  }
+
+  if (raw.bookmarks !== undefined) {
+    if (!Array.isArray(raw.bookmarks)) return false
+    for (const bm of raw.bookmarks) {
+      if (!isPlainObject(bm) || hasPrototypePollutionKey(bm)) return false
+      if (typeof bm.bookId !== 'number' || typeof bm.cfi !== 'string') return false
+    }
+  }
+
+  if (raw.settings !== undefined) {
+    if (!isPlainObject(raw.settings) || hasPrototypePollutionKey(raw.settings)) return false
+  }
+
+  return true
+}
+
 export class BackupService {
   // Export library metadata & annotations to JSON string
   public async generateBackupData(): Promise<LibraryBackupData> {
@@ -38,7 +94,7 @@ export class BackupService {
   }
 
   // Export as .json file
-  public async exportToJson(): Promise<{ success: boolean; filePath?: string }> {
+  public async exportToJson(): Promise<{ success: boolean; canceled?: boolean; filePath?: string }> {
     try {
       const data = await this.generateBackupData()
       const jsonStr = JSON.stringify(data, null, 2)
@@ -52,13 +108,16 @@ export class BackupService {
           filters: [{ name: 'JSON Backup', extensions: ['json'] }]
         })
 
-        if (targetPath) {
-          await window.desktopAPI.writeFileText(targetPath, jsonStr)
-          return { success: true, filePath: targetPath }
+        // Respect OS Save Dialog cancellation — never fall through to browser download
+        if (!targetPath) {
+          return { success: false, canceled: true }
         }
+
+        await window.desktopAPI.writeFileText(targetPath, jsonStr)
+        return { success: true, filePath: targetPath }
       }
 
-      // Browser fallback
+      // Browser fallback (non-Electron preview only)
       const blob = new Blob([jsonStr], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -75,7 +134,7 @@ export class BackupService {
   }
 
   // Export as .zip archive (bundled with cover images & full metadata)
-  public async exportToZip(): Promise<{ success: boolean; filePath?: string }> {
+  public async exportToZip(): Promise<{ success: boolean; canceled?: boolean; filePath?: string }> {
     try {
       const data = await this.generateBackupData()
       const zip = new JSZip()
@@ -105,13 +164,16 @@ export class BackupService {
           filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
         })
 
-        if (targetPath) {
-          await window.desktopAPI.writeFileBuffer(targetPath, content)
-          return { success: true, filePath: targetPath }
+        // Respect OS Save Dialog cancellation — never fall through to browser download
+        if (!targetPath) {
+          return { success: false, canceled: true }
         }
+
+        await window.desktopAPI.writeFileBuffer(targetPath, content)
+        return { success: true, filePath: targetPath }
       }
 
-      // Browser fallback
+      // Browser fallback (non-Electron preview only)
       const blob = new Blob([content], { type: 'application/zip' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -317,7 +379,11 @@ export class BackupService {
         }
       }
 
-      const parsed: LibraryBackupData = JSON.parse(jsonContent)
+      const rawParsed: unknown = JSON.parse(jsonContent)
+      if (!validateBackupStructure(rawParsed)) {
+        return { success: false, message: 'Invalid or corrupted backup file structure.' }
+      }
+      const parsed: LibraryBackupData = rawParsed
       const res = await this.importAdditiveBackup(parsed, loadedZip)
 
       return {

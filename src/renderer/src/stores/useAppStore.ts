@@ -255,7 +255,7 @@ export const useAppStore = create<AppState>((set) => ({
   settings: initialSettings,
 
   setView: (view) => set({ currentView: view }),
-  setSelectedCategory: (cat) => set({ selectedCategory: cat === 'deleted' ? 'all' : cat }),
+  setSelectedCategory: (cat) => set({ selectedCategory: cat }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setFormatFilter: (fmt) => set({ formatFilter: fmt }),
   setViewMode: (mode) =>

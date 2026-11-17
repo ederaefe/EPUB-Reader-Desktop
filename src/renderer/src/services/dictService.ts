@@ -41,55 +41,94 @@ export interface WikipediaSummary {
   contentUrl?: string
 }
 
-// Live inline definition lookup via Free Dictionary API with graceful fallback
+const dictInflight = new Map<string, Promise<InlineDefinition | null>>()
+const wikiInflight = new Map<string, Promise<WikipediaSummary | null>>()
+
+// Live inline definition lookup via Free Dictionary API with graceful fallback, timeout & dedup
 export async function fetchInlineDefinition(query: string): Promise<InlineDefinition | null> {
-  try {
-    const cleanWord = query.trim().split(/\s+/)[0].replace(/[^a-zA-Z-]/g, '')
-    if (!cleanWord) return null
+  const cleanWord = query.trim().split(/\s+/)[0].replace(/[^a-zA-Z-]/g, '').slice(0, 48)
+  if (!cleanWord) return null
 
-    const resp = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`)
-    if (!resp.ok) return null
-    const data = await resp.json()
-    if (!Array.isArray(data) || data.length === 0) return null
+  const cached = dictInflight.get(cleanWord)
+  if (cached) return cached
 
-    const entry = data[0]
-    return {
-      word: entry.word,
-      phonetic: entry.phonetic || entry.phonetics?.[0]?.text,
-      meanings: entry.meanings.slice(0, 3).map((m: any) => ({
-        partOfSpeech: m.partOfSpeech,
-        definitions: m.definitions.slice(0, 2).map((d: any) => ({
-          definition: d.definition,
-          example: d.example
-        }))
-      }))
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 6000)
+
+  const request = (async () => {
+    try {
+      const resp = await fetch(
+        `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
+        { signal: controller.signal }
+      )
+      if (!resp.ok) return null
+      const data = await resp.json()
+      if (!Array.isArray(data) || data.length === 0) return null
+
+      const entry = data[0]
+      return {
+        word: entry.word,
+        phonetic: entry.phonetic || entry.phonetics?.[0]?.text,
+        meanings: Array.isArray(entry.meanings)
+          ? entry.meanings.slice(0, 3).map((m: any) => ({
+              partOfSpeech: m.partOfSpeech,
+              definitions: Array.isArray(m.definitions)
+                ? m.definitions.slice(0, 2).map((d: any) => ({
+                    definition: d.definition,
+                    example: d.example
+                  }))
+                : []
+            }))
+          : []
+      }
+    } catch {
+      return null
+    } finally {
+      clearTimeout(timer)
+      dictInflight.delete(cleanWord)
     }
-  } catch (e) {
-    console.warn('Inline definition fetch failed:', e)
-    return null
-  }
+  })()
+
+  dictInflight.set(cleanWord, request)
+  return request
 }
 
-// Live encyclopedic summary lookup via Wikipedia REST API
+// Live encyclopedic summary lookup via Wikipedia REST API with timeout & dedup
 export async function fetchWikipediaSummary(query: string): Promise<WikipediaSummary | null> {
-  try {
-    const clean = query.trim().slice(0, 60).replace(/["'?!]/g, '')
-    if (!clean) return null
+  const clean = query.trim().slice(0, 60).replace(/["'?!]/g, '')
+  if (!clean) return null
 
-    const resp = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`)
-    if (!resp.ok) return null
-    const data = await resp.json()
+  const cached = wikiInflight.get(clean)
+  if (cached) return cached
 
-    if (!data.extract) return null
-    return {
-      title: data.title,
-      description: data.description,
-      extract: data.extract,
-      thumbnailUrl: data.thumbnail?.source,
-      contentUrl: data.content_urls?.desktop?.page
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 6000)
+
+  const request = (async () => {
+    try {
+      const resp = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`,
+        { signal: controller.signal }
+      )
+      if (!resp.ok) return null
+      const data = await resp.json()
+
+      if (!data.extract) return null
+      return {
+        title: data.title,
+        description: data.description,
+        extract: data.extract,
+        thumbnailUrl: data.thumbnail?.source,
+        contentUrl: data.content_urls?.desktop?.page
+      }
+    } catch {
+      return null
+    } finally {
+      clearTimeout(timer)
+      wikiInflight.delete(clean)
     }
-  } catch (e) {
-    console.warn('Wikipedia summary fetch failed:', e)
-    return null
-  }
+  })()
+
+  wikiInflight.set(clean, request)
+  return request
 }

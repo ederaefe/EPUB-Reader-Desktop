@@ -501,6 +501,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         onNext={handleNext}
         isLeftDisabled={currentPage <= 1}
         isRightDisabled={currentPage >= totalPages}
+        hidden={isImmersiveFullscreen}
       />
       <div
         ref={viewportRef}
@@ -540,40 +541,28 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
             )}
           </div>
         )}
-
-        {/* Side Navigation Arrows (hidden in immersive fullscreen) */}
-        {!isImmersiveFullscreen && (
-          <>
-            <button
-              onClick={handlePrev}
-              disabled={currentPage <= 1}
-              className="fixed left-2 top-1/2 -translate-y-1/2 z-30 w-8 h-12 rounded flex items-center justify-center bg-black/25 hover:bg-black/50 text-white/60 hover:text-white transition-opacity opacity-0 hover:opacity-100 disabled:pointer-events-none"
-              title="Previous Page"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentPage >= totalPages}
-              className="fixed right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-12 rounded flex items-center justify-center bg-black/25 hover:bg-black/50 text-white/60 hover:text-white transition-opacity opacity-0 hover:opacity-100 disabled:pointer-events-none"
-              title="Next Page"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
       </div>
 
       {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
         <FluidClimaxProgressBar
-          progressPercent={totalPages > 0 ? (currentPage / totalPages) * 100 : 0}
+          progressPercent={totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 100}
+          currentPage={currentPage}
+          totalPages={totalPages}
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}
           onSeek={(val) => {
-            const targetPage = Math.max(1, Math.min(totalPages, Math.round((val / 100) * totalPages)))
+            const targetPage =
+              totalPages <= 1
+                ? 1
+                : val <= 0
+                ? 1
+                : val >= 100
+                ? totalPages
+                : Math.max(1, Math.min(totalPages, Math.round((val / 100) * (totalPages - 1)) + 1))
             setCurrentPage(targetPage)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         />
       )}

@@ -13,6 +13,7 @@ import { NativeFeedbackHost } from './components/ui/NativeFeedbackHost'
 import { getWarmFilterOverlay } from './services/colorTempService'
 import { extractBookMetadata } from './services/coverService'
 import { hydrateDownloadedFonts } from './services/fontManager'
+import { ttsService } from './services/ttsService'
 
 // Bundled authentic assets
 import fifthSeasonCover from './assets/covers/the_fifth_season.jpg'
@@ -209,6 +210,45 @@ export const App: React.FC = () => {
       if (e.key === 'F1') {
         e.preventDefault()
         toggleHelpModal()
+      } else if (e.key === 'F7') {
+        // Toggle TTS Play / Pause
+        e.preventDefault()
+        const state = useAppStore.getState()
+        if (state.currentView === 'reader' && state.activeBook) {
+          if (state.isTTSActive) {
+            if (state.isTTSMuted) {
+              state.setTTSMuted(false)
+              ttsService.resume()
+            } else {
+              state.setTTSMuted(true)
+              ttsService.pause()
+            }
+          } else {
+            state.setTTSActive(true)
+            state.setTTSMuted(false)
+            const readerIframe = document.querySelector('iframe')
+            const text =
+              readerIframe?.contentDocument?.body?.innerText || state.activeBook.title || 'Reading'
+            ttsService.speak(text, {
+              rate: state.settings.ttsSpeed,
+              pitch: state.settings.ttsPitch,
+              voiceURI: state.settings.ttsVoice,
+              onEnd: () => {
+                state.setTTSActive(false)
+                state.setTTSMuted(false)
+              }
+            })
+          }
+        }
+      } else if (e.key === 'F8') {
+        // Stop TTS
+        e.preventDefault()
+        const state = useAppStore.getState()
+        if (state.isTTSActive) {
+          ttsService.stop()
+          state.setTTSActive(false)
+          state.setTTSMuted(false)
+        }
       } else if (e.key === 'F9') {
         e.preventDefault()
         const themes: Array<'day' | 'light-sepia' | 'dark-sepia' | 'night'> = [
@@ -398,10 +438,9 @@ export const App: React.FC = () => {
       const filePath = ((file as any).path as string | undefined) || file.name
       const existing = await db.books.where('filePath').equals(filePath).first()
       if (existing) {
-        if (existing.id && (existing.isDeleted || (numericCatId !== null && existing.categoryId !== numericCatId))) {
+        if (existing.id && numericCatId !== null && existing.categoryId !== numericCatId) {
           await db.books.update(existing.id, {
-            isDeleted: false,
-            ...(numericCatId !== null ? { categoryId: numericCatId } : {})
+            categoryId: numericCatId
           })
           importedCount++
         }
@@ -425,8 +464,7 @@ export const App: React.FC = () => {
         totalPages: meta.totalPages || 1,
         categoryId: numericCatId,
         isFavorite: false,
-        isRead: false,
-        isDeleted: false
+        isRead: false
       })
       importedCount++
     }

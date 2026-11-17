@@ -22,6 +22,8 @@ export interface Book {
   /** @deprecated Soft-delete was removed in v3; retained optional for legacy backup compatibility. */
   isDeleted?: boolean
   notesCount?: number
+  /** Cached serialized epub.js locations JSON for instant page/seek readiness on reopen. */
+  locationsCache?: string
 }
 
 export interface Category {

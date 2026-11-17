@@ -395,6 +395,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
           <Info className="w-4 h-4 text-[#8b949e]" />
           <span>About Semply</span>
         </button>
+
       </div>
     </aside>
   )

@@ -1265,3 +1265,25 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
 
 
 
+---
+
+## Increment 30: Security Hardening, Dead Logic Cleanup, Dynamic EPUB Math & Global TTS Hotkeys
+
+### Architecture & Implementation
+1. **Outgoing Hyperlink Protocol Sanitization (`src/main/index.ts`)**:
+   - Hardened `mainWindow.webContents.setWindowOpenHandler` with `new URL(details.url)` parsing to strictly validate URL protocol schemes.
+   - Enforced an allowlist restricting external execution strictly to `http:` and `https:`. Any arbitrary local file URI (`file:`), executable scheme, or non-web protocol handler is rejected, protecting user machines against malicious links inside untrusted eBook files.
+2. **Zombie Code Elimination & Schema Harmonization (`src/renderer/src/App.tsx`, `src/renderer/src/stores/useAppStore.ts`)**:
+   - Purged dead `isDeleted` checks and property writes from `handleFilesImport` in `App.tsx` following Dexie schema v3's complete phase-out of soft-deletion in favor of permanent removal.
+   - Removed dead `cat === 'deleted'` category redirection logic from `setSelectedCategory` in `useAppStore.ts`.
+3. **Modal Re-integration & Asset Bundler Safety (`src/renderer/src/components/ui/AboutModal.tsx`, `src/renderer/src/components/library/Sidebar.tsx`)**:
+   - Re-connected the "About Semply" modal trigger button in the library `Sidebar.tsx`.
+   - Replaced fragile relative path image tag with Vite asset import (`import semplyLogo from '../../assets/icons/semply_logo.png'`) to guarantee correct asset resolution in production ASAR bundles.
+   - Purged dead `href="#"` link and added `target="_blank"` with `rel="noopener noreferrer"` for external GitHub and documentation references.
+4. **Dynamic EPUB Pagination Math (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Removed arbitrary magic number fallbacks (`416` and `507`) in spine location generation and progress calculation.
+   - Replaced with dynamic, book-aware fallback calculation: `(book.totalPages && book.totalPages > 0) ? book.totalPages : Math.max(1, spineLength)`.
+5. **Bookmark Input Validation Guard (`src/renderer/src/components/drawers/BookmarksDrawer.tsx`)**:
+   - Guarded `currentPage` input before generating default labels and fallback CFIs (`Number.isFinite(currentPage) && currentPage > 0 ? currentPage : 1`) to eliminate `Page NaN` and invalid CFI record generation.
+6. **Global TTS Hotkey Handlers (`src/renderer/src/App.tsx`)**:
+   - Implemented documented `F7` and `F8` keyboard listeners: `F7` toggles Play/Pause for Read Aloud (TTS), and `F8` stops active speech synthesis.

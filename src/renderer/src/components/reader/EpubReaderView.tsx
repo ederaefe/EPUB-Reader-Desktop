@@ -554,7 +554,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         return epubInstance?.locations.generate(1000)
       }).then(() => {
         if (isCancelled) return
-        const total = (epubInstance?.locations as any)?.total || 416
+        const computedTotal = (epubInstance?.locations as any)?.total
+        const spineLength = (epubInstance?.spine as any)?.length || (epubInstance?.spine as any)?.spineItems?.length || 1
+        const fallbackTotal = (book.totalPages && book.totalPages > 0) ? book.totalPages : Math.max(1, spineLength)
+        const total = computedTotal || fallbackTotal
         setTotalPages(total)
         // Immediately sync page numbers once locations finish generating
         const loc = renditionInstance?.currentLocation() as any
@@ -650,7 +653,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           pct = (spineIdx > 0 || secPage > 1) && rawExact > 0
             ? Math.min(100, Math.max(1, Math.round(rawExact)))
             : Math.min(100, Math.max(0, Math.round(rawExact)))
-          const bookTotal = (epubInstance?.locations as any)?.total || totalPagesRef.current || (book.totalPages || 507)
+          const bookTotal =
+            (epubInstance?.locations as any)?.total ||
+            totalPagesRef.current ||
+            (book.totalPages && book.totalPages > 0 ? book.totalPages : Math.max(1, spineTotal))
           page = Math.min(bookTotal, Math.max(1, Math.round(progressRatio * bookTotal)))
         }
 
@@ -1798,6 +1804,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       {!isImmersiveFullscreen && (
         <FluidClimaxProgressBar
           progressPercent={progressPercent || 0}
+          currentPage={currentPage}
+          totalPages={totalPages}
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}

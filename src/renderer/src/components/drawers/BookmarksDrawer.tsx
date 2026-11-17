@@ -51,11 +51,12 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
       if (existing?.id) {
         await db.bookmarks.delete(existing.id)
       } else {
+        const safePage = Number.isFinite(currentPage) && currentPage > 0 ? currentPage : 1
         await db.bookmarks.add({
           bookId: activeBook.id,
-          cfi: currentCfi || String(currentPage),
-          label: `Page ${currentPage}`,
-          pageNumber: currentPage,
+          cfi: currentCfi || String(safePage),
+          label: `Page ${safePage}`,
+          pageNumber: safePage,
           createdAt: Date.now()
         })
       }

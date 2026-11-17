@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Menu, screen } from 'electron'
-import { join, extname, basename } from 'path'
+import { join, extname, basename, resolve, normalize } from 'path'
 import { readFile, readdir, writeFile, mkdir } from 'fs/promises'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { createHash } from 'crypto'
@@ -15,6 +15,84 @@ let mainWindow: BrowserWindow | null = null
 let pendingExternalFile: string | null = null
 
 const SUPPORTED_EXTS = new Set(['.epub', '.pdf'])
+const ALLOWED_READ_EXTS = new Set(['.epub', '.pdf', '.mobi', '.txt', '.json', '.zip'])
+const ALLOWED_WRITE_EXTS = new Set(['.json', '.zip', '.epub', '.txt'])
+
+function assertSafePath(targetPath: string, mode: 'read' | 'write'): string {
+  if (typeof targetPath !== 'string' || !targetPath.trim()) {
+    throw new Error('Invalid path: path must be a non-empty string')
+  }
+
+  if (/[\0\x01-\x1F\x7F]/.test(targetPath)) {
+    throw new Error('Invalid path: contains illegal control characters')
+  }
+
+  const normalized = normalize(resolve(targetPath))
+
+  const ext = extname(normalized).toLowerCase()
+  const allowedExts = mode === 'read' ? ALLOWED_READ_EXTS : ALLOWED_WRITE_EXTS
+  if (!allowedExts.has(ext)) {
+    throw new Error(`Access denied: file extension '${ext}' is not permitted for ${mode} operations`)
+  }
+
+  const forbiddenPatterns = [
+    /^[a-z]:\\windows\\/i,
+    /^[a-z]:\\program files/i,
+    /\\system32\\/i,
+    /\\syswow64\\/i,
+    /\\start menu\\programs\\startup/i,
+    /[\\/]\.ssh([\\/]|$)/i,
+    /[\\/]\.aws([\\/]|$)/i,
+    /[\\/]\.gnupg([\\/]|$)/i,
+    /[\\/]\.git([\\/]|$)/i,
+    /^\/etc([\\/]|$)/i,
+    /^\/var([\\/]|$)/i,
+    /^\/proc([\\/]|$)/i,
+    /^\/sys([\\/]|$)/i
+  ]
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(normalized)) {
+      throw new Error('Access denied: restricted system directory access')
+    }
+  }
+
+  return normalized
+}
+
+function assertSafeFolderPath(folderPath: string): string {
+  if (typeof folderPath !== 'string' || !folderPath.trim()) {
+    throw new Error('Invalid folder: must be a non-empty string')
+  }
+  if (/[\0\x01-\x1F\x7F]/.test(folderPath)) {
+    throw new Error('Invalid folder: contains illegal control characters')
+  }
+  const normalized = normalize(resolve(folderPath))
+
+  if (/^[a-z]:\\?$/i.test(normalized) || normalized === '/' || normalized === '\\') {
+    throw new Error('Scanning root drive directly is not permitted')
+  }
+
+  const forbiddenPatterns = [
+    /^[a-z]:\\windows([\\/]|$)/i,
+    /^[a-z]:\\program files/i,
+    /[\\/]\.ssh([\\/]|$)/i,
+    /[\\/]\.aws([\\/]|$)/i,
+    /[\\/]\.git([\\/]|$)/i,
+    /^\/etc([\\/]|$)/i,
+    /^\/var([\\/]|$)/i,
+    /^\/proc([\\/]|$)/i,
+    /^\/sys([\\/]|$)/i
+  ]
+
+  for (const pattern of forbiddenPatterns) {
+    if (pattern.test(normalized)) {
+      throw new Error('Access denied: restricted system directory')
+    }
+  }
+
+  return normalized
+}
 
 interface SavedWindowState {
   x?: number
@@ -34,10 +112,10 @@ function loadWindowState(): SavedWindowState {
     const p = getWindowStatePath()
     if (!existsSync(p)) return fallback
     const parsed = JSON.parse(readFileSync(p, 'utf-8')) as SavedWindowState
-    const width = typeof parsed.width === 'number' && parsed.width >= 960 ? parsed.width : 1280
-    const height = typeof parsed.height === 'number' && parsed.height >= 600 ? parsed.height : 820
-    let x = typeof parsed.x === 'number' ? parsed.x : undefined
-    let y = typeof parsed.y === 'number' ? parsed.y : undefined
+    const width = typeof parsed.width === 'number' && Number.isFinite(parsed.width) && parsed.width >= 960 ? Math.round(parsed.width) : 1280
+    const height = typeof parsed.height === 'number' && Number.isFinite(parsed.height) && parsed.height >= 600 ? Math.round(parsed.height) : 820
+    let x = typeof parsed.x === 'number' && Number.isFinite(parsed.x) ? Math.round(parsed.x) : undefined
+    let y = typeof parsed.y === 'number' && Number.isFinite(parsed.y) ? Math.round(parsed.y) : undefined
 
     // Validate coordinates against currently attached displays so window never spawns off-screen
     if (x !== undefined && y !== undefined) {
@@ -51,7 +129,8 @@ function loadWindowState(): SavedWindowState {
         y = undefined
       }
     }
-    return { x, y, width, height, isMaximized: !!parsed.isMaximized }
+    const isMaximized = parsed.isMaximized === true
+    return { x, y, width, height, isMaximized }
   } catch {
     return fallback
   }
@@ -147,7 +226,7 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true
@@ -260,7 +339,14 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const parsed = new URL(details.url)
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        shell.openExternal(details.url)
+      }
+    } catch {
+      // Ignore invalid or unsafe URLs
+    }
     return { action: 'deny' }
   })
 
@@ -361,51 +447,70 @@ ipcMain.handle('dialog:openFolder', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
-// Recursive Folder Scanner
+// Recursive Folder Scanner with security bounding (depth cap, file cap, symlink ignore)
 ipcMain.handle('fs:scanFolder', async (_, folderPath: string) => {
   const allowed = new Set(['.epub', '.pdf', '.mobi', '.txt'])
   const results: string[] = []
+  const MAX_DEPTH = 6
+  const MAX_FILES = 2500
 
-  async function scan(dir: string): Promise<void> {
+  let safeRoot: string
+  try {
+    safeRoot = assertSafeFolderPath(folderPath)
+    if (!existsSync(safeRoot)) return []
+  } catch (err: any) {
+    console.warn('Folder scan rejected by security policy:', err?.message)
+    return []
+  }
+
+  async function scan(dir: string, depth: number): Promise<void> {
+    if (depth > MAX_DEPTH || results.length >= MAX_FILES) return
     try {
       const entries = await readdir(dir, { withFileTypes: true })
       for (const entry of entries) {
+        if (results.length >= MAX_FILES) return
+        if (entry.isSymbolicLink()) continue
+
         const full = join(dir, entry.name)
         if (entry.isDirectory()) {
-          await scan(full)
+          await scan(full, depth + 1)
         } else if (allowed.has(extname(entry.name).toLowerCase())) {
           results.push(full)
         }
       }
-    } catch (e) {
-      console.error('Scan error on folder:', dir, e)
+    } catch {
+      // Ignore directory access errors
     }
   }
 
-  await scan(folderPath)
+  await scan(safeRoot, 0)
   return results
 })
 
-// Read binary file buffer
+// Read binary file buffer with path validation
 ipcMain.handle('fs:readFileBuffer', async (_, filePath: string) => {
-  const buffer = await readFile(filePath)
+  const safePath = assertSafePath(filePath, 'read')
+  const buffer = await readFile(safePath)
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
 })
 
-// Read text file
+// Read text file with path validation
 ipcMain.handle('fs:readFileText', async (_, filePath: string) => {
-  return await readFile(filePath, 'utf-8')
+  const safePath = assertSafePath(filePath, 'read')
+  return await readFile(safePath, 'utf-8')
 })
 
-// Write text file
+// Write text file with path validation
 ipcMain.handle('fs:writeFileText', async (_, filePath: string, content: string) => {
-  await writeFile(filePath, content, 'utf-8')
+  const safePath = assertSafePath(filePath, 'write')
+  await writeFile(safePath, content, 'utf-8')
   return true
 })
 
-// Write binary buffer
+// Write binary buffer with path validation
 ipcMain.handle('fs:writeFileBuffer', async (_, filePath: string, buffer: ArrayBuffer) => {
-  await writeFile(filePath, Buffer.from(buffer))
+  const safePath = assertSafePath(filePath, 'write')
+  await writeFile(safePath, Buffer.from(buffer))
   return true
 })
 
