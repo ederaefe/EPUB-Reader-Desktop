@@ -1126,3 +1126,26 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
 - **Save Dialog Async Hardening**: Awaited Electron save dialog response in `NotesDrawer.tsx` to ensure accurate success and cancellation toast handling.
 - **Type Safety and Build Certification**: Zero compiler errors in `tsc --noEmit` and successful production bundle generation across main, preload, and renderer packages.
 
+---
+
+## Increment 25: Holistic Zero-Percent UI Elimination & Progressive Reading Algorithm Upgrade
+
+### Architecture & Implementation
+1. **Unread Progress Badge Suppression (`BookCard.tsx`)**:
+   - In Grid View, guarded the bottom embedded progress indicator container (`.h-4`) behind `book.progressPercent != null && Math.round(book.progressPercent) >= 1`.
+   - On unread books (or books opened on the title/cover page where progress is `< 1%`), the entire dark bottom strip and "0%" label are completely omitted. Book covers render completely unobstructed and pristine with zero visual clutter.
+   - Once a reader progresses to at least $1\%$, the 16px bottom indicator appears with authentic blue filling and the rounded integer percentage (`1%` to `100%`).
+2. **List View Progress Column Alignment (`BookCard.tsx`)**:
+   - Added tabular progress rendering in the list view row: books with $\ge 1\%$ progress display `${Math.round(book.progressPercent)}%`, while unread or $< 1\%$ books render a subtle em-dash (`—`), completely eliminating "0%" in list view.
+3. **Progress Tracking Algorithm Upgrade (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - In EPUB reading, updated relocation listener: when the reader is at the beginning (page $\le 1$ and spine index $0$), progress remains unread ($0\%$).
+   - When the reader advances beyond the start into chapter content (`page > 1` or `spineIdx > 0` or `secPage > 1` or raw location percentage $> 0$), progress quantizes to `Math.min(100, Math.max(1, Math.round(rawPercentage * 100)))`. This prevents early pages of 500+ page books from rounding down to 0% and guarantees progress reflects active reading immediately upon starting the book.
+   - In PDF reading, page 1 of multi-page documents persists as unread until advancing to page 2 or beyond, where progress quantizes to $\ge 1\%$.
+4. **Bookmarks & Context Menu Progress Cleansing (`BookmarksDrawer.tsx`, `BookCard.tsx`)**:
+   - In `BookmarksDrawer.tsx`, bookmarks only display `${percent}% read` when `progressPercent >= 1`, preventing "0% read" on first-page bookmarks.
+   - In `BookCard.tsx` context menu, "Continue Reading" only appears when `Math.round(book.progressPercent) >= 1`; otherwise "Open Book" is presented.
+5. **Canvas Artwork Sanitization (`coverService.ts`, `LibraryView.tsx`)**:
+   - In `generateCoverCanvas()`, suppressed the placeholder text "Unknown Author" from being drawn across generated cover canvases when author metadata is missing.
+   - In `LibraryView.tsx`, when books are cleansed of scrape prefixes and their author/title is resolved, generated canvas covers automatically re-render with the true metadata.
+
+

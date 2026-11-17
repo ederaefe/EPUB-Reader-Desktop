@@ -535,7 +535,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             setCurrentPage(numLoc)
           }
           if (currentPct != null && !isNaN(currentPct)) {
-            setProgressPercent(Math.min(100, Math.max(0, Math.round(currentPct * 100))))
+            const rawExact = currentPct * 100
+            const calcPct = (numLoc > 1 && rawExact > 0)
+              ? Math.min(100, Math.max(1, Math.round(rawExact)))
+              : Math.min(100, Math.max(0, Math.round(rawExact)))
+            setProgressPercent(calcPct)
           }
         }
       }).catch(() => {})
@@ -584,6 +588,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         let pct = 0
 
         // 1. If epub.js locations are generated, use accurate location & percentage from CFI
+        const hasMovedPastStart = (location.start.index != null && location.start.index > 0) || (location.start.displayed?.page && location.start.displayed.page > 1)
         if (epubInstance?.locations?.length()) {
           const rawLoc = (epubInstance.locations as any).locationFromCfi(cfi)
           const numLoc = typeof rawLoc === 'number' ? rawLoc : Number(rawLoc)
@@ -592,11 +597,17 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           }
           const rawPct = epubInstance.locations.percentageFromCfi(cfi)
           if (rawPct != null && !isNaN(rawPct)) {
-            pct = Math.min(100, Math.max(0, Math.round(rawPct * 100)))
+            const rawExact = rawPct * 100
+            pct = (page > 1 || hasMovedPastStart) && rawExact > 0
+              ? Math.min(100, Math.max(1, Math.round(rawExact)))
+              : Math.min(100, Math.max(0, Math.round(rawExact)))
           }
         } else if (location.start.location != null && Number(location.start.location) > 0) {
           page = Number(location.start.location)
-          pct = Math.round((location.start.percentage || 0) * 100)
+          const rawExact = (location.start.percentage || 0) * 100
+          pct = (page > 1 || hasMovedPastStart) && rawExact > 0
+            ? Math.min(100, Math.max(1, Math.round(rawExact)))
+            : Math.min(100, Math.max(0, Math.round(rawExact)))
         } else {
           // 2. Fallback: Proportional progress based on spine index and section pages
           const spineTotal = (epubInstance?.spine as any)?.length || (epubInstance?.spine as any)?.spineItems?.length || 1
@@ -604,7 +615,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const secPage = location.start.displayed?.page || 1
           const secTotal = Math.max(1, location.start.displayed?.total || 1)
           const progressRatio = (spineIdx + ((secPage - 1) / secTotal)) / Math.max(1, spineTotal)
-          pct = Math.min(100, Math.max(0, Math.round(progressRatio * 100)))
+          const rawExact = progressRatio * 100
+          pct = (spineIdx > 0 || secPage > 1) && rawExact > 0
+            ? Math.min(100, Math.max(1, Math.round(rawExact)))
+            : Math.min(100, Math.max(0, Math.round(rawExact)))
           const bookTotal = (epubInstance?.locations as any)?.total || totalPagesRef.current || (book.totalPages || 507)
           page = Math.min(bookTotal, Math.max(1, Math.round(progressRatio * bookTotal)))
         }

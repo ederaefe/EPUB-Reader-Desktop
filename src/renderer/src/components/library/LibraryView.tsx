@@ -21,7 +21,8 @@ import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ImportBooksModal } from '../modals/ImportBooksModal'
 import {
   extractBookMetadata,
-  parseBookTitleAndAuthor
+  parseBookTitleAndAuthor,
+  generateCoverCanvas
 } from '../../services/coverService'
 
 export const LibraryView: React.FC = () => {
@@ -108,6 +109,13 @@ export const LibraryView: React.FC = () => {
       }
 
       if (needsUpdate && b.id) {
+        if (updates.title || updates.author) {
+          const effectiveTitle = updates.title || b.title
+          const effectiveAuthor = updates.author || b.author
+          if (b.coverDataUrl?.startsWith('data:image')) {
+            updates.coverDataUrl = generateCoverCanvas(effectiveTitle, effectiveAuthor)
+          }
+        }
         await db.books.update(b.id, updates)
         Object.assign(b, updates)
       }

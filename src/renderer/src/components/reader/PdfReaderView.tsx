@@ -292,12 +292,18 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
     // Persist reading progress
     if (book.id && totalPages > 0) {
-      const pct = Math.min(100, Math.round((currentPage / totalPages) * 100))
+      const rawExact = (currentPage / totalPages) * 100
+      let pct = 0
+      if (currentPage > 1 || rawExact >= 1) {
+        pct = Math.min(100, Math.max(1, Math.round(rawExact)))
+      } else {
+        pct = 0
+      }
       const isFinished = totalPages > 1 && currentPage >= totalPages
       db.books.update(book.id, {
         currentPage,
         totalPages,
-        progressPercent: pct,
+        progressPercent: isFinished ? 100 : pct,
         lastOpenedAt: Date.now(),
         ...(isFinished ? { isRead: true } : {})
       })

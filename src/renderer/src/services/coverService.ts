@@ -839,9 +839,11 @@ export function generateCoverCanvas(title: string, author: string): string {
   ctx.textAlign = 'center'
   drawWrappedText(ctx, title, 150, 160, 240, 26, 5)
 
-  ctx.fillStyle = '#8b949e'
-  ctx.font = '14px "Segoe UI", sans-serif'
-  ctx.fillText(author || 'Unknown Author', 150, 290)
+  if (author && author !== 'Unknown Author' && author !== 'Unknown') {
+    ctx.fillStyle = '#8b949e'
+    ctx.font = '14px "Segoe UI", sans-serif'
+    ctx.fillText(author, 150, 290)
+  }
 
   return canvas.toDataURL('image/jpeg', 0.85)
 }
