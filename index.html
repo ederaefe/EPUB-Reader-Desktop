@@ -130,159 +130,50 @@
   <!-- Site Header -->
   <header class="site-header" role="banner">
     <div class="header-container">
-      <a href="/" class="header-brand" aria-label="Semply Ebook Reader Home">
-        <img src="assets/semply-logo.png" alt="Semply Logo" class="brand-logo" width="32" height="32">
+      <a href="/" class="header-brand">
         <span class="brand-name">Semply</span>
-        <span class="brand-badge" id="release-badge">v1.0.0 Latest</span>
       </a>
-
-      <nav class="header-nav" aria-label="Main Navigation">
-        <a href="#downloads" class="nav-link">Downloads</a>
-        <a href="#features" class="nav-link">Features</a>
-        <a href="#security" class="nav-link">Security & Privacy</a>
-        <a href="#open-source" class="nav-link">Open Source</a>
-        <a href="#compare" class="nav-link">Comparison</a>
-        <a href="#faq" class="nav-link">FAQ</a>
-        <a href="documentations/index.html" class="nav-link">User Manual</a>
+      <nav class="header-nav">
+        <a href="#downloads" class="nav-link">Download</a>
+        <a href="#features" class="nav-link">The Story</a>
+        <a href="documentations/index.html" class="nav-link">The Manual</a>
       </nav>
-
-      <div class="header-actions">
-        <a href="https://github.com/ederaefe/EPUB-Reader-Desktop" target="_blank" rel="noopener noreferrer" class="btn-header-github" aria-label="Star Semply on GitHub">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path>
-          </svg>
-          <span>Star</span>
-        </a>
-        <a href="#download" class="btn-header-cta">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Download</span>
-        </a>
-      </div>
     </div>
   </header>
 
   <main id="main-content">
-
-    <!-- Hero Section -->
-    <section class="hero-section" id="hero" aria-labelledby="hero-heading">
+    <section class="hero-section" id="hero">
       <div class="hero-container">
-        
-        <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" target="_blank" rel="noopener noreferrer" class="hero-pill">
-          <span class="pill-dot" aria-hidden="true"></span>
-          <span>Open-Source Desktop Reader</span>
-          <span style="color: var(--border-focus);" aria-hidden="true">|</span>
-          <span id="release-tag" style="color: var(--accent-blue-hover); font-weight: 600;">v1.0.0</span>
-          <span>Released</span>
-        </a>
-
-        <h1 class="hero-title" id="hero-heading">
-          Pure reading. Native speed. <br>
-          <span class="hero-title-highlight">Zero compromise.</span>
-        </h1>
-
+        <h1 class="hero-title">A Library Within Reach</h1>
         <p class="hero-subtitle">
-          A high-performance desktop reader for EPUB, PDF, and digital documents. Built with Electron, MuPDF WASM, and React 19. 100% local-first, privacy-focused, and open source.
+          Semply is a quiet, native reader for the digital age. Offline, secure, and crafted to let the words simply exist.
         </p>
-
-        <!-- Primary Download CTA -->
-        <div class="hero-cta-group" id="download">
-          <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" id="primary-download-btn" class="btn-primary-download" role="button">
-            <span class="download-icon-box" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </span>
-            <span id="primary-download-label">Download for Windows (v1.0.0)</span>
-          </a>
-
-          <div class="download-meta">
-            <span class="meta-item">Free & Open Source</span>
-            <span class="meta-dot" aria-hidden="true">•</span>
-            <span class="meta-item">SHA-256 Verified</span>
-            <span class="meta-dot" aria-hidden="true">•</span>
-            <span class="meta-item" id="release-size">98.5 MB</span>
-          </div>
-
-          <!-- Direct Platform Links -->
-          <div class="platform-links-row" aria-label="Alternative Operating Systems">
-            <span style="color: var(--text-tertiary);">Other platforms:</span>
-            <a href="#downloads" class="platform-pill" data-select-platform="windows">Windows (.exe)</a>
-            <a href="#downloads" class="platform-pill" data-select-platform="macos">macOS (.dmg)</a>
-            <a href="#downloads" class="platform-pill" data-select-platform="linux">Linux (.AppImage / .deb / .rpm)</a>
-            <a href="#downloads" class="platform-pill" data-select-platform="docker">Docker Container</a>
-          </div>
+        <div class="hero-cta-group">
+          <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" class="btn-primary-download">Download</a>
         </div>
+      </div>
+    </section>
 
-        <!-- Interactive Hero Reader Mockup -->
-        <div class="hero-mockup-wrapper" aria-label="Interactive Semply Reader Preview">
-          <div class="mockup-controls-bar">
-            <span class="mockup-label">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
-              <span>Live Theme Experience</span>
-            </span>
-
-            <div class="theme-switch-pills" role="radiogroup" aria-label="Select Mockup Theme">
-              <button type="button" class="theme-pill-btn is-active" data-theme-target="obsidian" role="radio" aria-checked="true">Obsidian</button>
-              <button type="button" class="theme-pill-btn" data-theme-target="light" role="radio" aria-checked="false">Light</button>
-              <button type="button" class="theme-pill-btn" data-theme-target="paper" role="radio" aria-checked="false">Paper</button>
-              <button type="button" class="theme-pill-btn" data-theme-target="dusk" role="radio" aria-checked="false">Dusk</button>
-            </div>
-          </div>
-
-          <!-- Reader Frame with Live Theme Swapping -->
-          <div class="reader-frame" data-reader-theme="obsidian">
-            <div class="mockup-titlebar">
-              <div class="mockup-window-dots" aria-hidden="true">
-                <span class="dot"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
-              </div>
-              <div class="mockup-title-text">The Fifth Season — Chapter 1 — Semply</div>
-              <div style="font-size: 0.72rem; color: var(--mock-accent);">Auto-Scroll 25s</div>
-            </div>
-
-            <div class="mockup-canvas">
-              <div class="mockup-column">
-                <div class="mockup-chapter-head">Prologue — You are here</div>
-                <p class="mockup-lead-p">
-                  Let us start with an end of the world, why don't we? Get it over with and move on to more interesting things.
-                </p>
-                <p style="margin-top: 18px;">
-                  First, a personal ending. There is a thing she will do. A thing she must do. A thing she has done a hundred times before, but this time will be different. The earth will shudder.
-                </p>
-              </div>
-
-              <div class="mockup-column">
-                <p>
-                  She walks through the quiet ash-choked streets of the comm. People look at her with careful eyes, smelling the tension on her skin.
-                </p>
-                <p style="margin-top: 18px;">
-                  <span class="mockup-highlight">Knowledge is the foundation of resilience. When the seasons break the world, only those who record truth survive the long quiet.</span>
-                </p>
-                <p style="margin-top: 18px; font-size: 0.85rem; color: var(--mock-text-muted);">
-                  Page 12 of 507 • 2.4% Read • Merriweather Serif 18px
-                </p>
-              </div>
-            </div>
-          </div>
+    <!-- Marketing Sections -->
+    <section class="section" id="features">
+      <div class="section-container">
+        <h2 class="section-title">The Art of Reading</h2>
+        <p class="section-description">A reader built not for machines, but for the soul of the scholar.</p>
+        
+        <div class="bento-grid">
+          <article class="bento-card">
+            <h3 class="bento-title">A Library of Elegance</h3>
+            <p class="bento-desc">Seventy-seven curated typefaces to suit the mood of every tome, with four authentic themes — Obsidian, Light, Paper, and Dusk — that mirror the gentle parchment of old.</p>
+          </article>
+          <article class="bento-card">
+            <h3 class="bento-title">A Noble Virtue: Privacy</h3>
+            <p class="bento-desc">In an age of endless tracking, Semply remains a quiet sanctuary. Your books, your notes, your habits; all remain within your walls, never to be whispered to the clouds.</p>
+          </article>
+          <article class="bento-card">
+            <h3 class="bento-title">Mastery of the Page</h3>
+            <p class="bento-desc">Our MuPDF engine breathes life into rigid documents, reflowing them into fluid, readable text. It is, in essence, magic for the modern reader.</p>
+          </article>
         </div>
-
       </div>
     </section>
 
