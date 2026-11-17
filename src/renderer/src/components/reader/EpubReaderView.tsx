@@ -105,6 +105,28 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [totalPages, setTotalPages] = useState<number>(book.totalPages || 1)
   const [progressPercent, setProgressPercent] = useState<number>(book.progressPercent || 0)
 
+  // Keep book identity & metadata synced in refs so initReader only re-mounts when the actual
+  // book identity or layout mode changes — never when DB progress updates re-render the parent.
+  const bookKey = `${book.id ?? ''}::${book.filePath}`
+  const bookIdRef = useRef(book.id)
+  const bookFilePathRef = useRef(book.filePath)
+  const bookFormatRef = useRef(book.format)
+  const bookLocationsCacheRef = useRef(book.locationsCache)
+  const bookTotalPagesRef = useRef(book.totalPages || 1)
+  const bookInitialCfiRef = useRef(book.progressCfi)
+  const lastLoadedBookKeyRef = useRef<string>('')
+  const navigateStepRef = useRef<(dir: 'next' | 'prev') => Promise<void>>(async () => {})
+  const hasMountedFullscreenRef = useRef(false)
+
+  bookIdRef.current = book.id
+  bookFilePathRef.current = book.filePath
+  bookFormatRef.current = book.format
+  bookLocationsCacheRef.current = book.locationsCache
+  bookTotalPagesRef.current = book.totalPages || 1
+  if (lastLoadedBookKeyRef.current !== bookKey) {
+    bookInitialCfiRef.current = book.progressCfi
+  }
+
   const [selectedText, setSelectedText] = useState<string | null>(null)
   const [selectedCfiRange, setSelectedCfiRange] = useState<string>('')
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 })
@@ -324,9 +346,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           return
         }
         if (e.deltaY > 24) {
-          renditionRef.current?.next()
+          navigateStepRef.current('next')
         } else if (e.deltaY < -24) {
-          renditionRef.current?.prev()
+          navigateStepRef.current('prev')
         }
       },
       { passive: false }
@@ -416,10 +438,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault()
-        renditionRef.current?.next()
+        navigateStepRef.current('next')
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
         e.preventDefault()
-        renditionRef.current?.prev()
+        navigateStepRef.current('prev')
       } else if (e.key === 'Home') {
         e.preventDefault()
         renditionRef.current?.display(0)
@@ -496,7 +518,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         return {
           page: currentPageRef.current || 1,
           pct: progressPercentRef.current || 0,
-          total: Math.max(1, totalPagesRef.current || book.totalPages || 1)
+          total: Math.max(1, totalPagesRef.current || bookTotalPagesRef.current || 1)
         }
       }
 
@@ -551,7 +573,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       const fallbackTotal = Math.max(
         spineTotal,
         totalPagesRef.current > 1 ? totalPagesRef.current : 0,
-        book.totalPages > 1 ? book.totalPages : 0,
+        bookTotalPagesRef.current > 1 ? bookTotalPagesRef.current : 0,
         secTotal
       )
       const page = atEnd
@@ -565,7 +587,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       return { page, pct, total: fallbackTotal }
     },
-    [book.totalPages, hasReadyLocations]
+    [hasReadyLocations]
   )
 
   // Initialize ePub reader engine
@@ -581,28 +603,28 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       viewerRef.current.innerHTML = ''
 
       let sourceData: any =
-        book.format === 'pdf' && pdfViewMode === 'reflow' && reflowEpubBuffer
+        bookFormatRef.current === 'pdf' && pdfViewMode === 'reflow' && reflowEpubBuffer
           ? reflowEpubBuffer
           : activeBookBuffer
       if (!sourceData) {
         if (
           window.desktopAPI?.readFileBuffer &&
-          !book.filePath.startsWith('http://') &&
-          !book.filePath.startsWith('https://') &&
-          !book.filePath.startsWith('/assets/') &&
-          !book.filePath.startsWith('assets/')
+          !bookFilePathRef.current.startsWith('http://') &&
+          !bookFilePathRef.current.startsWith('https://') &&
+          !bookFilePathRef.current.startsWith('/assets/') &&
+          !bookFilePathRef.current.startsWith('assets/')
         ) {
           try {
-            sourceData = await window.desktopAPI.readFileBuffer(book.filePath)
+            sourceData = await window.desktopAPI.readFileBuffer(bookFilePathRef.current)
           } catch {
-            sourceData = book.filePath
+            sourceData = bookFilePathRef.current
           }
         } else {
           try {
-            const resp = await fetch(book.filePath)
+            const resp = await fetch(bookFilePathRef.current)
             sourceData = await resp.arrayBuffer()
           } catch {
-            sourceData = book.filePath
+            sourceData = bookFilePathRef.current
           }
         }
       }
@@ -626,6 +648,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       // Guard epub.js internal Queue against permanent rejection deadlocks:
       // In epubjs@0.3.93, Queue.run() lacks a rejection handler on dequeue(), so any rejected
       // display() leaves q.running === true forever and freezes arrow keys, wheel, and seeking.
+      // We also replace `this.tick` (which epub.js sets to setTimeout) with a plain setTimeout
+      // so the queue drains even when the iframe is not painted (e.g. during initial mount),
+      // preventing the rAF-invisible-frame stall that blocks all navigation after book open.
       const q = (renditionInstance as any).q
       if (q && typeof q.run === 'function' && !q.__semplySafePatched) {
         q.__semplySafePatched = true
@@ -638,18 +663,33 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             })
             this.defered = { promise, resolve: resolveDeferred }
           }
-          const tick = this.tick || window.requestAnimationFrame
-          tick.call(window, () => {
+          // Always use setTimeout (never rAF) so the queue drains even when the
+          // document/iframe is hidden or not yet painted during initial book load.
+          // Wrap dequeue() inside Promise.resolve().then(...) so synchronous throws
+          // cannot escape and permanently leave this.running === true.
+          setTimeout(() => {
+            if (this.paused) {
+              this.running = undefined
+              return
+            }
             if (this._q && this._q.length) {
-              Promise.resolve(this.dequeue()).then(
-                () => this.run(),
-                () => this.run()
-              )
+              Promise.resolve()
+                .then(() => this.dequeue())
+                .then(
+                  () => {
+                    if (!this.paused) this.run()
+                    else this.running = undefined
+                  },
+                  () => {
+                    if (!this.paused) this.run()
+                    else this.running = undefined
+                  }
+                )
             } else {
               this.defered?.resolve?.()
               this.running = undefined
             }
-          })
+          }, 0)
           if (this.paused === true) {
             this.paused = false
           }
@@ -657,7 +697,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       }
 
-      // Also resolve dangling displaying deferred on displayError so q never stalls mid-display
+      // Also resolve dangling displaying deferred on displayError so q never stalls mid-display.
+      // We also force-drain the queue's running flag here so a failed display(startCfi) during
+      // initial book open does not permanently lock all subsequent next()/prev() calls.
       renditionInstance.on('displayError', () => {
         const rendAny = renditionInstance as any
         if (rendAny?.displaying) {
@@ -665,6 +707,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             rendAny.displaying.resolve()
           } catch {}
           rendAny.displaying = undefined
+        }
+        // Reset the queue's running flag so the queue can process the next enqueued display()
+        const queueAny = (renditionInstance as any)?.q
+        if (queueAny && queueAny.running) {
+          try {
+            queueAny.defered?.resolve?.()
+          } catch {}
+          queueAny.running = undefined
         }
       })
 
@@ -789,9 +839,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           lastWordsOnPageRef.current = visibleWords
         }
 
-        if (persistToDb && book.id) {
+        if (persistToDb && bookIdRef.current) {
           const isFinished = pct >= 99.5 || Boolean(location.atEnd)
-          db.books.update(book.id, {
+          db.books.update(bookIdRef.current, {
             progressCfi: cfi,
             progressPercent: isFinished ? 100 : Math.round(pct),
             currentPage: page,
@@ -834,10 +884,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       })
 
-      // Display initial position safely (fall back to book start if stored CFI is stale/invalid)
+      // Display initial position safely (fall back to book start if stored CFI is stale/invalid).
+      // When re-initializing the SAME book (e.g. switching single/double spread or scroll mode),
+      // resume from the live currentCfiRef so the reader never snaps back to page 1.
+      const isSameBook = lastLoadedBookKeyRef.current === bookKey
+      lastLoadedBookKeyRef.current = bookKey
+      const resumeCfi = isSameBook ? currentCfiRef.current : bookInitialCfiRef.current
       const startLocation =
-        typeof book.progressCfi === 'string' && book.progressCfi.trim().length > 0
-          ? book.progressCfi
+        typeof resumeCfi === 'string' && resumeCfi.trim().length > 0
+          ? resumeCfi
           : undefined
       try {
         await renditionInstance.display(startLocation)
@@ -860,9 +915,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
 
       // Hydrate all saved annotations/highlights onto the rendition immediately
-      if (book.id && !isCancelled) {
+      if (bookIdRef.current && !isCancelled) {
         try {
-          const saved = await db.annotations.where('bookId').equals(book.id).toArray()
+          const saved = await db.annotations.where('bookId').equals(bookIdRef.current).toArray()
           annotationsListRef.current = saved
           hydrateRenditionAnnotations(
             renditionInstance,
@@ -880,14 +935,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         .then(async () => {
           if (isCancelled || !epubInstance) return
           const locs = epubInstance.locations as any
+          const cachedLocs = bookLocationsCacheRef.current
           const canUseCache =
-            book.format === 'epub' &&
-            typeof book.locationsCache === 'string' &&
-            book.locationsCache.length > 2
+            bookFormatRef.current === 'epub' &&
+            typeof cachedLocs === 'string' &&
+            cachedLocs.length > 2
 
           if (canUseCache) {
             try {
-              locs.load(book.locationsCache)
+              locs.load(cachedLocs)
               if (locs.total > 0 && locs.length() > 1) {
                 locationsReadyRef.current = true
                 const total = locs.length()
@@ -931,10 +987,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             const total = locs.length()
             setTotalPages(total)
 
-            if (book.id && book.format === 'epub') {
+            if (bookIdRef.current && bookFormatRef.current === 'epub') {
               try {
                 const serialized = locs.save()
-                db.books.update(book.id, { locationsCache: serialized, totalPages: total }).catch(() => {})
+                bookLocationsCacheRef.current = serialized
+                db.books.update(bookIdRef.current, { locationsCache: serialized, totalPages: total }).catch(() => {})
               } catch {}
             }
 
@@ -952,10 +1009,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     return () => {
       isCancelled = true
       locationsReadyRef.current = false
-      renditionInstance?.destroy()
+      // Stop the internal epub.js queue BEFORE destroy() so pending Rendition.start()
+      // tasks never fire against an undefined book after unmount/StrictMode remount.
+      const rendAny = renditionInstance as any
+      try {
+        rendAny?.q?.stop?.()
+        rendAny?.q?.clear?.()
+      } catch {}
+      try {
+        renditionInstance?.destroy()
+      } catch {}
+      try {
+        epubInstance?.destroy?.()
+      } catch {}
     }
   }, [
-    book,
+    bookKey,
+    book.format,
     activeBookBuffer,
     pdfViewMode,
     reflowEpubBuffer,
@@ -1021,8 +1091,61 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     applyFontAndTheme()
   }, [settings.theme, settings.fontSize, settings.lineHeight, settings.fontFamily, applyDynamicStylesToDoc])
 
-  const handleNext = useCallback(() => renditionRef.current?.next(), [])
-  const handlePrev = useCallback(() => renditionRef.current?.prev(), [])
+  // Resilient page navigation: delegates to epub.js next()/prev(), and if a non-linear
+  // spine section (linear="no", common on EPUB covers/front-matter) returns undefined from
+  // section.next()/prev() or fails to advance, steps explicitly to the adjacent spine item.
+  const navigateStep = useCallback(async (direction: 'next' | 'prev') => {
+    const rendition = renditionRef.current as any
+    const epub = epubBookRef.current as any
+    if (!rendition) return
+
+    const beforeLoc = rendition.currentLocation?.() as any
+    const beforeCfi: string = beforeLoc?.start?.cfi || currentCfiRef.current || ''
+    const beforeIdx: number = typeof beforeLoc?.start?.index === 'number' ? beforeLoc.start.index : -1
+    const container = rendition.manager?.container as HTMLElement | undefined
+    const beforeScrollLeft = container?.scrollLeft ?? 0
+    const beforeScrollTop = container?.scrollTop ?? 0
+
+    try {
+      if (direction === 'next') {
+        await rendition.next()
+      } else {
+        await rendition.prev()
+      }
+    } catch {
+      // Fall through to explicit spine fallback below
+    }
+
+    const afterLoc = rendition.currentLocation?.() as any
+    const afterCfi: string = afterLoc?.start?.cfi || ''
+    const afterScrollLeft = container?.scrollLeft ?? 0
+    const afterScrollTop = container?.scrollTop ?? 0
+
+    const didMove =
+      (afterCfi && afterCfi !== beforeCfi) ||
+      Math.abs(afterScrollLeft - beforeScrollLeft) > 2 ||
+      Math.abs(afterScrollTop - beforeScrollTop) > 2
+
+    if (!didMove && epub?.spine?.spineItems?.length) {
+      const spineItems: any[] = epub.spine.spineItems
+      const curIdx = beforeIdx >= 0 ? beforeIdx : (typeof afterLoc?.start?.index === 'number' ? afterLoc.start.index : 0)
+      const targetIdx = direction === 'next' ? curIdx + 1 : curIdx - 1
+      if (targetIdx >= 0 && targetIdx < spineItems.length) {
+        const targetItem = spineItems[targetIdx]
+        if (targetItem?.href) {
+          try {
+            await rendition.display(targetItem.href)
+          } catch {
+            // Ignore display error on unrenderable spine item
+          }
+        }
+      }
+    }
+  }, [])
+  navigateStepRef.current = navigateStep
+
+  const handleNext = useCallback(() => navigateStep('next'), [navigateStep])
+  const handlePrev = useCallback(() => navigateStep('prev'), [navigateStep])
 
   // Analyze only the currently visible page/spread for Adaptive Countdown word density & break markers
   const analyzeVisiblePage = useCallback((): {
@@ -2036,8 +2159,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
   }
 
-  // Trigger epub.js layout reflow when entering/exiting immersive fullscreen
+  // Trigger epub.js layout reflow only when immersive fullscreen actually toggles (never on initial mount,
+  // where an early resize() clears the active view and can snap scrollLeft back to page 1)
   useEffect(() => {
+    if (!hasMountedFullscreenRef.current) {
+      hasMountedFullscreenRef.current = true
+      return
+    }
     const t = setTimeout(() => {
       try {
         ;(renditionRef.current as any)?.resize?.()

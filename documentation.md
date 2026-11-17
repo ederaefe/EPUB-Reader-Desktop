@@ -34,3 +34,6 @@ All future updates appended to `documentation.md` must follow these rules:
 - **Restored About Dialog**: Re-connected the "About Semply" dialog in the library sidebar with clean links and verified asset rendering.
 - **Security & Data Protection Hardening**: Hardened the entire desktop app with Chromium sandbox isolation, defense-in-depth file access protection (preventing access to operating system and sensitive credentials folders), strict HTTPS verification for online dictionary and font downloads, and automated backup data integrity validation.
 - **Atomic Backup Writes & Network Resilience**: Enhanced export reliability using atomic file writes to protect against corrupted backups during unexpected power loss, added a 10-minute cache for dictionary and Wikipedia definitions, and enforced memory quotas to keep reading fast and smooth.
+- **Streamlined Sidebar**: Removed the duplicate "About Semply" entry and standalone popup from the library sidebar since app information and links are already available under Settings > About.
+
+- **Reliable Page Turning & Position Preservation**: Fixed an issue where EPUB page turns could stall on cover or front-matter sections and ensured your exact reading position stays intact instead of jumping back to the first page when layout settings or progress updates occur.

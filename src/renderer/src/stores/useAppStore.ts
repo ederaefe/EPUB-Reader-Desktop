@@ -121,7 +121,6 @@ interface AppState {
   isSettingsDrawerOpen: boolean
   isFullSettingsModalOpen: boolean
   isHelpModalOpen: boolean
-  isAboutModalOpen: boolean
   activeFootnote: { id: string; index?: string; text: string; href?: string } | null
 
   // TTS & Autoscroll
@@ -175,7 +174,6 @@ interface AppState {
   toggleSettingsDrawer: (open?: boolean) => void
   toggleFullSettingsModal: (open?: boolean) => void
   toggleHelpModal: (open?: boolean) => void
-  toggleAboutModal: (open?: boolean) => void
   setActiveFootnote: (fn: { id: string; index?: string; text: string; href?: string } | null) => void
   setTTSActive: (active: boolean) => void
   setTTSMuted: (muted: boolean) => void
@@ -234,7 +232,6 @@ export const useAppStore = create<AppState>((set) => ({
   isSettingsDrawerOpen: false,
   isFullSettingsModalOpen: false,
   isHelpModalOpen: false,
-  isAboutModalOpen: false,
   activeFootnote: null,
 
   isTTSActive: false,
@@ -324,10 +321,6 @@ export const useAppStore = create<AppState>((set) => ({
   toggleHelpModal: (open) =>
     set((s) => ({
       isHelpModalOpen: open ?? !s.isHelpModalOpen
-    })),
-  toggleAboutModal: (open) =>
-    set((s) => ({
-      isAboutModalOpen: open ?? !s.isAboutModalOpen
     })),
   setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),

@@ -9,7 +9,6 @@ import {
   Trash2,
   Settings,
   HelpCircle,
-  Info,
   ChevronDown,
   ChevronRight
 } from 'lucide-react'
@@ -52,7 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
     toggleSettingsDrawer,
     toggleFullSettingsModal,
     toggleHelpModal,
-    toggleAboutModal,
     openConfirmDialog,
     showToast
   } = useAppStore()
@@ -388,14 +386,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
           <HelpCircle className="w-4 h-4 text-[#8b949e]" />
           <span>Help</span>
         </button>
-        <button
-          onClick={() => toggleAboutModal(true)}
-          className="w-full h-8 flex items-center gap-2 px-2.5 rounded text-[#9da7b3] hover:bg-[#1f232c] hover:text-white transition-colors"
-        >
-          <Info className="w-4 h-4 text-[#8b949e]" />
-          <span>About Semply</span>
-        </button>
-
       </div>
     </aside>
   )
