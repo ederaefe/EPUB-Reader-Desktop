@@ -1114,3 +1114,15 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
   - `documentations/index.html`: Complete semantic HTML5 user guide covering Getting Started, Library & Import, Reading & Fullscreen, Native PDF & Offline MuPDF Reflow, Highlights/Notes/Bookmarks, Full-Book Search, Dual-Mode Auto-Scroll, Read Aloud/Dictionary/Footnotes, Warm Night Filter, Additive Backup, Keyboard Shortcuts, and FAQ — embedded with `SoftwareApplication` + `FAQPage` JSON-LD structured data and `<link rel="alternate" type="text/markdown" href="./llms-full.txt">` so both browsers and AI scrapers read 100% of content without requiring JavaScript execution.
   - `documentations/styles.css` & `documentations/app.js`: Mobile-first 3-column layout supporting live switching across all 4 authentic Semply reading themes (`Obsidian`, `Light`, `Paper`, `Dusk`), `Ctrl+K` / `/` instant client search modal, interactive Fixed vs. Smart Pace Auto-Scroll Calculator, mobile drawer, scroll-spy, and copy-anchor contextual toasts.
   - `documentations/llms.txt`, `documentations/llms-full.txt`, `documentations/robots.txt`, `documentations/sitemap.xml`, and `documentations/assets/`: Full `llmstxt.org` AI discoverability bundle and self-contained icon assets ready to deploy directly to GitHub Pages, Cloudflare Pages, Netlify, or Vercel with zero build pipeline.
+
+---
+
+## Increment 24: Holistic System Verification, Regression Prevention & Production Hardening
+
+### Summary
+- **Verification of 12-Point Native Desktop Transformation**: Validated that all 12 native desktop transformation items operate smoothly without side effects on EPUB rendering, PDF zoom, library filtering, or annotation syncing.
+- **Double-Drop Race Condition Elimination**: Removed redundant drag-and-drop listener inside `LibraryView.tsx` and centralized all file drops at the root level in `App.tsx` with duplicate ingestion guards.
+- **Single-Instance Race Guarding**: Guarded `app.whenReady()` behind `app.requestSingleInstanceLock()` to prevent secondary Electron window instantiation flashes during Windows shell launches.
+- **Save Dialog Async Hardening**: Awaited Electron save dialog response in `NotesDrawer.tsx` to ensure accurate success and cancellation toast handling.
+- **Type Safety and Build Certification**: Zero compiler errors in `tsc --noEmit` and successful production bundle generation across main, preload, and renderer packages.
+
