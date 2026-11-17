@@ -4,6 +4,8 @@ import type { ReaderTheme } from '../ui/ThemePickerGrid'
 
 interface FluidClimaxProgressBarProps {
   progressPercent: number
+  currentPage?: number
+  totalPages?: number
   book?: Book | null
   onSeek: (targetPercent: number) => void
   theme?: ReaderTheme
@@ -55,6 +57,8 @@ function interpolateHue(from: number, to: number, t: number): number {
 
 export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
   progressPercent,
+  currentPage,
+  totalPages,
   book,
   onSeek,
   theme = 'night',

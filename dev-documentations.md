@@ -1218,22 +1218,19 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - **Bookmarks (`BookmarksDrawer.tsx`)**: Individual bookmark deletions prompt confirmation with the page/chapter label. "Clear all bookmarks" presents a single batch modal for all bookmarks in the book.
    - **Full Library Reset (`FullSettingsModal.tsx`)**: "Clear Entire Library" confirms wiping all books and annotations from IndexedDB while noting that source files on disk remain untouched.
 
-
 ---
 
-## Increment 27: Universal Native Confirmation Modal Architecture for All Delete Actions
+## Increment 28: Open-Source Prominence Overhaul & Contributor Developer Quickstart
 
 ### Architecture & Implementation
-1. **Universal Confirmation Modal Invariant**:
-   - Every destructive removal across the entire application is strictly guarded by the in-app native confirmation dialog (`NativeFeedbackHost` via `openConfirmDialog`).
-   - Browser popups (`window.confirm()`, `window.alert()`) and silent, unprompted deletions are completely eliminated.
-2. **Consolidated Batch Deletions (Zero Modal Loop Spam)**:
-   - In all bulk deletion scenarios (e.g. multi-selecting 5 books in Library, clicking "Clear all notes", or clicking "Clear all bookmarks"), the application presents **exactly ONE** confirmation modal upfront for the entire batch.
-   - The confirmation title and description dynamically reflect the batch count (e.g. *"Delete 5 Books Permanently?"*, *"Delete All 14 Notes?"*), and confirming executes the atomic batch operation in a single step without modal iteration.
-3. **Subsystem Audit & Wiring**:
-   - **Books (`LibraryView.tsx`, `BookCard.tsx`)**: Single book delete and multi-selected bulk deletion (triggered from card context menus, top catalog action bar, or keyboard `Delete` key) route through `handleRequestDeleteBooks()` to show a single unified confirmation modal.
-   - **Categories & Shelves (`Sidebar.tsx`)**: Trash icon on custom categories prompts confirmation explaining that assigned books will be safely preserved and moved to Uncategorized.
-   - **Notes & Annotations (`NotesDrawer.tsx`, `AnnotationPopover.tsx`)**: Individual note deletions and reader popover highlight removals prompt confirmation with passage text previews. "Clear all notes" in the drawer presents a single batch modal for all notes in the book.
-   - **Bookmarks (`BookmarksDrawer.tsx`)**: Individual bookmark deletions prompt confirmation with the page/chapter label. "Clear all bookmarks" presents a single batch modal for all bookmarks in the book.
-   - **Full Library Reset (`FullSettingsModal.tsx`)**: "Clear Entire Library" confirms wiping all books and annotations from IndexedDB while noting that source files on disk remain untouched.
+1. **Open-Source Elevated Header & Structured Data (`index.html`)**:
+   - Added persistent "Star on GitHub" interactive pill button to the site header next to primary download CTA.
+   - Declared `"license": "https://opensource.org/licenses/MIT"`, `"isAccessibleForFree": true`, and `"codeRepository": "https://github.com/ederaefe/EPUB-Reader-Desktop"` in JSON-LD `SoftwareApplication` schema.
+2. **Dedicated Open-Source & Community Architecture Section (`index.html`, `landing.css`, `landing.js`)**:
+   - Built a dedicated `#open-source` section highlighting the 4 pillars of Semply: Permissive MIT License, Total Code Transparency, Reproducible Local Builds, and Community Contributions.
+   - Engineered an interactive terminal-style Developer Quickstart box with copyable shell instructions (`git clone`, `npm install`, `npm run dev`) and visual click-to-copy confirmation feedback.
+   - Added direct contributor links to Star, Fork, Issue Tracking, and the Developer Manual.
+3. **Application Icon Hygiene & Compiler Certification (`BookCard.tsx`)**:
+   - Restored missing `Pin`, `PinOff`, and `ImageIcon` imports from `lucide-react`, ensuring zero compiler diagnostics in `tsc --noEmit`.
+
 

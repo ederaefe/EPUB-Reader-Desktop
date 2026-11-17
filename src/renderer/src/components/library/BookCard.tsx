@@ -567,14 +567,16 @@ export const BookCard: React.FC<BookCardProps> = ({
             </div>
           )}
 
-          {/* Subtle hover actions (Category & Favorite only — Delete lives strictly in right-click menu) */}
+          {/* Subtle actions (Category & Single Favorite Button) */}
           {!isSelectionMode && (
             <div
-              className="absolute top-1.5 right-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 p-0.5 rounded-[3px] border border-white/15 z-20"
+              className={`absolute top-1.5 right-1.5 flex items-center gap-0.5 p-0.5 rounded-[3px] border border-white/15 z-20 transition-opacity ${
+                book.isFavorite ? 'opacity-100 bg-black/80' : 'opacity-0 group-hover:opacity-100 bg-black/75'
+              }`}
               data-preserve-theme="true"
             >
               {categories.length > 0 && (
-                <div className="relative">
+                <div className={`relative ${book.isFavorite ? 'hidden group-hover:block' : ''}`}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -624,7 +626,7 @@ export const BookCard: React.FC<BookCardProps> = ({
                 className={`p-1 rounded-[2px] hover:bg-white/20 cursor-pointer ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#c8d1dc]'}`}
                 title={book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
               >
-                <Star className={`w-3 h-3 ${book.isFavorite ? 'fill-current' : ''}`} />
+                <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'fill-current' : ''}`} />
               </button>
             </div>
           )}

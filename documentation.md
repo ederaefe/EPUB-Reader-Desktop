@@ -1218,3 +1218,19 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - **Bookmarks (`BookmarksDrawer.tsx`)**: Individual bookmark deletions prompt confirmation with the page/chapter label. "Clear all bookmarks" presents a single batch modal for all bookmarks in the book.
    - **Full Library Reset (`FullSettingsModal.tsx`)**: "Clear Entire Library" confirms wiping all books and annotations from IndexedDB while noting that source files on disk remain untouched.
 
+---
+
+## Increment 28: Open-Source Prominence Overhaul & Contributor Developer Quickstart
+
+### Architecture & Implementation
+1. **Open-Source Elevated Header & Structured Data (`index.html`)**:
+   - Added persistent "Star on GitHub" interactive pill button to the site header next to primary download CTA.
+   - Declared `"license": "https://opensource.org/licenses/MIT"`, `"isAccessibleForFree": true`, and `"codeRepository": "https://github.com/ederaefe/EPUB-Reader-Desktop"` in JSON-LD `SoftwareApplication` schema.
+2. **Dedicated Open-Source & Community Architecture Section (`index.html`, `landing.css`, `landing.js`)**:
+   - Built a dedicated `#open-source` section highlighting the 4 pillars of Semply: Permissive MIT License, Total Code Transparency, Reproducible Local Builds, and Community Contributions.
+   - Engineered an interactive terminal-style Developer Quickstart box with copyable shell instructions (`git clone`, `npm install`, `npm run dev`) and visual click-to-copy confirmation feedback.
+   - Added direct contributor links to Star, Fork, Issue Tracking, and the Developer Manual.
+3. **Application Icon Hygiene & Compiler Certification (`BookCard.tsx`)**:
+   - Restored missing `Pin`, `PinOff`, and `ImageIcon` imports from `lucide-react`, ensuring zero compiler diagnostics in `tsc --noEmit`.
+
+
