@@ -14,7 +14,6 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Category } from '../../db'
-import semplyLogo from '../../assets/icons/semply_logo.png'
 
 interface SidebarProps {
   counts: {
@@ -93,16 +92,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
 
   return (
     <aside className="w-56 h-full bg-[#171a21] border-r border-[#232732] flex flex-col justify-between select-none shrink-0">
-      {/* Top Header */}
-      <div className="h-11 px-3 flex items-center gap-2.5 border-b border-[#232732] shrink-0">
-        <div className="w-5 h-5 rounded-[2px] bg-[#2a69df] flex items-center justify-center text-white shrink-0">
-          <BookOpen className="w-3 h-3" />
-        </div>
-        <div className="flex items-center">
-          <span className="text-[13px] font-semibold text-white leading-tight">Semply Ebook Reader</span>
-        </div>
-      </div>
-
       {/* Top Section */}
       <div className="flex flex-col flex-1 overflow-y-auto">
         {/* Navigation list */}

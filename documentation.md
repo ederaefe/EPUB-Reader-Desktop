@@ -238,3 +238,31 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
   - **Modals & Chrome (`src/renderer/src/components/modals/`, `ui/`)**: `FullSettingsModal`, `TitleBar`, `ContextMenu`, `HelpModal`, `AppBackground`.
   - **Services & State (`src/renderer/src/services/`, `db/`, `stores/`)**: `adaptiveScrollService`, `backupService`, `colorTempService`, `coverService`, `dictService`, `ttsService`, Dexie `db/index.ts`, Zustand `useAppStore.ts`.
 - **README Synchronization (`README.md`)**: Documented Full-Book Find (`Ctrl+F`), PDF-to-EPUB conversion & multi-format import, the full Keyboard Shortcuts reference table, packaging/release commands (`npm run package`, `npm run release`), and cross-linked `DESIGN.md`.
+
+
+---
+
+## Increment 13: Native PDF Reader, Librera-Style MuPDF Reflow Mode & Offline PDF-to-EPUB Converter
+
+### Architecture & Implementation
+1. **Offline MuPDF WASM PDF-to-EPUB Engine (`src/main/pdfToEpubEngine.ts`)**:
+   - Powered by Artifex's official **`mupdf`** WebAssembly package (exact same C `fz_stext` layout engine inside Librera Reader's `libMuPDF.so`), running 100% offline in Electron's Node main process across Windows, macOS, and Linux.
+   - **Pass 1 (Document Profiling)**: Computes dominant body font size across pages and detects repeating top/bottom running headers & footers (e.g., page numbers and recurring chapter titles) for clean removal.
+   - **Pass 2 (Structured Text + Image Extraction)**: Runs `page.toStructuredText('preserve-images,dehyphenate,segment')` and walks blocks via `stext.walk()` to produce semantic `<h1>`–`<h3>`, `<p>`, `<strong>`, `<em>`, `<pre><code>`, and deduplicated inline embedded images (`onImageBlock` -> `OEBPS/images/*`).
+   - **Scanned & Diagram Fallback**: Automatically detects low-text/scanned pages (`< 25 chars`) and rasterizes them cleanly at high DPI (`asJPEG(86)`) as responsive figures so diagrams and scanned content are preserved with zero data loss.
+   - **EPUB 3 + EPUB 2 Packager**: Splits chapters from native PDF bookmarks (`doc.loadOutline()`), renders Page 1 as `cover.jpg`, bundles Librera-inspired `reflow.css`, and writes spec-compliant `mimetype` (STORE), `container.xml`, `content.opf`, `nav.xhtml`, and `toc.ncx`. Strict `.destroy()` cleanup guarantees zero WASM memory leaks.
+2. **Native PDF Viewer (`src/renderer/src/components/reader/PdfReaderView.tsx`)**:
+   - Renders `.pdf` books natively using `pdfjs-dist` with HiDPI `devicePixelRatio` canvases, aligned selectable text overlay, Single & Double Page Spread views, zoom controls (`50%–300%`), PDF Outline in `TOCDrawer`, Bookmarks, Night/Sepia color adaptation, right-click `ContextMenu`, and True Immersive Fullscreen.
+3. **One-Click PDF Reflow Mode in Settings & Offline Library Conversion (`SettingsDrawer.tsx`, `App.tsx`, `BookCard.tsx`)**:
+   - Placed an effective **PDF Reflow Mode** (`Original PDF` | `Reflow EPUB`) switcher + live progress bar + **Convert & Export as EPUB (Offline)** action directly inside `SettingsDrawer.tsx`.
+   - Caches reflowed EPUBs in `userData/reflow_cache/` for instant repeat activation and unlocks all EPUB features (custom fonts, sizing, highlights, notes, dictionary, Read Aloud, RSVP, Auto-Scroll) seamlessly.
+   - Added **"Convert to EPUB (Offline)"** to the right-click context menu on PDF cards in the Library, automatically importing the converted `.epub` with cover art into Dexie DB.
+
+
+---
+
+## Increment 15: Sidebar Duplicate Branding Header Removal
+
+### Summary
+- Removed the redundant branding header block (`Semply Ebook Reader` with blue book icon) from the top of `src/renderer/src/components/library/Sidebar.tsx`, leaving the native `TitleBar.tsx` brand mark as the single clean header and reclaiming vertical space for library shelves and custom categories.
+- Cleaned up the unused `semplyLogo` import in `Sidebar.tsx`.
