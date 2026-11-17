@@ -49,9 +49,26 @@ document.addEventListener('DOMContentLoaded', () => {
     linux: `${LATEST_RELEASE_URL}/download/Semply.AppImage`
   };
 
+  // Validate release download URLs strictly against official GitHub release origins
+  function isTrustedReleaseUrl(rawUrl) {
+    if (typeof rawUrl !== 'string' || !rawUrl.trim()) return false;
+    try {
+      const parsed = new URL(rawUrl.trim());
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return false;
+      const host = parsed.hostname.toLowerCase();
+      if (host === 'github.com') {
+        return parsed.pathname.toLowerCase().startsWith(`/${GITHUB_REPO.toLowerCase()}/releases/`);
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function applyReleaseData(tag, assets, publishedAt) {
-    if (releaseTagEl) releaseTagEl.textContent = tag;
-    if (releaseBadgeEl) releaseBadgeEl.textContent = `${tag} Latest`;
+    const safeTag = typeof tag === 'string' ? tag.replace(/[^\w.-]/g, '').slice(0, 32) || FALLBACK_VERSION : FALLBACK_VERSION;
+    if (releaseTagEl) releaseTagEl.textContent = safeTag;
+    if (releaseBadgeEl) releaseBadgeEl.textContent = `${safeTag} Latest`;
 
     if (publishedAt && releaseDateEl) {
       try {
@@ -71,37 +88,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (Array.isArray(assets) && assets.length > 0) {
       let matchedAsset = null;
+      const validAssets = assets.filter(a => a && typeof a.name === 'string' && isTrustedReleaseUrl(a.browser_download_url));
       if (currentOS === 'windows') {
-        matchedAsset = assets.find(a => a.name.endsWith('.exe')) || assets[0];
+        matchedAsset = validAssets.find(a => a.name.endsWith('.exe')) || validAssets[0];
       } else if (currentOS === 'macos') {
-        matchedAsset = assets.find(a => a.name.endsWith('.dmg') || a.name.endsWith('.zip')) || assets[0];
+        matchedAsset = validAssets.find(a => a.name.endsWith('.dmg') || a.name.endsWith('.zip')) || validAssets[0];
       } else if (currentOS === 'linux') {
-        matchedAsset = assets.find(a => a.name.endsWith('.AppImage') || a.name.endsWith('.deb')) || assets[0];
+        matchedAsset = validAssets.find(a => a.name.endsWith('.AppImage') || a.name.endsWith('.deb')) || validAssets[0];
       }
 
-      if (matchedAsset) {
+      if (matchedAsset && isTrustedReleaseUrl(matchedAsset.browser_download_url)) {
         downloadUrl = matchedAsset.browser_download_url;
-        if (matchedAsset.size) {
+        if (typeof matchedAsset.size === 'number' && Number.isFinite(matchedAsset.size) && matchedAsset.size > 0) {
           targetSize = `${(matchedAsset.size / (1024 * 1024)).toFixed(1)} MB`;
         }
+      } else {
+        downloadUrl = fallbackUrls[currentOS] || LATEST_RELEASE_URL;
       }
     } else {
       downloadUrl = fallbackUrls[currentOS] || LATEST_RELEASE_URL;
     }
 
-    if (primaryDownloadBtn) {
+    if (primaryDownloadBtn && isTrustedReleaseUrl(downloadUrl)) {
       primaryDownloadBtn.href = downloadUrl;
     }
 
     if (primaryDownloadLabel) {
       if (currentOS === 'windows') {
-        primaryDownloadLabel.textContent = `Download for Windows (${tag})`;
+        primaryDownloadLabel.textContent = `Download for Windows (${safeTag})`;
       } else if (currentOS === 'macos') {
-        primaryDownloadLabel.textContent = `Download for macOS (${tag})`;
+        primaryDownloadLabel.textContent = `Download for macOS (${safeTag})`;
       } else if (currentOS === 'linux') {
-        primaryDownloadLabel.textContent = `Download for Linux (${tag})`;
+        primaryDownloadLabel.textContent = `Download for Linux (${safeTag})`;
       } else {
-        primaryDownloadLabel.textContent = `Download Semply (${tag})`;
+        primaryDownloadLabel.textContent = `Download Semply (${safeTag})`;
       }
     }
 

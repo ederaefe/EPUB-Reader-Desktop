@@ -4,6 +4,13 @@ import type {
   WriteBookMetadataRequest,
   WriteBookMetadataResult
 } from '../shared/bookMetadata'
+import type {
+  ChooseVaultResult,
+  DictionaryLookupResponse,
+  SecurityBoundariesStatus,
+  VaultImportBufferResult,
+  WikipediaLookupResponse
+} from '../shared/securityTypes'
 
 export interface DesktopAPI {
   minimize: () => Promise<void>
@@ -63,6 +70,24 @@ export interface DesktopAPI {
   isOnline: () => Promise<boolean>
   checkBookWritable: (filePath: string) => Promise<CheckBookWritableResult>
   writeBookMetadata: (req: WriteBookMetadataRequest) => Promise<WriteBookMetadataResult>
+  lookupDictionary: (query: string) => Promise<DictionaryLookupResponse>
+  lookupWikipedia: (query: string) => Promise<WikipediaLookupResponse>
+  getSecurityStatus: () => Promise<SecurityBoundariesStatus>
+  setStrictOfflineMode: (enabled: boolean) => Promise<SecurityBoundariesStatus>
+  chooseVaultFolder: () => Promise<ChooseVaultResult>
+  clearVaultFolder: () => Promise<SecurityBoundariesStatus>
+  setStrictVaultOnly: (enabled: boolean) => Promise<SecurityBoundariesStatus>
+  setCopyImportsIntoVault: (enabled: boolean) => Promise<SecurityBoundariesStatus>
+  addAuthorizedFolder: () => Promise<{
+    canceled: boolean
+    folderPath: string | null
+    status: SecurityBoundariesStatus
+    error?: string
+  }>
+  removeAuthorizedFolder: (folderPath: string) => Promise<SecurityBoundariesStatus>
+  scanVault: () => Promise<string[]>
+  importBufferToVault: (fileName: string, buffer: ArrayBuffer) => Promise<VaultImportBufferResult>
+  openVaultInExplorer: () => Promise<boolean>
 }
 
 const api: DesktopAPI = {
@@ -136,7 +161,21 @@ const api: DesktopAPI = {
   getFontCss: (fontId: string) => ipcRenderer.invoke('fonts:getCss', fontId),
   isOnline: () => ipcRenderer.invoke('fonts:isOnline'),
   checkBookWritable: (filePath: string) => ipcRenderer.invoke('book:checkWritable', filePath),
-  writeBookMetadata: (req: WriteBookMetadataRequest) => ipcRenderer.invoke('book:writeMetadata', req)
+  writeBookMetadata: (req: WriteBookMetadataRequest) => ipcRenderer.invoke('book:writeMetadata', req),
+  lookupDictionary: (query: string) => ipcRenderer.invoke('dict:define', query),
+  lookupWikipedia: (query: string) => ipcRenderer.invoke('dict:wiki', query),
+  getSecurityStatus: () => ipcRenderer.invoke('security:getStatus'),
+  setStrictOfflineMode: (enabled: boolean) => ipcRenderer.invoke('security:setStrictOfflineMode', enabled),
+  chooseVaultFolder: () => ipcRenderer.invoke('security:chooseVaultFolder'),
+  clearVaultFolder: () => ipcRenderer.invoke('security:clearVaultFolder'),
+  setStrictVaultOnly: (enabled: boolean) => ipcRenderer.invoke('security:setStrictVaultOnly', enabled),
+  setCopyImportsIntoVault: (enabled: boolean) => ipcRenderer.invoke('security:setCopyImportsIntoVault', enabled),
+  addAuthorizedFolder: () => ipcRenderer.invoke('security:addAuthorizedFolder'),
+  removeAuthorizedFolder: (folderPath: string) => ipcRenderer.invoke('security:removeAuthorizedFolder', folderPath),
+  scanVault: () => ipcRenderer.invoke('security:scanVault'),
+  importBufferToVault: (fileName: string, buffer: ArrayBuffer) =>
+    ipcRenderer.invoke('security:importBufferToVault', fileName, buffer),
+  openVaultInExplorer: () => ipcRenderer.invoke('security:openVaultInExplorer')
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

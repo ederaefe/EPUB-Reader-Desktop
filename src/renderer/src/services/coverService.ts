@@ -76,15 +76,132 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return window.btoa(chunks.join(''))
 }
 
+const MAX_COVER_EXTRACT_BYTES = 15 * 1024 * 1024 // 15 MB ceiling for extracted cover art
+const MAX_EPUB_TEXT_ENTRY_BYTES = 10 * 1024 * 1024 // 10 MB ceiling for XML/XHTML inspection
+const MAX_EPUB_ZIP_ENTRIES = 10000 // Guard against Zip Bomb archives
+const SAFE_RASTER_DATA_URL_RE = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+$/i
+
+async function readZipEntryBytesBounded(entry: JSZip.JSZipObject, maxBytes: number): Promise<Uint8Array | null> {
+  const declared = (entry as any)?._data?.uncompressedSize
+  if (typeof declared === 'number' && declared > maxBytes) return null
+  try {
+    return await new Promise<Uint8Array | null>((resolve) => {
+      const chunks: Uint8Array[] = []
+      let total = 0
+      let aborted = false
+      const stream = (entry as any).internalStream('uint8array')
+      stream
+        .on('data', (chunk: Uint8Array) => {
+          if (aborted) return
+          total += chunk.byteLength
+          if (total > maxBytes) {
+            aborted = true
+            try {
+              stream.pause()
+            } catch {}
+            resolve(null)
+            return
+          }
+          chunks.push(chunk)
+        })
+        .on('error', () => {
+          if (!aborted) resolve(null)
+        })
+        .on('end', () => {
+          if (aborted) return
+          const out = new Uint8Array(total)
+          let offset = 0
+          for (const c of chunks) {
+            out.set(c, offset)
+            offset += c.byteLength
+          }
+          resolve(out)
+        })
+        .resume()
+    })
+  } catch {
+    return null
+  }
+}
+
+async function readZipEntryTextBounded(entry: JSZip.JSZipObject | null | undefined, maxBytes = MAX_EPUB_TEXT_ENTRY_BYTES): Promise<string | null> {
+  if (!entry) return null
+  const bytes = await readZipEntryBytesBounded(entry, maxBytes)
+  if (!bytes) return null
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+}
+
+function isSafeRasterDataUrl(url: string): boolean {
+  const trimmed = url.trim()
+  return trimmed.length <= MAX_COVER_EXTRACT_BYTES * 1.4 && SAFE_RASTER_DATA_URL_RE.test(trimmed)
+}
+
+function sanitizeSvgElement(svgEl: Element): string | null {
+  const clone = svgEl.cloneNode(true) as Element
+  const blockedTags = clone.querySelectorAll(
+    'script, foreignObject, iframe, object, embed, applet, handler, listener, style, animate, set, animateTransform, animateMotion, a'
+  )
+  blockedTags.forEach((node) => node.remove())
+
+  const allNodes = [clone, ...Array.from(clone.querySelectorAll('*'))]
+  for (const el of allNodes) {
+    for (const attr of Array.from(el.attributes)) {
+      const nameLower = attr.name.toLowerCase()
+      const valTrimmed = attr.value.trim()
+      if (nameLower.startsWith('on')) {
+        el.removeAttribute(attr.name)
+        continue
+      }
+      if (
+        nameLower === 'href' ||
+        nameLower === 'xlink:href' ||
+        nameLower === 'src'
+      ) {
+        // Allow only internal fragment references (#id) or verified raster data URLs
+        if (!valTrimmed.startsWith('#') && !isSafeRasterDataUrl(valTrimmed)) {
+          el.removeAttribute(attr.name)
+        }
+      }
+    }
+  }
+
+  const serializer = new XMLSerializer()
+  const svgText = serializer.serializeToString(clone)
+  if (!svgText || svgText.length > 512 * 1024) return null
+  return svgText
+}
+
+function sanitizeSvgString(rawSvg: string): string | null {
+  if (!rawSvg || rawSvg.length > 1024 * 1024) return null
+  try {
+    const parser = new DOMParser()
+    const parsed = parser.parseFromString(rawSvg, 'image/svg+xml')
+    if (parsed.querySelector('parsererror')) return null
+    const svgRoot = parsed.documentElement
+    if (!svgRoot || svgRoot.tagName.toLowerCase() !== 'svg') return null
+    return sanitizeSvgElement(svgRoot)
+  } catch {
+    return null
+  }
+}
+
 async function zipImageToDataUrl(
   entry: JSZip.JSZipObject,
   href: string,
   explicitMime?: string | null
 ): Promise<string | null> {
   try {
-    const buf = await entry.async('arraybuffer')
-    if (!buf || buf.byteLength < 64) return null
+    const bytes = await readZipEntryBytesBounded(entry, MAX_COVER_EXTRACT_BYTES)
+    if (!bytes || bytes.byteLength < 64) return null
     const mime = inferImageMime(href, explicitMime)
+    if (mime === 'image/svg+xml') {
+      const rawText = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+      const cleaned = sanitizeSvgString(rawText)
+      if (!cleaned) return null
+      const encoded = window.btoa(unescape(encodeURIComponent(cleaned)))
+      return `data:image/svg+xml;base64,${encoded}`
+    }
+    const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
     return `data:${mime};base64,${arrayBufferToBase64(buf)}`
   } catch {
     return null
@@ -115,7 +232,10 @@ async function extractImageFromXhtml(
   for (const img of imgs) {
     const src = img.getAttribute('src')
     if (!src || src.startsWith('http://') || src.startsWith('https://')) continue
-    if (src.startsWith('data:image/')) return src
+    if (src.startsWith('data:image/')) {
+      if (isSafeRasterDataUrl(src)) return src.trim()
+      continue
+    }
     const file = findZipFile(zip, pageDir, src)
     if (file) {
       const url = await zipImageToDataUrl(file, src)
@@ -131,7 +251,10 @@ async function extractImageFromXhtml(
       svgImg.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ||
       svgImg.getAttribute('href')
     if (!href) continue
-    if (href.startsWith('data:image/')) return href
+    if (href.startsWith('data:image/')) {
+      if (isSafeRasterDataUrl(href)) return href.trim()
+      continue
+    }
     const file = findZipFile(zip, pageDir, href)
     if (file) {
       const url = await zipImageToDataUrl(file, href)
@@ -139,13 +262,14 @@ async function extractImageFromXhtml(
     }
   }
 
-  // 3. Check standalone inline <svg> vector cover
+  // 3. Check standalone inline <svg> vector cover (scrubbed of active tags/handlers/external links)
   const svgEl = fallbackDoc.querySelector('svg')
   if (svgEl && svgEl.outerHTML.length > 120) {
-    const serializer = new XMLSerializer()
-    const svgText = serializer.serializeToString(svgEl)
-    const encoded = window.btoa(unescape(encodeURIComponent(svgText)))
-    return `data:image/svg+xml;base64,${encoded}`
+    const cleanSvg = sanitizeSvgElement(svgEl)
+    if (cleanSvg) {
+      const encoded = window.btoa(unescape(encodeURIComponent(cleanSvg)))
+      return `data:image/svg+xml;base64,${encoded}`
+    }
   }
 
   return null
@@ -371,6 +495,7 @@ export async function extractEpubCover(
 ): Promise<string | null> {
   try {
     const zip = await JSZip.loadAsync(data)
+    if (Object.keys(zip.files).length > MAX_EPUB_ZIP_ENTRIES) return null
     return await extractEpubCoverFromZip(zip, fallbackTitle, fallbackAuthor)
   } catch (err) {
     console.warn('Failed to extract EPUB cover:', err)
@@ -387,7 +512,7 @@ async function extractEpubCoverFromZip(
 
   // 1. Locate OPF rootfile via META-INF/container.xml (or scan for *.opf)
   let opfPath: string | null = null
-  const containerXml = await zip.file('META-INF/container.xml')?.async('string')
+  const containerXml = await readZipEntryTextBounded(zip.file('META-INF/container.xml'))
   if (containerXml) {
     const containerDoc = parser.parseFromString(containerXml, 'application/xml')
     opfPath = containerDoc.querySelector('rootfile')?.getAttribute('full-path') || null
@@ -399,7 +524,7 @@ async function extractEpubCoverFromZip(
 
   const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1) : ''
   const opfFile = findZipFile(zip, '', opfPath)
-  const opfXml = await opfFile?.async('string')
+  const opfXml = await readZipEntryTextBounded(opfFile)
   if (!opfXml) return null
 
   const opfDoc = parser.parseFromString(opfXml, 'application/xml')
@@ -421,7 +546,8 @@ async function extractEpubCoverFromZip(
       return await zipImageToDataUrl(entry, href, mediaType)
     }
     if (mediaType.includes('html') || /\.(x?html?|htm)$/i.test(href)) {
-      const html = await entry.async('string')
+      const html = await readZipEntryTextBounded(entry)
+      if (!html) return null
       const resolvedPath = normalizeZipPath(opfDir, href)
       return await extractImageFromXhtml(zip, resolvedPath, html)
     }
@@ -484,10 +610,12 @@ async function extractEpubCoverFromZip(
         const url = await zipImageToDataUrl(refEntry, coverRefHref)
         if (url) return url
       } else {
-        const html = await refEntry.async('string')
-        const resolvedPath = normalizeZipPath(opfDir, coverRefHref)
-        const imgUrl = await extractImageFromXhtml(zip, resolvedPath, html)
-        if (imgUrl) return imgUrl
+        const html = await readZipEntryTextBounded(refEntry)
+        if (html) {
+          const resolvedPath = normalizeZipPath(opfDir, coverRefHref)
+          const imgUrl = await extractImageFromXhtml(zip, resolvedPath, html)
+          if (imgUrl) return imgUrl
+        }
       }
     }
   }
@@ -501,10 +629,12 @@ async function extractEpubCoverFromZip(
     if (firstHref) {
       const firstEntry = findZipFile(zip, opfDir, firstHref)
       if (firstEntry) {
-        const html = await firstEntry.async('string')
-        const resolvedPath = normalizeZipPath(opfDir, firstHref)
-        const firstPageImg = await extractImageFromXhtml(zip, resolvedPath, html)
-        if (firstPageImg) return firstPageImg
+        const html = await readZipEntryTextBounded(firstEntry)
+        if (html) {
+          const resolvedPath = normalizeZipPath(opfDir, firstHref)
+          const firstPageImg = await extractImageFromXhtml(zip, resolvedPath, html)
+          if (firstPageImg) return firstPageImg
+        }
       }
     }
   }
@@ -528,7 +658,8 @@ async function extractEpubCoverFromZip(
     if (!href) continue
     const entry = findZipFile(zip, opfDir, href)
     if (!entry) continue
-    const html = await entry.async('string')
+    const html = await readZipEntryTextBounded(entry)
+    if (!html) continue
     const blocks = extractFirstPageBlocksFromXhtml(html)
     if (blocks.length > 0) {
       return renderFirstPageCanvas(blocks, fallbackTitle, fallbackAuthor)
@@ -564,7 +695,7 @@ async function extractPdfCoverAndMeta(
   try {
     // Always copy bytes so transferring into PDF.js worker never detaches caller's ArrayBuffer
     const bytes = new Uint8Array(data.slice(0))
-    const loadingTask = pdfjsLib.getDocument({ data: bytes })
+    const loadingTask = pdfjsLib.getDocument({ data: bytes, isEvalSupported: false })
     pdf = await loadingTask.promise
 
     const totalPages = pdf.numPages || 1
@@ -941,8 +1072,9 @@ export async function extractEmbeddedBookMetadata(
   try {
     if (format === 'epub') {
       const zip = await JSZip.loadAsync(buffer)
+      if (Object.keys(zip.files).length > MAX_EPUB_ZIP_ENTRIES) return {}
       let opfPath: string | null = null
-      const containerXml = await zip.file('META-INF/container.xml')?.async('string')
+      const containerXml = await readZipEntryTextBounded(zip.file('META-INF/container.xml'))
       if (containerXml) {
         const parser = new DOMParser()
         const containerDoc = parser.parseFromString(containerXml, 'application/xml')
@@ -952,7 +1084,7 @@ export async function extractEmbeddedBookMetadata(
         opfPath = Object.keys(zip.files).find((f) => f.toLowerCase().endsWith('.opf')) || null
       }
       if (!opfPath) return {}
-      const opfXml = await findZipFile(zip, '', opfPath)?.async('string')
+      const opfXml = await readZipEntryTextBounded(findZipFile(zip, '', opfPath))
       if (!opfXml) return {}
       const parser = new DOMParser()
       const opfDoc = parser.parseFromString(opfXml, 'application/xml')
@@ -963,7 +1095,7 @@ export async function extractEmbeddedBookMetadata(
       let pdf: pdfjsLib.PDFDocumentProxy | null = null
       try {
         const bytes = new Uint8Array(buffer.slice(0))
-        pdf = await pdfjsLib.getDocument({ data: bytes }).promise
+        pdf = await pdfjsLib.getDocument({ data: bytes, isEvalSupported: false }).promise
         const meta = await pdf.getMetadata()
         const info = (meta?.info as Record<string, any>) || {}
         const embedded: EmbeddedBookMetadata = {}
@@ -1079,10 +1211,13 @@ export async function extractBookMetadata(
   try {
     if (normalizedExt === 'epub') {
       const zip = await JSZip.loadAsync(buffer)
+      if (Object.keys(zip.files).length > MAX_EPUB_ZIP_ENTRIES) {
+        throw new Error('EPUB archive exceeds maximum safe entry count.')
+      }
 
       // Parse OPF metadata first so fallback title/author and tags are accurate
       let opfPath: string | null = null
-      const containerXml = await zip.file('META-INF/container.xml')?.async('string')
+      const containerXml = await readZipEntryTextBounded(zip.file('META-INF/container.xml'))
       if (containerXml) {
         const parser = new DOMParser()
         const containerDoc = parser.parseFromString(containerXml, 'application/xml')
@@ -1093,7 +1228,7 @@ export async function extractBookMetadata(
       }
 
       if (opfPath) {
-        const opfXml = await findZipFile(zip, '', opfPath)?.async('string')
+        const opfXml = await readZipEntryTextBounded(findZipFile(zip, '', opfPath))
         if (opfXml) {
           const parser = new DOMParser()
           const opfDoc = parser.parseFromString(opfXml, 'application/xml')

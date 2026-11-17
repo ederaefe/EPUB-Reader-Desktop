@@ -481,10 +481,7 @@ export async function downloadTextFile(filename: string, content: string, mimeTy
       const chosenPath = await window.desktopAPI.showSaveDialog({
         title: 'Export Notes & Highlights',
         defaultPath: filename,
-        filters: [
-          { name: filterName, extensions: [ext] },
-          { name: 'All Files', extensions: ['*'] }
-        ]
+        filters: [{ name: filterName, extensions: [ext] }]
       })
       if (!chosenPath) return false
       await window.desktopAPI.writeFileText(chosenPath, content)

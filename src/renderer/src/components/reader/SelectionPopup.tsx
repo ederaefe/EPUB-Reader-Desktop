@@ -433,10 +433,15 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
               ) : wikiSummary ? (
                 <div className="space-y-3">
                   <div className="flex gap-3">
-                    {wikiSummary.thumbnailUrl && (
+                    {wikiSummary.thumbnailUrl &&
+                      (wikiSummary.thumbnailUrl.startsWith('https://') ||
+                        /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(
+                          wikiSummary.thumbnailUrl
+                        )) && (
                       <img
                         src={wikiSummary.thumbnailUrl}
                         alt=""
+                        referrerPolicy="no-referrer"
                         className="w-20 h-24 object-cover rounded-[2px] border border-[#2d323f] shrink-0"
                       />
                     )}
@@ -450,7 +455,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                   <p className="text-[12px] leading-relaxed text-[#d1d7e0] bg-[#12141a] p-3 rounded-[2px] border border-[#232732]">
                     {wikiSummary.extract}
                   </p>
-                  {wikiSummary.contentUrl && (
+                  {wikiSummary.contentUrl && wikiSummary.contentUrl.startsWith('https://') && (
                     <a
                       href={wikiSummary.contentUrl}
                       target="_blank"

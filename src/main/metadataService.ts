@@ -1,6 +1,6 @@
-import { access, readFile, stat } from 'fs/promises'
+import { access, lstat, readFile, stat } from 'fs/promises'
 import { constants as fsConstants, existsSync } from 'fs'
-import { extname } from 'path'
+import { extname, resolve } from 'path'
 import JSZip from 'jszip'
 import {
   normalizeTags,
@@ -10,6 +10,55 @@ import {
 } from '../shared/bookMetadata'
 
 const MAX_EDITABLE_FILE_SIZE = 250 * 1024 * 1024 // 250 MB ceiling
+const MAX_COVER_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB ceiling for embedded cover image
+const MAX_EPUB_ZIP_ENTRIES = 10000 // Guard against Zip Bomb entry floods
+const MAX_EPUB_UNCOMPRESSED_BYTES = 500 * 1024 * 1024 // 500 MB cumulative decompression ceiling
+const MAX_EPUB_XML_ENTRY_BYTES = 20 * 1024 * 1024 // 20 MB per XML/XHTML entry ceiling
+
+/**
+ * Streams a JSZip entry with a hard uncompressed byte ceiling so a single zip-bomb entry
+ * aborts before exhausting RAM.
+ */
+async function readZipEntryBounded(entry: JSZip.JSZipObject, maxBytes: number): Promise<Uint8Array> {
+  const declared = (entry as any)?._data?.uncompressedSize
+  if (typeof declared === 'number' && declared > maxBytes) {
+    throw new Error('EPUB archive entry exceeds safe decompressed size limit.')
+  }
+  return await new Promise<Uint8Array>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    let total = 0
+    let aborted = false
+    const stream = (entry as any).internalStream('uint8array')
+    stream
+      .on('data', (chunk: Uint8Array) => {
+        if (aborted) return
+        total += chunk.byteLength
+        if (total > maxBytes) {
+          aborted = true
+          try {
+            stream.pause()
+          } catch {}
+          reject(new Error('EPUB archive entry exceeds safe decompressed size limit.'))
+          return
+        }
+        chunks.push(chunk)
+      })
+      .on('error', (err: unknown) => {
+        if (!aborted) reject(err)
+      })
+      .on('end', () => {
+        if (aborted) return
+        const out = new Uint8Array(total)
+        let offset = 0
+        for (const c of chunks) {
+          out.set(c, offset)
+          offset += c.byteLength
+        }
+        resolve(out)
+      })
+      .resume()
+  })
+}
 
 function escapeXml(str: string): string {
   return str
@@ -63,7 +112,7 @@ function parseDataUrlImage(
   const mime = rawSubtype === 'jpg' ? 'image/jpeg' : `image/${rawSubtype}`
   const ext = rawSubtype === 'png' ? 'png' : rawSubtype === 'webp' ? 'webp' : 'jpg'
   const buf = Buffer.from(match[2], 'base64')
-  if (buf.byteLength < 64) return null
+  if (buf.byteLength < 64 || buf.byteLength > MAX_COVER_IMAGE_BYTES) return null
   return { mime, ext, bytes: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength) }
 }
 
@@ -112,6 +161,11 @@ export async function checkBookFileWritable(
     }
     if (!existsSync(safePath)) {
       return { writable: false, reason: 'Source file not found on disk' }
+    }
+    // Check lstat on the user-supplied path (post-assertSafePath validation) so symlinks are refused cleanly
+    const rawResolved = resolve(rawFilePath)
+    if (existsSync(rawResolved) && (await lstat(rawResolved)).isSymbolicLink()) {
+      return { writable: false, reason: 'Direct file write-back is disabled for symbolic links' }
     }
     await access(safePath, fsConstants.W_OK)
     return { writable: true }
@@ -293,11 +347,17 @@ async function writeEpubMetadata(
   const originalBuf = await readFile(safePath)
   const sourceZip = await JSZip.loadAsync(originalBuf)
 
+  const entryList = Object.entries(sourceZip.files)
+  if (entryList.length > MAX_EPUB_ZIP_ENTRIES) {
+    return { success: false, error: 'EPUB archive exceeds maximum safe entry count.' }
+  }
+
   // Locate OPF path
   let opfPath: string | null = null
   const containerEntry = sourceZip.file('META-INF/container.xml')
   if (containerEntry) {
-    const containerXml = await containerEntry.async('string')
+    const containerBytes = await readZipEntryBounded(containerEntry, MAX_EPUB_XML_ENTRY_BYTES)
+    const containerXml = Buffer.from(containerBytes).toString('utf-8')
     const rootMatch = containerXml.match(/<rootfile\b[^>]*\bfull-path\s*=\s*(?:"([^"]+)"|'([^']+)')/i)
     opfPath = rootMatch ? (rootMatch[1] || rootMatch[2] || null) : null
   }
@@ -315,7 +375,8 @@ async function writeEpubMetadata(
   const opfDir = resolvedOpfKey.includes('/')
     ? resolvedOpfKey.substring(0, resolvedOpfKey.lastIndexOf('/') + 1)
     : ''
-  const opfXml = await sourceZip.files[resolvedOpfKey].async('string')
+  const opfBytes = await readZipEntryBounded(sourceZip.files[resolvedOpfKey], MAX_EPUB_XML_ENTRY_BYTES)
+  const opfXml = Buffer.from(opfBytes).toString('utf-8')
 
   // Optional cover replacement logic
   let coverWritten = false
@@ -417,14 +478,24 @@ async function writeEpubMetadata(
   const newCoverBase =
     coverZipEntryKeyToWrite ? coverZipEntryKeyToWrite.split('/').pop() || null : null
 
-  for (const [entryName, entryObj] of Object.entries(sourceZip.files)) {
+  let cumulativeBytes = 0
+  const trackBytes = (byteLen: number) => {
+    cumulativeBytes += byteLen
+    if (cumulativeBytes > MAX_EPUB_UNCOMPRESSED_BYTES) {
+      throw new Error('EPUB archive exceeds safe decompressed size limit (500 MB).')
+    }
+  }
+
+  for (const [entryName, entryObj] of entryList) {
     if (entryObj.dir) continue
     if (entryName === 'mimetype') continue
     if (coverZipEntryKeyToRemove && entryName === coverZipEntryKeyToRemove) continue
 
     if (entryName === resolvedOpfKey) {
+      trackBytes(Buffer.byteLength(nextOpfXml, 'utf-8'))
       outZip.file(entryName, nextOpfXml, { compression: 'DEFLATE' })
     } else if (coverZipEntryKeyToWrite && entryName === coverZipEntryKeyToWrite && coverBytesToWrite) {
+      trackBytes(coverBytesToWrite.byteLength)
       outZip.file(entryName, coverBytesToWrite, { compression: 'DEFLATE' })
     } else if (
       oldCoverBase &&
@@ -433,13 +504,18 @@ async function writeEpubMetadata(
       /\.(x?html?|htm|svg)$/i.test(entryName)
     ) {
       // Keep any cover wrapper XHTML/SVG in sync if the cover image extension changed
-      const text = await entryObj.async('string')
+      const remaining = Math.max(0, MAX_EPUB_UNCOMPRESSED_BYTES - cumulativeBytes)
+      const entryBytes = await readZipEntryBounded(entryObj, Math.min(MAX_EPUB_XML_ENTRY_BYTES, remaining))
+      trackBytes(entryBytes.byteLength)
+      const text = Buffer.from(entryBytes).toString('utf-8')
       const patched = text.includes(oldCoverBase)
         ? text.split(oldCoverBase).join(newCoverBase)
         : text
       outZip.file(entryName, patched, { compression: 'DEFLATE' })
     } else {
-      const rawBytes = await entryObj.async('uint8array')
+      const remaining = Math.max(0, MAX_EPUB_UNCOMPRESSED_BYTES - cumulativeBytes)
+      const rawBytes = await readZipEntryBounded(entryObj, remaining)
+      trackBytes(rawBytes.byteLength)
       outZip.file(entryName, rawBytes, { compression: 'DEFLATE' })
     }
   }
@@ -555,6 +631,10 @@ export async function writeBookMetadataToFile(
     }
     if (!existsSync(safePath)) {
       return { success: false, error: 'Book file no longer exists on disk.' }
+    }
+    const rawResolved = resolve(rawFilePath)
+    if (existsSync(rawResolved) && (await lstat(rawResolved)).isSymbolicLink()) {
+      return { success: false, error: 'Refusing to write metadata directly through a symbolic link.' }
     }
     const st = await stat(safePath)
     if (st.size > MAX_EDITABLE_FILE_SIZE) {

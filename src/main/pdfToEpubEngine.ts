@@ -1,8 +1,33 @@
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir, stat, rename, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
 import { basename, extname, dirname } from 'path'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import JSZip from 'jszip'
+
+const MAX_PDF_BYTES = 250 * 1024 * 1024 // 250 MB safety limit
+const MAX_PDF_PAGES = 5000 // Guard against malformed multi-ten-thousand-page PDFs exhausting memory
+
+async function writeAtomicBuffer(targetPath: string, data: Buffer): Promise<void> {
+  const tempPath = `${targetPath}.${randomBytes(6).toString('hex')}.tmp`
+  const retryable = new Set(['EPERM', 'EBUSY', 'EACCES'])
+  try {
+    await writeFile(tempPath, data, { flag: 'wx' })
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await rename(tempPath, targetPath)
+        return
+      } catch (err: any) {
+        if (process.platform !== 'win32' || !retryable.has(err?.code) || attempt === 4) {
+          throw err
+        }
+        await new Promise((res) => setTimeout(res, 25 * (attempt + 1)))
+      }
+    }
+  } catch (err) {
+    await unlink(tempPath).catch(() => {})
+    throw err
+  }
+}
 
 export interface PdfConvertProgress {
   currentPage: number
@@ -176,6 +201,11 @@ export async function convertPdfToEpub(
     await mkdir(outDir, { recursive: true })
   }
 
+  const pdfStat = await stat(pdfPath)
+  if (pdfStat.size > MAX_PDF_BYTES) {
+    return { success: false, error: 'PDF exceeds the 250 MB safety ceiling for reflow conversion.' }
+  }
+
   const pdfBytes = await readFile(pdfPath)
   const doc = mupdf.Document.openDocument(pdfBytes, 'application/pdf')
 
@@ -183,6 +213,9 @@ export async function convertPdfToEpub(
     const totalPages: number = doc.countPages()
     if (totalPages === 0) {
       return { success: false, error: 'PDF contains no readable pages.' }
+    }
+    if (totalPages > MAX_PDF_PAGES) {
+      return { success: false, error: `PDF exceeds the maximum supported page count (${MAX_PDF_PAGES} pages) for reflow conversion.` }
     }
 
     onProgress?.({ currentPage: 0, totalPages, stage: 'Analyzing PDF structure & typography...', percent: 5 })
@@ -736,13 +769,13 @@ ${spineItems}
 </package>`
     zip.file('OEBPS/content.opf', contentOpf)
 
-    // Generate EPUB ZIP buffer and persist locally
+    // Generate EPUB ZIP buffer and persist atomically to prevent partial files on crash
     const epubBuffer = await zip.generateAsync({
       type: 'nodebuffer',
       compression: 'DEFLATE',
       compressionOptions: { level: 6 }
     })
-    await writeFile(targetEpubPath, epubBuffer)
+    await writeAtomicBuffer(targetEpubPath, epubBuffer)
 
     onProgress?.({ currentPage: totalPages, totalPages, stage: 'Conversion complete', percent: 100 })
 

@@ -89,6 +89,14 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
 
   const request = (async () => {
     try {
+      // Desktop mode: route strictly through air-gapped Main-process allowlisted IPC gateway
+      if (window.desktopAPI?.lookupDictionary) {
+        const res = await window.desktopAPI.lookupDictionary(cleanWord)
+        if (!res?.ok || !res.data) return null
+        setInCache(dictResolvedCache, cleanWord, res.data)
+        return res.data
+      }
+
       const resp = await fetch(
         `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(cleanWord)}`,
         { signal: controller.signal }
@@ -101,19 +109,31 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
       if (!Array.isArray(data) || data.length === 0) return null
 
       const entry = data[0]
+      if (!entry || typeof entry !== 'object') return null
       const result: InlineDefinition = {
-        word: entry.word,
-        phonetic: entry.phonetic || entry.phonetics?.[0]?.text,
+        word: typeof entry.word === 'string' ? entry.word : cleanWord,
+        phonetic:
+          typeof entry.phonetic === 'string'
+            ? entry.phonetic
+            : typeof entry.phonetics?.[0]?.text === 'string'
+            ? entry.phonetics[0].text
+            : undefined,
         meanings: Array.isArray(entry.meanings)
-          ? entry.meanings.slice(0, 3).map((m: any) => ({
-              partOfSpeech: m.partOfSpeech,
-              definitions: Array.isArray(m.definitions)
-                ? m.definitions.slice(0, 2).map((d: any) => ({
-                    definition: d.definition,
-                    example: d.example
-                  }))
-                : []
-            }))
+          ? entry.meanings
+              .filter((m: any) => m && typeof m.partOfSpeech === 'string')
+              .slice(0, 3)
+              .map((m: any) => ({
+                partOfSpeech: m.partOfSpeech,
+                definitions: Array.isArray(m.definitions)
+                  ? m.definitions
+                      .filter((d: any) => d && typeof d.definition === 'string')
+                      .slice(0, 2)
+                      .map((d: any) => ({
+                        definition: d.definition,
+                        example: typeof d.example === 'string' ? d.example : undefined
+                      }))
+                  : []
+              }))
           : []
       }
       setInCache(dictResolvedCache, cleanWord, result)
@@ -128,6 +148,22 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
 
   dictInflight.set(cleanWord, request)
   return request
+}
+
+function sanitizeTrustedHttpsUrl(
+  rawUrl: unknown,
+  allowedHostSuffixes: string[]
+): string | undefined {
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return undefined
+  try {
+    const parsed = new URL(rawUrl.trim())
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return undefined
+    const host = parsed.hostname.toLowerCase()
+    const allowed = allowedHostSuffixes.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))
+    return allowed ? parsed.toString() : undefined
+  } catch {
+    return undefined
+  }
 }
 
 // Live encyclopedic summary lookup via Wikipedia REST API with TTL cache, timeout & dedup
@@ -146,6 +182,14 @@ export async function fetchWikipediaSummary(query: string): Promise<WikipediaSum
 
   const request = (async () => {
     try {
+      // Desktop mode: route strictly through air-gapped Main-process allowlisted IPC gateway
+      if (window.desktopAPI?.lookupWikipedia) {
+        const res = await window.desktopAPI.lookupWikipedia(clean)
+        if (!res?.ok || !res.data) return null
+        setInCache(wikiResolvedCache, clean, res.data)
+        return res.data
+      }
+
       const resp = await fetch(
         `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`,
         { signal: controller.signal }
@@ -158,11 +202,11 @@ export async function fetchWikipediaSummary(query: string): Promise<WikipediaSum
       if (!data.extract) return null
 
       const result: WikipediaSummary = {
-        title: data.title,
-        description: data.description,
-        extract: data.extract,
-        thumbnailUrl: data.thumbnail?.source,
-        contentUrl: data.content_urls?.desktop?.page
+        title: typeof data.title === 'string' ? data.title : clean,
+        description: typeof data.description === 'string' ? data.description : undefined,
+        extract: typeof data.extract === 'string' ? data.extract : '',
+        thumbnailUrl: sanitizeTrustedHttpsUrl(data.thumbnail?.source, ['wikimedia.org', 'wikipedia.org']),
+        contentUrl: sanitizeTrustedHttpsUrl(data.content_urls?.desktop?.page, ['wikipedia.org'])
       }
       setInCache(wikiResolvedCache, clean, result)
       return result

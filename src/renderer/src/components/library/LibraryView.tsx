@@ -41,7 +41,8 @@ export const LibraryView: React.FC = () => {
     setView,
     libraryVersion,
     showToast,
-    openConfirmDialog
+    openConfirmDialog,
+    toggleFullSettingsModal
   } = useAppStore()
 
   const [books, setBooks] = useState<Book[]>([])
@@ -554,8 +555,17 @@ export const LibraryView: React.FC = () => {
     return active[0] || null
   }, [books])
 
-  // Process & add a single file into DB with thumbnail extraction
+  // Process & add a single file into DB with thumbnail extraction (deduplicated by filePath)
   const processAndAddFile = async (filePath: string, targetCategoryId: number | null = null) => {
+    const existing = await db.books.where('filePath').equals(filePath).first()
+    if (existing) {
+      if (existing.id && targetCategoryId !== null && existing.categoryId !== targetCategoryId) {
+        await db.books.update(existing.id, { categoryId: targetCategoryId })
+        return true
+      }
+      return false
+    }
+
     const ext = filePath.split('.').pop()?.toLowerCase() || 'epub'
     const targetPath = filePath
     let format: 'epub' | 'pdf' | 'mobi' | 'txt' = 'epub'
@@ -719,35 +729,94 @@ export const LibraryView: React.FC = () => {
       setActiveBook(book, buffer)
       setView('reader')
     } catch (e: any) {
-      showToast(`Could not open file: ${e.message}`, 'error')
+      const msg = String(e?.message || '')
+      if (msg.includes('[OUTSIDE_VAULT_BOUNDARY]')) {
+        openConfirmDialog({
+          title: 'Book Outside Locked Vault',
+          message:
+            'Strict Vault Lock is enabled, and this book lives outside your Library Vault folder. Open Vault & Security settings to adjust your Vault or re-import it into the Vault.',
+          confirmLabel: 'Open Vault Settings',
+          onConfirm: () => {
+            toggleFullSettingsModal(true)
+          }
+        })
+      } else if (msg.includes('[OUTSIDE_AUTHORIZED_BOUNDARY]') && window.desktopAPI?.addAuthorizedFolder) {
+        openConfirmDialog({
+          title: 'Authorize Book Folder',
+          message:
+            'Semply Folder Lock blocks reading files outside your approved library folders. Select the folder containing this book to grant access.',
+          confirmLabel: 'Authorize Folder',
+          onConfirm: async () => {
+            const res = await window.desktopAPI.addAuthorizedFolder()
+            if (!res.canceled && !res.error) {
+              showToast('Folder authorized — opening book...', 'success')
+              await handleOpenBook(book)
+            } else if (res.error) {
+              showToast(res.error, 'error')
+            }
+          }
+        })
+      } else {
+        showToast(`Could not open file: ${msg || 'Unknown error'}`, 'error')
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Handle Drag & Drop
+  // Handle Drag & Drop (copies into Obsidian-style Library Vault when configured)
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const targetCatId = activeCustomCategory?.id ?? null
       const targetCatName = activeCustomCategory?.name ?? null
       setIsLoading(true)
+      const secStatus = window.desktopAPI?.getSecurityStatus
+        ? await window.desktopAPI.getSecurityStatus().catch(() => null)
+        : null
+      const useVaultImport = Boolean(
+        secStatus?.vaultPath &&
+          (secStatus.copyImportsIntoVault || secStatus.strictVaultOnly) &&
+          window.desktopAPI?.importBufferToVault
+      )
+
       const count = e.dataTransfer.files.length
       let importedCount = 0
       for (let i = 0; i < count; i++) {
         const file = e.dataTransfer.files[i]
         const ext = file.name.split('.').pop()?.toLowerCase() || 'epub'
+        if (ext !== 'epub' && ext !== 'pdf' && ext !== 'mobi' && ext !== 'txt') continue
         let format: 'epub' | 'pdf' | 'mobi' | 'txt' = 'epub'
         if (ext === 'pdf') format = 'pdf'
-        else if (ext === 'mobi' || ext === 'azw' || ext === 'azw3') format = 'mobi'
+        else if (ext === 'mobi') format = 'mobi'
         else if (ext === 'txt') format = 'txt'
 
         const buffer = await file.arrayBuffer()
+        let finalFilePath = (file as any).path || file.name
+        if (useVaultImport) {
+          const vaultRes = await window.desktopAPI.importBufferToVault(file.name, buffer.slice(0))
+          if (vaultRes.success && vaultRes.filePath) {
+            finalFilePath = vaultRes.filePath
+          } else {
+            showToast(vaultRes.error || `Could not copy ${file.name} into Vault`, 'error')
+            continue
+          }
+        }
+
+        const existing = await db.books.where('filePath').equals(finalFilePath).first()
+        if (existing) {
+          if (existing.id && targetCatId !== null && existing.categoryId !== targetCatId) {
+            await db.books.update(existing.id, { categoryId: targetCatId })
+            importedCount++
+          }
+          continue
+        }
+
         const rawName = file.name.replace(/\.[^/.]+$/, '')
         const meta = await extractBookMetadata(buffer, ext, rawName)
 
         await db.books.add({
-          filePath: (file as any).path || file.name,
+          filePath: finalFilePath,
           title: meta.title,
           author: meta.author,
           coverDataUrl: meta.coverDataUrl,

@@ -181,7 +181,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           data = new Uint8Array(await resp.arrayBuffer())
         }
 
-        const task = pdfjsLib.getDocument({ data })
+        const task = pdfjsLib.getDocument({ data, isEvalSupported: false })
         loadedDoc = await task.promise
         if (cancelled) {
           loadedDoc.destroy()

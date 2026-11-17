@@ -5,7 +5,9 @@ const cssCache = new Map<string, string>()
 
 function upsertStyleElement(doc: Document, attrName: string, attrValue: string, css: string): void {
   if (!doc || !doc.head) return
-  let styleEl = doc.head.querySelector(`style[${attrName}="${attrValue}"]`) as HTMLStyleElement | null
+  const existingStyles = Array.from(doc.head.querySelectorAll('style'))
+  let styleEl =
+    (existingStyles.find((el) => el.getAttribute(attrName) === attrValue) as HTMLStyleElement | undefined) || null
   if (!styleEl) {
     styleEl = doc.createElement('style')
     styleEl.setAttribute(attrName, attrValue)

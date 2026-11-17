@@ -408,23 +408,57 @@ export const App: React.FC = () => {
 
     const state = useAppStore.getState()
     const inLibrary = state.currentView === 'library' || !state.activeBook
+    const secStatus = window.desktopAPI?.getSecurityStatus
+      ? await window.desktopAPI.getSecurityStatus().catch(() => null)
+      : null
+    const useVaultImport = Boolean(
+      secStatus?.vaultPath &&
+        (secStatus.copyImportsIntoVault || secStatus.strictVaultOnly) &&
+        window.desktopAPI?.importBufferToVault
+    )
 
     if (!inLibrary) {
-      // Dropped while reading: immediately import & open the dropped book
-      const firstPath = (files[0] as any).path as string | undefined
+      // Dropped while reading: copy into Vault if active, then open immediately
+      const firstFile = files[0]
+      if (useVaultImport && firstFile) {
+        const ext = firstFile.name.split('.').pop()?.toLowerCase() || ''
+        if (ext !== 'epub' && ext !== 'pdf') {
+          showToast('Only EPUB and PDF files can be opened.', 'error')
+          return
+        }
+        const buf = await firstFile.arrayBuffer()
+        const vaultRes = await window.desktopAPI.importBufferToVault(firstFile.name, buf)
+        if (vaultRes.success && vaultRes.filePath) {
+          await openLocalBookPath(vaultRes.filePath)
+        } else {
+          showToast(vaultRes.error || 'Could not copy dropped book into Library Vault.', 'error')
+        }
+        return
+      }
+      const firstPath = (firstFile as any).path as string | undefined
       if (firstPath) {
         await openLocalBookPath(firstPath)
       }
       return
     }
 
-    // Dropped while in Library: batch-import all dropped files cleanly with deduplication
+    // Dropped while in Library: batch-import all dropped files cleanly with Vault copy & deduplication
     const numericCatId = /^\d+$/.test(state.selectedCategory) ? Number(state.selectedCategory) : null
     let importedCount = 0
     for (const file of files) {
       const ext = file.name.split('.').pop()?.toLowerCase() || ''
       if (ext !== 'epub' && ext !== 'pdf' && ext !== 'mobi' && ext !== 'txt') continue
-      const filePath = ((file as any).path as string | undefined) || file.name
+      const buffer = await file.arrayBuffer()
+      let filePath = ((file as any).path as string | undefined) || file.name
+      if (useVaultImport) {
+        const vaultRes = await window.desktopAPI.importBufferToVault(file.name, buffer.slice(0))
+        if (vaultRes.success && vaultRes.filePath) {
+          filePath = vaultRes.filePath
+        } else {
+          showToast(vaultRes.error || `Could not copy ${file.name} into Vault`, 'error')
+          continue
+        }
+      }
       const existing = await db.books.where('filePath').equals(filePath).first()
       if (existing) {
         if (existing.id && numericCatId !== null && existing.categoryId !== numericCatId) {
@@ -435,7 +469,6 @@ export const App: React.FC = () => {
         }
         continue
       }
-      const buffer = await file.arrayBuffer()
       const rawName = file.name.replace(/\.[^/.]+$/, '')
       const meta = await extractBookMetadata(buffer, ext, rawName)
       await db.books.add({

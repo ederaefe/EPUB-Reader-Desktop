@@ -1,17 +1,58 @@
 import { app, net } from 'electron'
-import { join } from 'path'
-import { mkdir, readdir, readFile, rm, writeFile, rename, unlink } from 'fs/promises'
+import { join, basename } from 'path'
+import { mkdir, readdir, readFile, rm, stat, writeFile, rename, unlink } from 'fs/promises'
 import { existsSync } from 'fs'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { getFontEntry, isBuiltinFont } from '../shared/fontCatalog'
+import { isStrictOfflineMode } from './securityBoundaryService'
+import { mainEgressFetch } from './networkService'
 
 const MAX_FONT_FACE_SIZE = 10 * 1024 * 1024 // 10 MB per font face file
+const SAFE_CACHED_FILENAME_RE = /^[a-f0-9]{12}\.(woff2|woff|ttf|otf)$/i
+
+function isSafeCachedFileName(fileName: unknown): fileName is string {
+  return typeof fileName === 'string' && basename(fileName) === fileName && SAFE_CACHED_FILENAME_RE.test(fileName)
+}
+
+function sanitizeFontFamilyCss(raw: string): string {
+  return raw.replace(/['"\\;\r\n{}()]/g, '').trim().slice(0, 80) || 'serif'
+}
+
+function sanitizeFontStyleCss(raw: unknown): string {
+  if (typeof raw !== 'string') return 'normal'
+  const lower = raw.trim().toLowerCase()
+  return lower === 'normal' || lower === 'italic' || lower === 'oblique' ? lower : 'normal'
+}
+
+function sanitizeFontWeightCss(raw: unknown): string {
+  if (typeof raw !== 'string') return '400'
+  const cleaned = raw.trim().replace(/\s+/g, ' ')
+  return /^\d{3}(?:\s\d{3})?$/.test(cleaned) ? cleaned : '400'
+}
+
+function sanitizeUnicodeRangeCss(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined
+  const cleaned = raw.trim()
+  if (!cleaned || cleaned.length > 512) return undefined
+  return /^[U+0-9A-Fa-f,\s?-]+$/.test(cleaned) ? cleaned : undefined
+}
 
 async function writeAtomic(targetPath: string, data: string | Buffer): Promise<void> {
-  const tempPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
+  const tempPath = `${targetPath}.${randomBytes(6).toString('hex')}.tmp`
+  const retryable = new Set(['EPERM', 'EBUSY', 'EACCES'])
   try {
-    await writeFile(tempPath, data)
-    await rename(tempPath, targetPath)
+    await writeFile(tempPath, data, { flag: 'wx' })
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await rename(tempPath, targetPath)
+        return
+      } catch (err: any) {
+        if (process.platform !== 'win32' || !retryable.has(err?.code) || attempt === 4) {
+          throw err
+        }
+        await new Promise((res) => setTimeout(res, 25 * (attempt + 1)))
+      }
+    }
   } catch (err) {
     await unlink(tempPath).catch(() => {})
     throw err
@@ -41,11 +82,18 @@ function getFontsRootDir(): string {
 }
 
 function getFontDir(fontId: string): string {
+  if (typeof fontId !== 'string') {
+    throw new Error('Invalid font ID')
+  }
   const safeId = fontId.replace(/[^a-z0-9_-]/gi, '')
+  if (!safeId || safeId !== fontId) {
+    throw new Error('Invalid font ID')
+  }
   return join(getFontsRootDir(), safeId)
 }
 
 export function checkIsOnline(): boolean {
+  if (isStrictOfflineMode()) return false
   try {
     return net.isOnline()
   } catch {
@@ -72,10 +120,12 @@ export async function listDownloadedFontIds(): Promise<string[]> {
         const meta = JSON.parse(raw) as FontCacheMeta
         if (
           meta &&
-          meta.id &&
+          typeof meta.id === 'string' &&
+          meta.id === entry.name &&
+          getFontEntry(meta.id).id === meta.id &&
           Array.isArray(meta.faces) &&
           meta.faces.length > 0 &&
-          meta.faces.every((f) => existsSync(join(root, entry.name, f.fileName)))
+          meta.faces.every((f) => isSafeCachedFileName(f?.fileName) && existsSync(join(root, entry.name, f.fileName)))
         ) {
           validIds.push(meta.id)
         }
@@ -131,7 +181,7 @@ async function fetchWithTimeout(url: string, timeoutMs = 10000): Promise<Respons
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const resp = await net.fetch(url, {
+    const resp = await mainEgressFetch(url, {
       headers: {
         'User-Agent': MODERN_CHROME_UA,
         Accept: 'text/css,*/*;q=0.1'
@@ -225,12 +275,15 @@ export async function downloadFont(fontId: string): Promise<{
   alreadyAvailable?: boolean
   error?: string
 }> {
+  if (typeof fontId !== 'string' || !fontId.trim()) {
+    return { success: false, error: 'Unknown font' }
+  }
   if (isBuiltinFont(fontId)) {
     return { success: true, alreadyAvailable: true }
   }
 
   const entry = getFontEntry(fontId)
-  if (!entry || !entry.googleFamily) {
+  if (!entry || entry.id !== fontId || !entry.googleFamily) {
     return { success: false, error: 'Unknown font' }
   }
 
@@ -243,7 +296,7 @@ export async function downloadFont(fontId: string): Promise<{
       const existing = JSON.parse(await readFile(metaPath, 'utf-8')) as FontCacheMeta
       if (
         existing.faces?.length > 0 &&
-        existing.faces.every((f) => existsSync(join(fontDir, f.fileName)))
+        existing.faces.every((f) => isSafeCachedFileName(f?.fileName) && existsSync(join(fontDir, f.fileName)))
       ) {
         return { success: true, alreadyAvailable: true }
       }
@@ -294,10 +347,10 @@ export async function downloadFont(fontId: string): Promise<{
       }
 
       cachedFaces.push({
-        fontFamily: entry.googleFamily,
-        fontStyle: face.fontStyle,
-        fontWeight: face.fontWeight,
-        unicodeRange: face.unicodeRange,
+        fontFamily: sanitizeFontFamilyCss(entry.googleFamily),
+        fontStyle: sanitizeFontStyleCss(face.fontStyle),
+        fontWeight: sanitizeFontWeightCss(face.fontWeight),
+        unicodeRange: sanitizeUnicodeRangeCss(face.unicodeRange),
         fileName
       })
     }
@@ -329,9 +382,12 @@ export async function downloadFont(fontId: string): Promise<{
  * Embedding data URIs ensures 100% offline reliability inside epub.js sandboxed/blob iframes.
  */
 export async function getFontFaceCss(fontId: string): Promise<string | null> {
-  if (isBuiltinFont(fontId)) return null
+  if (typeof fontId !== 'string' || !fontId.trim() || isBuiltinFont(fontId)) return null
 
-  const fontDir = getFontDir(fontId)
+  const entry = getFontEntry(fontId)
+  if (!entry || entry.id !== fontId || !entry.googleFamily) return null
+
+  const fontDir = getFontDir(entry.id)
   const metaPath = join(fontDir, 'meta.json')
   if (!existsSync(metaPath)) return null
 
@@ -339,14 +395,18 @@ export async function getFontFaceCss(fontId: string): Promise<string | null> {
     const meta = JSON.parse(await readFile(metaPath, 'utf-8')) as FontCacheMeta
     if (!meta.faces || meta.faces.length === 0) return null
 
+    const safeFamily = sanitizeFontFamilyCss(entry.googleFamily)
     const fileCache = new Map<string, string>()
     const rules: string[] = []
 
     for (const face of meta.faces) {
+      if (!isSafeCachedFileName(face?.fileName)) return null
       let dataUri = fileCache.get(face.fileName)
       if (!dataUri) {
         const filePath = join(fontDir, face.fileName)
         if (!existsSync(filePath)) return null
+        const fileStat = await stat(filePath)
+        if (fileStat.size > MAX_FONT_FACE_SIZE) return null
         const buf = await readFile(filePath)
         const mime = face.fileName.endsWith('.woff2')
           ? 'font/woff2'
@@ -362,9 +422,12 @@ export async function getFontFaceCss(fontId: string): Promise<string | null> {
         : face.fileName.endsWith('.woff')
         ? 'woff'
         : 'truetype'
-      const rangeLine = face.unicodeRange ? `\n  unicode-range: ${face.unicodeRange};` : ''
+      const safeStyle = sanitizeFontStyleCss(face.fontStyle)
+      const safeWeight = sanitizeFontWeightCss(face.fontWeight)
+      const safeRange = sanitizeUnicodeRangeCss(face.unicodeRange)
+      const rangeLine = safeRange ? `\n  unicode-range: ${safeRange};` : ''
       rules.push(
-        `@font-face {\n  font-family: '${face.fontFamily}';\n  font-style: ${face.fontStyle};\n  font-weight: ${face.fontWeight};\n  font-display: swap;\n  src: url('${dataUri}') format('${format}');${rangeLine}\n}`
+        `@font-face {\n  font-family: '${safeFamily}';\n  font-style: ${safeStyle};\n  font-weight: ${safeWeight};\n  font-display: swap;\n  src: url('${dataUri}') format('${format}');${rangeLine}\n}`
       )
     }
 

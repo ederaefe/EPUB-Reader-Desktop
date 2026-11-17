@@ -5,6 +5,67 @@ import JSZip from 'jszip'
 import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings, type NoteColor } from '../db'
 import { useAppStore } from '../stores/useAppStore'
 import { normalizeTags } from '../../../shared/bookMetadata'
+import { FONT_CATALOG } from '../../../shared/fontCatalog'
+
+const VALID_FONT_IDS = new Set(FONT_CATALOG.map((f) => f.id))
+const MAX_BACKUP_JSON_BYTES = 100 * 1024 * 1024 // 100 MB JSON payload ceiling (matches main fs:readFileText)
+const MAX_BACKUP_COVER_BYTES = 5 * 1024 * 1024 // 5 MB per cover image ceiling
+const MAX_BACKUP_TOTAL_COVER_BYTES = 150 * 1024 * 1024 // 150 MB cumulative cover decompression budget
+const MAX_BACKUP_ZIP_ENTRIES = 5000 // Guard against Zip Bomb entry floods
+const MAX_BACKUP_BOOKS = 10000
+const MAX_BACKUP_ANNOTATIONS = 50000
+const MAX_BACKUP_BOOKMARKS = 50000
+
+async function readZipEntryBounded(entry: JSZip.JSZipObject, maxBytes: number): Promise<Uint8Array> {
+  const declared = (entry as any)?._data?.uncompressedSize
+  if (typeof declared === 'number' && declared > maxBytes) {
+    throw new Error('Archive entry exceeds safe decompressed size limit')
+  }
+  return await new Promise<Uint8Array>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    let total = 0
+    let aborted = false
+    const stream = (entry as any).internalStream('uint8array')
+    stream
+      .on('data', (chunk: Uint8Array) => {
+        if (aborted) return
+        total += chunk.byteLength
+        if (total > maxBytes) {
+          aborted = true
+          try {
+            stream.pause()
+          } catch {}
+          reject(new Error('Archive entry exceeds safe decompressed size limit'))
+          return
+        }
+        chunks.push(chunk)
+      })
+      .on('error', (err: unknown) => {
+        if (!aborted) reject(err)
+      })
+      .on('end', () => {
+        if (aborted) return
+        const out = new Uint8Array(total)
+        let offset = 0
+        for (const c of chunks) {
+          out.set(c, offset)
+          offset += c.byteLength
+        }
+        resolve(out)
+      })
+      .resume()
+  })
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000
+  const chunks: string[] = []
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const slice = bytes.subarray(i, i + chunkSize)
+    chunks.push(String.fromCharCode.apply(null, Array.from(slice)))
+  }
+  return window.btoa(chunks.join(''))
+}
 
 export interface LibraryBackupData {
   version: number
@@ -46,10 +107,94 @@ function sanitizeNoteColor(color: any): NoteColor {
 function sanitizeCoverDataUrl(url: any): string | null {
   if (typeof url !== 'string') return null
   const trimmed = url.trim()
+  if (trimmed.length > MAX_BACKUP_COVER_BYTES * 1.4) return null
   if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) {
     return trimmed
   }
   return null
+}
+
+function sanitizeBookFilePath(raw: any): string {
+  const s = sanitizeString(raw, 1024).replace(/[\0\x01-\x1F\x7F]/g, '')
+  if (!s) return ''
+  // Reject UNC/device paths (including mixed slashes /\ and \/) and external/executable URI schemes
+  if (/^[\\/]{2}/.test(s) || /^(https?|file|javascript|vbscript|data):/i.test(s)) {
+    return ''
+  }
+  return s
+}
+
+function clampFinite(val: unknown, min: number, max: number): number | undefined {
+  if (typeof val !== 'number' || !Number.isFinite(val)) return undefined
+  return Math.max(min, Math.min(max, val))
+}
+
+export function sanitizeSettings(raw: unknown): Partial<UserSettings> {
+  if (!isPlainObject(raw) || hasPrototypePollutionKey(raw)) return {}
+  const out: Partial<UserSettings> = {}
+
+  if (raw.theme === 'night' || raw.theme === 'day' || raw.theme === 'light-sepia' || raw.theme === 'dark-sepia') {
+    out.theme = raw.theme
+  }
+  if (typeof raw.fontFamily === 'string' && VALID_FONT_IDS.has(raw.fontFamily)) {
+    out.fontFamily = raw.fontFamily
+  }
+  const fontSize = clampFinite(raw.fontSize, 12, 42)
+  if (fontSize !== undefined) out.fontSize = Math.round(fontSize)
+  const fontWeight = clampFinite(raw.fontWeight, 300, 700)
+  if (fontWeight !== undefined) out.fontWeight = Math.round(fontWeight / 100) * 100
+  const lineHeight = clampFinite(raw.lineHeight, 1.0, 2.5)
+  if (lineHeight !== undefined) out.lineHeight = Number(lineHeight.toFixed(2))
+  const marginWidth = clampFinite(raw.marginWidth, 0, 160)
+  if (marginWidth !== undefined) out.marginWidth = Math.round(marginWidth)
+  const dimming = clampFinite(raw.dimming, 0, 80)
+  if (dimming !== undefined) out.dimming = Math.round(dimming)
+  if (raw.pageSpread === 'single' || raw.pageSpread === 'double') {
+    out.pageSpread = raw.pageSpread
+  }
+  const ttsSpeed = clampFinite(raw.ttsSpeed, 0.5, 2.5)
+  if (ttsSpeed !== undefined) out.ttsSpeed = Number(ttsSpeed.toFixed(2))
+  const ttsPitch = clampFinite(raw.ttsPitch, 0.5, 2.0)
+  if (ttsPitch !== undefined) out.ttsPitch = Number(ttsPitch.toFixed(2))
+  if (raw.ttsVoice === null || typeof raw.ttsVoice === 'string') {
+    out.ttsVoice = raw.ttsVoice === null ? null : sanitizeString(raw.ttsVoice, 128) || null
+  }
+  const autoscrollSpeed = clampFinite(raw.autoscrollSpeed, 5, 200)
+  if (autoscrollSpeed !== undefined) out.autoscrollSpeed = Math.round(autoscrollSpeed)
+  if (raw.autoscrollMode === 'adaptive' || raw.autoscrollMode === 'countdown') {
+    out.autoscrollMode = raw.autoscrollMode
+  }
+  const autoscrollCountdownSec = clampFinite(raw.autoscrollCountdownSec, 3, 600)
+  if (autoscrollCountdownSec !== undefined) out.autoscrollCountdownSec = Math.round(autoscrollCountdownSec)
+  const autoscrollAdaptiveSec = clampFinite(raw.autoscrollAdaptiveSec, 3, 600)
+  if (autoscrollAdaptiveSec !== undefined) out.autoscrollAdaptiveSec = Math.round(autoscrollAdaptiveSec)
+  if (typeof raw.autoscrollMicroPause === 'boolean') out.autoscrollMicroPause = raw.autoscrollMicroPause
+  if (typeof raw.autoscrollAdaptive === 'boolean') out.autoscrollAdaptive = raw.autoscrollAdaptive
+  const targetWpm = clampFinite(raw.targetWpm, 80, 1000)
+  if (targetWpm !== undefined) out.targetWpm = Math.round(targetWpm)
+  const observedWpm = clampFinite(raw.observedWpm, 80, 1000)
+  if (observedWpm !== undefined) out.observedWpm = Math.round(observedWpm)
+  if (typeof raw.warmFilterEnabled === 'boolean') out.warmFilterEnabled = raw.warmFilterEnabled
+  const warmFilterTemp = clampFinite(raw.warmFilterTemp, 1500, 6500)
+  if (warmFilterTemp !== undefined) out.warmFilterTemp = Math.round(warmFilterTemp)
+  const warmFilterIntensity = clampFinite(raw.warmFilterIntensity, 0, 100)
+  if (warmFilterIntensity !== undefined) out.warmFilterIntensity = Math.round(warmFilterIntensity)
+  const rsvpWpm = clampFinite(raw.rsvpWpm, 100, 1200)
+  if (rsvpWpm !== undefined) out.rsvpWpm = Math.round(rsvpWpm)
+  if (typeof raw.copyExternal === 'boolean') out.copyExternal = raw.copyExternal
+  if (typeof raw.autoUpdate === 'boolean') out.autoUpdate = raw.autoUpdate
+  if (typeof raw.sendStats === 'boolean') out.sendStats = raw.sendStats
+  if (raw.viewMode === 'grid' || raw.viewMode === 'list') out.viewMode = raw.viewMode
+  if (['blue', 'purple', 'red', 'yellow', 'green', 'underline'].includes(raw.lastNoteColor)) {
+    out.lastNoteColor = raw.lastNoteColor as NoteColor
+  }
+  const pdfZoom = clampFinite(raw.pdfZoom, 0.5, 3.0)
+  if (pdfZoom !== undefined) out.pdfZoom = Number(pdfZoom.toFixed(2))
+  if (raw.scrollMode === 'horizontal' || raw.scrollMode === 'vertical') {
+    out.scrollMode = raw.scrollMode
+  }
+
+  return out
 }
 
 export function validateBackupStructure(raw: unknown): raw is LibraryBackupData {
@@ -263,23 +408,31 @@ export class BackupService {
     const bookIdMapping = new Map<number, number>()
 
     let bookIdx = 0
-    for (const remoteBook of backup.books || []) {
+    let cumulativeCoverBytes = 0
+    for (const remoteBook of (backup.books || []).slice(0, MAX_BACKUP_BOOKS)) {
       bookIdx++
       // Restore cover art from zip archive covers folder if missing or empty in JSON
       if ((!remoteBook.coverDataUrl || remoteBook.coverDataUrl.length === 0) && zipInstance) {
         const coverInZip = zipInstance.file(`covers/book_${bookIdx}_cover.jpg`)
-        if (coverInZip) {
+        if (coverInZip && cumulativeCoverBytes < MAX_BACKUP_TOTAL_COVER_BYTES) {
           try {
-            const b64 = await coverInZip.async('base64')
-            if (b64) remoteBook.coverDataUrl = `data:image/jpeg;base64,${b64}`
+            const remaining = Math.min(MAX_BACKUP_COVER_BYTES, MAX_BACKUP_TOTAL_COVER_BYTES - cumulativeCoverBytes)
+            const bytes = await readZipEntryBounded(coverInZip, remaining)
+            if (bytes.byteLength >= 64) {
+              cumulativeCoverBytes += bytes.byteLength
+              remoteBook.coverDataUrl = `data:image/jpeg;base64,${uint8ToBase64(bytes)}`
+            }
           } catch {}
         }
       }
 
       const safeTitle = sanitizeString(remoteBook.title, 256) || 'Untitled Book'
       const safeAuthor = sanitizeString(remoteBook.author, 128) || 'Unknown Author'
-      const safeFilePath = sanitizeString(remoteBook.filePath, 1024)
+      const safeFilePath = sanitizeBookFilePath(remoteBook.filePath)
+      if (!safeFilePath) continue
       const safeCover = sanitizeCoverDataUrl(remoteBook.coverDataUrl)
+      const safeProgressCfi =
+        typeof remoteBook.progressCfi === 'string' ? sanitizeString(remoteBook.progressCfi, 512) || null : null
       const safeFormat = (['epub', 'pdf', 'mobi', 'txt'] as const).includes(remoteBook.format)
         ? remoteBook.format
         : 'epub'
@@ -297,7 +450,7 @@ export class BackupService {
         if (safeProgress > (match.progressPercent || 0)) {
           await db.books.update(match.id, {
             progressPercent: safeProgress,
-            progressCfi: typeof remoteBook.progressCfi === 'string' ? remoteBook.progressCfi : match.progressCfi,
+            progressCfi: safeProgressCfi ?? match.progressCfi,
             currentPage: typeof remoteBook.currentPage === 'number' && Number.isFinite(remoteBook.currentPage) ? remoteBook.currentPage : match.currentPage
           })
         }
@@ -316,7 +469,7 @@ export class BackupService {
           addedAt: typeof remoteBook.addedAt === 'number' && Number.isFinite(remoteBook.addedAt) ? remoteBook.addedAt : Date.now(),
           lastOpenedAt: typeof remoteBook.lastOpenedAt === 'number' && Number.isFinite(remoteBook.lastOpenedAt) ? remoteBook.lastOpenedAt : null,
           progressPercent: safeProgress,
-          progressCfi: typeof remoteBook.progressCfi === 'string' ? remoteBook.progressCfi : null,
+          progressCfi: safeProgressCfi,
           currentPage: typeof remoteBook.currentPage === 'number' && Number.isFinite(remoteBook.currentPage) ? Math.max(1, remoteBook.currentPage) : 1,
           totalPages: typeof remoteBook.totalPages === 'number' && Number.isFinite(remoteBook.totalPages) ? Math.max(1, remoteBook.totalPages) : 1,
           categoryId: mappedCatId,
@@ -358,7 +511,7 @@ export class BackupService {
       annotationKeySet.add(`${a.bookId}:::${a.cfiRange}`)
     })
 
-    for (const remoteAnn of backup.annotations || []) {
+    for (const remoteAnn of (backup.annotations || []).slice(0, MAX_BACKUP_ANNOTATIONS)) {
       const localBookId = bookIdMapping.get(remoteAnn.bookId) || remoteAnn.bookId
       const safeCfiRange = sanitizeString(remoteAnn.cfiRange, 512)
       if (!safeCfiRange) continue
@@ -385,7 +538,7 @@ export class BackupService {
       bookmarkKeySet.add(`${bm.bookId}:::${bm.cfi}`)
     })
 
-    for (const remoteBm of backup.bookmarks || []) {
+    for (const remoteBm of (backup.bookmarks || []).slice(0, MAX_BACKUP_BOOKMARKS)) {
       const localBookId = bookIdMapping.get(remoteBm.bookId) || remoteBm.bookId
       const safeCfi = sanitizeString(remoteBm.cfi, 512)
       if (!safeCfi) continue
@@ -405,10 +558,12 @@ export class BackupService {
       }
     }
 
-    // 5. Restore persisted user settings if included in the backup
+    // 5. Restore validated, bounds-clamped user settings if included in the backup
     if (backup.settings) {
-      const { id: _ignoredId, ...restoredSettings } = backup.settings
-      useAppStore.getState().updateSettings(restoredSettings)
+      const safeSettings = sanitizeSettings(backup.settings)
+      if (Object.keys(safeSettings).length > 0) {
+        useAppStore.getState().updateSettings(safeSettings)
+      }
     }
 
     return { addedBooks, addedAnnotations, addedBookmarks, addedCategories }
@@ -432,14 +587,21 @@ export class BackupService {
 
         if (!chosenPath) return { success: false, message: 'Import cancelled' }
 
-        if (chosenPath.endsWith('.zip')) {
+        if (chosenPath.toLowerCase().endsWith('.zip')) {
           const buffer = await window.desktopAPI.readFileBuffer(chosenPath)
           loadedZip = await JSZip.loadAsync(buffer)
+          if (Object.keys(loadedZip.files).length > MAX_BACKUP_ZIP_ENTRIES) {
+            throw new Error('Invalid archive: exceeds maximum safe entry count')
+          }
           const metaFile = loadedZip.file('library_metadata.json')
           if (!metaFile) throw new Error('Invalid archive: missing library_metadata.json')
-          jsonContent = await metaFile.async('text')
+          const metaBytes = await readZipEntryBounded(metaFile, MAX_BACKUP_JSON_BYTES)
+          jsonContent = new TextDecoder('utf-8').decode(metaBytes)
         } else {
           jsonContent = await window.desktopAPI.readFileText(chosenPath)
+          if (jsonContent.length > MAX_BACKUP_JSON_BYTES) {
+            throw new Error('Backup JSON exceeds 100 MB safety limit')
+          }
         }
       } else {
         // Browser file input fallback
@@ -453,12 +615,19 @@ export class BackupService {
 
         if (!file) return { success: false, message: 'No file selected' }
 
-        if (file.name.endsWith('.zip')) {
+        if (file.name.toLowerCase().endsWith('.zip')) {
           loadedZip = await JSZip.loadAsync(await file.arrayBuffer())
+          if (Object.keys(loadedZip.files).length > MAX_BACKUP_ZIP_ENTRIES) {
+            throw new Error('Invalid archive: exceeds maximum safe entry count')
+          }
           const metaFile = loadedZip.file('library_metadata.json')
           if (!metaFile) throw new Error('Invalid archive: missing library_metadata.json')
-          jsonContent = await metaFile.async('text')
+          const metaBytes = await readZipEntryBounded(metaFile, MAX_BACKUP_JSON_BYTES)
+          jsonContent = new TextDecoder('utf-8').decode(metaBytes)
         } else {
+          if (file.size > MAX_BACKUP_JSON_BYTES) {
+            throw new Error('Backup JSON exceeds 100 MB safety limit')
+          }
           jsonContent = await file.text()
         }
       }

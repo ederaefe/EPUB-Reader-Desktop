@@ -240,7 +240,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     const currentSettings = useAppStore.getState().settings
     const fontFam = getFontCssFamily(currentSettings.fontFamily)
-    const fontWeight = currentSettings.fontWeight || 400
+    const rawSize = Number(currentSettings.fontSize)
+    const safeFontSize = Number.isFinite(rawSize) ? Math.max(12, Math.min(42, Math.round(rawSize))) : 21
+    const rawWeight = Number(currentSettings.fontWeight)
+    const fontWeight = Number.isFinite(rawWeight) ? Math.max(300, Math.min(800, Math.round(rawWeight))) : 400
+    const rawLineHeight = Number(currentSettings.lineHeight)
+    const safeLineHeight = Number.isFinite(rawLineHeight) ? Math.max(1.0, Math.min(2.5, rawLineHeight)) : 1.5
     const isLightTheme = currentSettings.theme === 'day' || currentSettings.theme === 'light-sepia'
     const smoothingRule = isLightTheme
       ? '-webkit-font-smoothing: subpixel-antialiased !important;'
@@ -256,15 +261,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     styleEl.textContent = `
       html, body {
-        font-size: ${currentSettings.fontSize}px !important;
+        font-size: ${safeFontSize}px !important;
         font-weight: ${fontWeight} !important;
         font-optical-sizing: auto !important;
         text-rendering: optimizeLegibility !important;
         ${smoothingRule}
       }
       body p, body div, body span, body li, body blockquote {
-        font-size: ${currentSettings.fontSize}px !important;
-        line-height: ${Math.round(currentSettings.lineHeight * 100)}% !important;
+        font-size: ${safeFontSize}px !important;
+        line-height: ${Math.round(safeLineHeight * 100)}% !important;
         font-weight: ${fontWeight} !important;
         ${mediumStrokeRule}
       }
@@ -275,10 +280,89 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     `
   }, [])
 
+  // Defense-in-depth sanitizer for untrusted EPUB XHTML (runs pre-parse via spine.hooks.content and post-mount)
+  const sanitizeEpubDocument = useCallback((doc: Document) => {
+    try {
+      // Strip active/embedded elements, foreignObject, and meta redirects
+      doc
+        .querySelectorAll(
+          'script, object, embed, applet, iframe, frame, frameset, form, foreignObject, meta[http-equiv="refresh" i]'
+        )
+        .forEach((node) => node.remove())
+
+      // Strip external <base> and external <link> tags while preserving local/blob EPUB assets
+      doc.querySelectorAll('base[href]').forEach((baseEl) => {
+        const href = (baseEl.getAttribute('href') || '').replace(/[\0-\x20]+/g, '').toLowerCase()
+        if (/^(?:https?:|\/\/|javascript:|vbscript:|data:)/.test(href)) {
+          baseEl.remove()
+        }
+      })
+      doc.querySelectorAll('link[href]').forEach((linkEl) => {
+        const href = (linkEl.getAttribute('href') || '').replace(/[\0-\x20]+/g, '').toLowerCase()
+        if (/^(?:https?:|\/\/|javascript:|vbscript:)/.test(href)) {
+          linkEl.remove()
+        }
+      })
+
+      // Strip remote @import and external http(s) url(...) rules from embedded book <style> blocks
+      doc.querySelectorAll('style').forEach((styleEl) => {
+        if (styleEl.id === 'semply-reader-dynamic-style' || styleEl.hasAttribute('data-semply-font-id')) {
+          return
+        }
+        const cssText = styleEl.textContent
+        if (cssText && /(?:@import|url\s*\(\s*['"]?(?:https?:|\/\/))/i.test(cssText)) {
+          styleEl.textContent = cssText
+            .replace(/@import\s+(?:url\([^)]*\)|['"][^'"]*['"])[^;]*;?/gi, '')
+            .replace(/url\(\s*['"]?(?:https?:|\/\/)[^)]*\)/gi, 'none')
+        }
+      })
+
+      // Remove inline event handlers, script/HTML-data URLs, and external network tracking pixels
+      const elements = doc.querySelectorAll('*')
+      elements.forEach((el) => {
+        for (const attr of Array.from(el.attributes)) {
+          const nameLower = attr.name.toLowerCase()
+          const compactVal = attr.value.replace(/[\0-\x20]+/g, '').toLowerCase()
+
+          if (nameLower.startsWith('on')) {
+            el.removeAttribute(attr.name)
+            continue
+          }
+
+          if (
+            (nameLower === 'href' ||
+              nameLower === 'xlink:href' ||
+              nameLower === 'src' ||
+              nameLower === 'action' ||
+              nameLower === 'formaction') &&
+            (compactVal.startsWith('javascript:') ||
+              compactVal.startsWith('vbscript:') ||
+              compactVal.startsWith('data:text/html') ||
+              compactVal.startsWith('data:application/xhtml'))
+          ) {
+            el.removeAttribute(attr.name)
+            continue
+          }
+
+          if (
+            (nameLower === 'src' || nameLower === 'srcset' || nameLower === 'poster') &&
+            /^(?:https?:|\/\/)/.test(compactVal)
+          ) {
+            el.removeAttribute(attr.name)
+          }
+        }
+      })
+    } catch {
+      // Never block rendering if an EPUB has malformed XML nodes
+    }
+  }, [])
+
   // Attach smart footnote click interception, custom downloaded font CSS, and cadence wheel listener to iframe
   const attachIframeHooks = useCallback((contents: any) => {
     const doc = contents.document
     if (!doc) return
+
+    sanitizeEpubDocument(doc)
 
     // Inject active downloaded font stylesheet and dynamic typography rules into the isolated EPUB iframe
     const activeFontId = useAppStore.getState().settings.fontFamily
@@ -546,7 +630,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       openContextMenuRef.current(clickX, clickY, text, cfiRange)
     })
-  }, [setActiveFootnote])
+  }, [setActiveFootnote, applyDynamicStylesToDoc, sanitizeEpubDocument])
 
   // Helper: only trust epub.js locations once generation/load has finalized with total > 0
   const hasReadyLocations = useCallback((epub: EpubBook | null | undefined): boolean => {
@@ -676,6 +760,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       epubInstance = ePub(sourceData)
       epubBookRef.current = epubInstance
+
+      // Sanitize untrusted EPUB XHTML pre-parse (before epub.js serializes into iframe.srcdoc)
+      epubInstance.ready
+        .then(() => {
+          ;(epubInstance?.spine as any)?.hooks?.content?.register?.((doc: Document) => {
+            if (doc) sanitizeEpubDocument(doc)
+          })
+        })
+        .catch(() => {})
 
       // 1:1 Horizontal Paginated Spread OR Vertical Continuous Scroll support
       const isVertical = settings.scrollMode === 'vertical'
@@ -2325,13 +2418,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           id: 'dict',
           label: 'Define in Dictionary',
           icon: <BookOpen className="w-3.5 h-3.5 text-[#a78bfa]" />,
-          onClick: () => window.open(`https://www.merriam-webster.com/dictionary/${encodeURIComponent(text)}`, '_blank')
+          onClick: () =>
+            window.open(
+              `https://www.merriam-webster.com/dictionary/${encodeURIComponent(text)}`,
+              '_blank',
+              'noopener,noreferrer'
+            )
         },
         {
           id: 'translate',
           label: 'Translate Selection',
           icon: <Languages className="w-3.5 h-3.5 text-[#4cd964]" />,
-          onClick: () => window.open(`https://translate.google.com/?sl=auto&tl=en&text=${encodeURIComponent(text)}`, '_blank')
+          onClick: () =>
+            window.open(
+              `https://translate.google.com/?sl=auto&tl=en&text=${encodeURIComponent(text)}`,
+              '_blank',
+              'noopener,noreferrer'
+            )
         },
         {
           id: 'tts',
