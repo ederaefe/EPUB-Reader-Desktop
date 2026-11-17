@@ -126,32 +126,40 @@ export const useAppStore = create<AppState>((set) => ({
       isTOCDrawerOpen: open ?? !s.isTOCDrawerOpen,
       isSettingsDrawerOpen: false,
       isNotesDrawerOpen: false,
-      isBookmarksDrawerOpen: false
+      isBookmarksDrawerOpen: false,
+      isSearchDrawerOpen: false
     })),
   toggleNotesDrawer: (open) =>
     set((s) => ({
       isNotesDrawerOpen: open ?? !s.isNotesDrawerOpen,
       isTOCDrawerOpen: false,
       isSettingsDrawerOpen: false,
-      isBookmarksDrawerOpen: false
+      isBookmarksDrawerOpen: false,
+      isSearchDrawerOpen: false
     })),
   toggleBookmarksDrawer: (open) =>
     set((s) => ({
       isBookmarksDrawerOpen: open ?? !s.isBookmarksDrawerOpen,
       isTOCDrawerOpen: false,
       isNotesDrawerOpen: false,
-      isSettingsDrawerOpen: false
+      isSettingsDrawerOpen: false,
+      isSearchDrawerOpen: false
     })),
   toggleSearchDrawer: (open) =>
     set((s) => ({
-      isSearchDrawerOpen: open ?? !s.isSearchDrawerOpen
+      isSearchDrawerOpen: open ?? !s.isSearchDrawerOpen,
+      isTOCDrawerOpen: false,
+      isNotesDrawerOpen: false,
+      isBookmarksDrawerOpen: false,
+      isSettingsDrawerOpen: false
     })),
   toggleSettingsDrawer: (open) =>
     set((s) => ({
       isSettingsDrawerOpen: open ?? !s.isSettingsDrawerOpen,
       isTOCDrawerOpen: false,
       isNotesDrawerOpen: false,
-      isBookmarksDrawerOpen: false
+      isBookmarksDrawerOpen: false,
+      isSearchDrawerOpen: false
     })),
   toggleFullSettingsModal: (open) =>
     set((s) => ({

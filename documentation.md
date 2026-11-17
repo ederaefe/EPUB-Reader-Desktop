@@ -195,3 +195,46 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
 ### Summary
 - Replaced placeholder `README.md` with complete project documentation covering Semply Ebook Reader's library management, true immersive fullscreen, minimalist Dual-Mode Auto-Scroll Countdown Engine (Countdown Only vs. Adaptive Countdown, muted fullscreen-persistent numeric trigger, tap-to-open icon-only modal, 5-minute inactivity watchdog), Read Aloud TTS, RSVP Speed Reader, footnotes, warm night filter, additive JSON/ZIP backup, and development scripts.
 - Verified with `npm run typecheck`, `npm run build`, and 5/5 automated unit tests against `AdaptiveScrollEngine`.
+
+
+---
+
+## Increment 14: Full-Book Find Drawer & Dual-Context `Ctrl+F` Shortcut
+
+### Summary
+- **New `SearchDrawer` (`src/renderer/src/components/drawers/SearchDrawer.tsx`)**: Added a left-docked Find side panel matching the desktop drawer styling, with auto-focused input, debounced live search (250ms), `Enter` / `Shift+Enter` next/previous match stepping, match counters, chapter labels, and inline highlighted excerpts.
+- **Full-Book Spine Search & Temporary Highlighting (`EpubReaderView.tsx`)**: Implemented spine-wide search via `epub.js` `section.find()` with safe load/unload tracking (only unloading sections loaded on demand so the active chapter is never clobbered), CFI navigation, and temporary amber match highlighting cleaned up on match switch or drawer dismissal.
+- **Dual-Context `Ctrl+F` & Drawer Synchronization (`EpubReaderView.tsx`, `useAppStore.ts`)**: Intercepted `Ctrl+F` / `Cmd+F` in both the outer `window` keydown listener (ahead of input-focus guards so repeated `Ctrl+F` re-focuses and selects the query) and the EPUB `<iframe>` `contents.window` listener, made all five drawers mutually exclusive in `useAppStore`, paused Auto-Scroll while Find is open, and wired `Escape` + unmount cleanup.
+- **Verification**: Passed `npm run typecheck` (`tsc --noEmit`) and `npm run build` (`electron-vite build`).
+
+
+---
+
+## Increment 14: In-Book Full-Text Search Drawer & Diagnostic Notes
+
+### Architecture & Enhancements
+1. **In-Book Full-Text Search (`SearchDrawer.tsx`, `EpubReaderView.tsx`, `useAppStore.ts`)**:
+   - Added a left-docked **Find in Book** drawer (`SearchDrawer.tsx`) with live debounced search (250ms, 2+ characters), match counter, chapter labels, inline amber excerpt highlighting, and wrapped Previous/Next stepping (`Enter` / `Shift+Enter` and stepper buttons).
+   - Wired `Ctrl+F` / `Cmd+F` (and `Ctrl+B` / `Escape`) across both the host window and the isolated `epub.js` iframe so search opens and focuses reliably regardless of focus location.
+   - Implemented spine-wide EPUB search (`handleSearchBook`, capped at 250 matches) that loads sections on demand without unloading the active visible section, jumps to selected CFI matches, and applies/clears a temporary amber highlight annotation (`#f59e0b`).
+   - Enforced mutual drawer exclusion across `TOCDrawer`, `NotesDrawer`, `BookmarksDrawer`, `SearchDrawer`, and `SettingsDrawer`, and integrated `isSearchDrawerOpen` into `AdaptiveScrollEngine` suspension and reader unmount cleanup.
+2. **Documented Known Architectural Follow-Ups (Diagnostics)**:
+   - **Recurring Category Purge (`App.tsx`)**: The startup cleanup deleting `Favorites`, `Sci-Fi & Fantasy`, `Science & Tech`, and `Classics` currently runs on every mount and should be removed so user-created categories with those names persist.
+   - **Iframe Keyboard Navigation (`EpubReaderView.tsx`)**: `ArrowLeft`, `ArrowRight`, `PageUp`, `PageDown`, and `Space` are currently bound only to the parent `window` and not forwarded from the EPUB `iframe`, causing arrow navigation to stop when focus enters the book frame or during initial async `display()`.
+   - **Reload State & Progress Persistence (`useAppStore.ts`, `EpubReaderView.tsx`, `FullSettingsModal.tsx`)**: Zustand store settings, active book/view state, and modal checkboxes are currently in-memory only (not hydrated from `db.settings`), and initial `relocated` events before location generation completes (or with `progressCfi: null`) can overwrite saved progress with page 1 / 0%.
+
+
+---
+
+## Increment 15: Design System Lock Alignment, Component Inventory & Documentation Sync
+
+### Summary
+- **Design System Lock (`DESIGN.md`) Modernization**: Replaced the obsolete Increment 1 "Encapsulated Obsidian Glassmorphism" specification with the production **Semply Native Desktop Dark** design system matching `src/renderer/src/index.css`. Explicitly codified the permanent ban on retired web-prototype anti-patterns (capsule/pill buttons such as `Switch to Reader View` and glowing `+ Import eBook`, floating format/preview pills such as `EPUB 3` and `Design Preview`, radial blur meshes, and PRO nag chrome).
+- **Verified Production Module Inventory**:
+  - **Main & Preload**: `src/main/index.ts` (frameless window, global zoom `before-input-event`, native editable context menus, file/folder dialogs, recursive scan, PDF-to-EPUB converter, fullscreen IPC), `src/preload/index.ts`.
+  - **Drawers (`src/renderer/src/components/drawers/`)**: `TOCDrawer`, `NotesDrawer`, `BookmarksDrawer`, `SearchDrawer`, `SettingsDrawer`.
+  - **Library (`src/renderer/src/components/library/`)**: `LibraryView`, `Sidebar`, `BookCard`, `ResumeBar`.
+  - **Reader (`src/renderer/src/components/reader/`)**: `EpubReaderView`, `ReaderTopBar`, `SelectionPopup`, `FootnotePopover`, `AdaptiveScrollOverlay`, `RSVPSpeedReaderModal`.
+  - **Modals & Chrome (`src/renderer/src/components/modals/`, `ui/`)**: `FullSettingsModal`, `TitleBar`, `ContextMenu`, `HelpModal`, `AppBackground`.
+  - **Services & State (`src/renderer/src/services/`, `db/`, `stores/`)**: `adaptiveScrollService`, `backupService`, `colorTempService`, `coverService`, `dictService`, `ttsService`, Dexie `db/index.ts`, Zustand `useAppStore.ts`.
+- **README Synchronization (`README.md`)**: Documented Full-Book Find (`Ctrl+F`), PDF-to-EPUB conversion & multi-format import, the full Keyboard Shortcuts reference table, packaging/release commands (`npm run package`, `npm run release`), and cross-linked `DESIGN.md`.

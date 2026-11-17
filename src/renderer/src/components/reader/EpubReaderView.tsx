@@ -21,6 +21,7 @@ import { ReaderTopBar } from './ReaderTopBar'
 import { TOCDrawer, type TocItem } from '../drawers/TOCDrawer'
 import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
+import { SearchDrawer, type SearchMatch } from '../drawers/SearchDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { SelectionPopup } from './SelectionPopup'
 import { FootnotePopover } from './FootnotePopover'
@@ -59,6 +60,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     toggleBookmarksDrawer,
     isNotesDrawerOpen,
     toggleNotesDrawer,
+    isSearchDrawerOpen,
+    toggleSearchDrawer,
     isSettingsDrawerOpen,
     toggleSettingsDrawer,
     isFullSettingsModalOpen,
@@ -68,6 +71,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   } = useAppStore()
 
   const [toc, setToc] = useState<TocItem[]>([])
+  const tocRef = useRef<TocItem[]>([])
+  tocRef.current = toc
+  const [searchFocusNonce, setSearchFocusNonce] = useState(0)
+  const activeSearchHighlightCfiRef = useRef<string | null>(null)
+  const openSearchDrawerRef = useRef<() => void>(() => {})
+  openSearchDrawerRef.current = () => {
+    toggleSearchDrawer(true)
+    setSearchFocusNonce((n) => n + 1)
+  }
   const [currentChapter, setCurrentChapter] = useState('')
   const [currentHref, setCurrentHref] = useState('')
   const [currentCfi, setCurrentCfi] = useState<string>(book.progressCfi || '')
@@ -212,10 +224,25 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
     })
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        e.stopPropagation()
+        openSearchDrawerRef.current()
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        e.stopPropagation()
+        useAppStore.getState().toggleBookmarksDrawer(true)
+      } else if (e.key === 'Escape') {
         setContextMenu(null)
-        if (useAppStore.getState().isImmersiveFullscreen) {
-          useAppStore.getState().setImmersiveFullscreen(false)
+        const st = useAppStore.getState()
+        if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
+          st.toggleSearchDrawer(false)
+          st.toggleTOCDrawer(false)
+          st.toggleBookmarksDrawer(false)
+          st.toggleNotesDrawer(false)
+          st.toggleSettingsDrawer(false)
+        } else if (st.isImmersiveFullscreen) {
+          st.setImmersiveFullscreen(false)
           window.desktopAPI?.setFullscreen?.(false)
         }
       } else if (e.key === 'F11') {
@@ -670,6 +697,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       isTOCDrawerOpen ||
       isNotesDrawerOpen ||
       isBookmarksDrawerOpen ||
+      isSearchDrawerOpen ||
       isSettingsDrawerOpen ||
       isFullSettingsModalOpen ||
       isRSVPActive ||
@@ -680,6 +708,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     isTOCDrawerOpen,
     isNotesDrawerOpen,
     isBookmarksDrawerOpen,
+    isSearchDrawerOpen,
     isSettingsDrawerOpen,
     isFullSettingsModalOpen,
     isRSVPActive,
@@ -705,17 +734,25 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     })
   }, [isAutoscrollActive, currentCfi, analyzeVisiblePage, handleNext, setAutoscrollActive])
 
-  // Cleanly stop Auto-Scroll when exiting the reader back to Library
+  // Cleanly stop Auto-Scroll and close Search drawer when exiting the reader back to Library
   useEffect(() => {
     return () => {
       adaptiveScrollEngine.stop()
       useAppStore.getState().setAutoscrollActive(false)
+      useAppStore.getState().toggleSearchDrawer(false)
     }
   }, [])
 
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Allow Ctrl+F / Cmd+F even when focus is inside an input so it always opens & selects Find
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        openSearchDrawerRef.current()
+        return
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
       if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
@@ -742,15 +779,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         updateSettings({
           pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
         })
-      } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         toggleBookmarksDrawer(true)
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        if (isTOCDrawerOpen || isBookmarksDrawerOpen || isNotesDrawerOpen || isSettingsDrawerOpen) {
+        if (
+          isTOCDrawerOpen ||
+          isBookmarksDrawerOpen ||
+          isNotesDrawerOpen ||
+          isSearchDrawerOpen ||
+          isSettingsDrawerOpen
+        ) {
           toggleTOCDrawer(false)
           toggleBookmarksDrawer(false)
           toggleNotesDrawer(false)
+          toggleSearchDrawer(false)
           toggleSettingsDrawer(false)
         } else if (activeFootnote) {
           setActiveFootnote(null)
@@ -776,6 +820,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     toggleBookmarksDrawer,
     isNotesDrawerOpen,
     toggleNotesDrawer,
+    isSearchDrawerOpen,
+    toggleSearchDrawer,
     isSettingsDrawerOpen,
     toggleSettingsDrawer,
     activeFootnote,
@@ -792,6 +838,88 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const handleJumpToCfi = (cfi: string) => {
     renditionRef.current?.display(cfi)
   }
+
+  const handleClearSearchHighlight = useCallback(() => {
+    if (activeSearchHighlightCfiRef.current) {
+      try {
+        renditionRef.current?.annotations?.remove(activeSearchHighlightCfiRef.current, 'highlight')
+      } catch {
+        // Ignore stale annotation removal on section unload
+      }
+      activeSearchHighlightCfiRef.current = null
+    }
+  }, [])
+
+  const handleSelectSearchMatch = useCallback(
+    async (cfi: string) => {
+      handleClearSearchHighlight()
+      if (!renditionRef.current) return
+      try {
+        await renditionRef.current.display(cfi)
+        renditionRef.current.annotations?.highlight(
+          cfi,
+          {},
+          () => {},
+          'search-match',
+          { fill: '#f59e0b', 'fill-opacity': '0.35' }
+        )
+        activeSearchHighlightCfiRef.current = cfi
+      } catch {
+        // Ignore display race if book changed
+      }
+    },
+    [handleClearSearchHighlight]
+  )
+
+  const handleSearchBook = useCallback(async (query: string): Promise<SearchMatch[]> => {
+    const epub = epubBookRef.current as any
+    if (!epub || !query.trim()) return []
+
+    const spineItems: any[] = epub.spine?.spineItems || []
+    const allMatches: SearchMatch[] = []
+    const MAX_RESULTS = 250
+
+    for (let i = 0; i < spineItems.length; i++) {
+      if (allMatches.length >= MAX_RESULTS) break
+      const section = spineItems[i]
+      if (!section || typeof section.load !== 'function' || typeof section.find !== 'function') continue
+
+      const wasLoaded = Boolean(section.contents)
+      try {
+        await section.load(epub.load.bind(epub))
+        const found: Array<{ cfi: string; excerpt: string }> = section.find(query) || []
+        if (found.length > 0) {
+          const href: string = section.href || ''
+          const matchingToc = tocRef.current.find(
+            (t) => t.href && href && (href.includes(t.href.split('#')[0]) || t.href.includes(href))
+          )
+          const chapterLabel = matchingToc?.label?.trim() || `Section ${i + 1}`
+
+          for (const hit of found) {
+            if (allMatches.length >= MAX_RESULTS) break
+            allMatches.push({
+              cfi: hit.cfi,
+              excerpt: hit.excerpt || query,
+              chapter: chapterLabel
+            })
+          }
+        }
+      } catch {
+        // Skip unreadable/non-text spine items gracefully
+      } finally {
+        // Only unload sections we loaded on demand; never clobber the active section
+        if (!wasLoaded && typeof section.unload === 'function') {
+          try {
+            section.unload()
+          } catch {
+            // Ignore unload error
+          }
+        }
+      }
+    }
+
+    return allMatches
+  }, [])
 
   const handleAddAnnotation = async (
     color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline',
@@ -1139,6 +1267,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         currentPage={currentPage}
         currentCfi={currentCfi}
         onJumpToCfi={handleJumpToCfi}
+      />
+      <SearchDrawer
+        onSearch={handleSearchBook}
+        onSelectMatch={handleSelectSearchMatch}
+        onClearHighlight={handleClearSearchHighlight}
+        focusNonce={searchFocusNonce}
       />
       <SettingsDrawer />
 
