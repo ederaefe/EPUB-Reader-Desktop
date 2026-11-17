@@ -484,6 +484,11 @@ export class AdaptiveScrollEngine {
       this.totalDurationMs > 0
         ? Math.max(0, Math.min(1, this.remainingMs / this.totalDurationMs))
         : 0
+    
+    // Inverse mapping: Speed is proportional to 1 / seconds
+    const scrollSeconds = this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec
+    const baseVelocity = 50 
+    const currentVelocity = Math.max(10, Math.round(baseVelocity * (20 / scrollSeconds)))
 
     return {
       mode: this.mode,
@@ -503,7 +508,7 @@ export class AdaptiveScrollEngine {
       currentWpm: Math.round(this.currentWpm),
       targetWpm: Math.round(this.targetWpm),
       observedWpm: Math.round(this.observedWpm),
-      currentVelocity: Math.round(this.currentVelocity)
+      currentVelocity: currentVelocity
     }
   }
 }

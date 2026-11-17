@@ -103,6 +103,7 @@ export interface UserSettings {
   viewMode?: 'grid' | 'list'
   lastNoteColor?: NoteColor
   pdfZoom?: number
+  scrollMode?: 'horizontal' | 'vertical'
 }
 
 class ReaderDatabase extends Dexie {

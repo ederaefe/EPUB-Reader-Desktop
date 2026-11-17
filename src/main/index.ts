@@ -191,6 +191,7 @@ function createWindow(): void {
   })
   mainWindow.on('focus', () => {
     mainWindow?.webContents.send('window:focusChanged', true)
+    mainWindow?.webContents.send('app:resume')
   })
   mainWindow.on('blur', () => {
     mainWindow?.webContents.send('window:focusChanged', false)

@@ -40,7 +40,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   sendStats: false,
   viewMode: 'grid',
   lastNoteColor: 'yellow',
-  pdfZoom: 1.2
+  pdfZoom: 1.2,
+  scrollMode: 'horizontal'
 }
 
 export function applyDocumentTheme(theme: UserSettings['theme']): void {
@@ -137,6 +138,7 @@ interface AppState {
   libraryVersion: number
   lastNoteColor: NoteColor
   pdfZoom: number
+  scrollMode: 'horizontal' | 'vertical'
 
   // Native in-app feedback (replaces window.alert / window.confirm)
   toast: { message: string; variant?: 'info' | 'success' | 'error' } | null
@@ -185,6 +187,7 @@ interface AppState {
   bumpLibraryVersion: () => void
   setLastNoteColor: (color: NoteColor) => void
   setPdfZoom: (zoom: number) => void
+  setScrollMode: (mode: 'horizontal' | 'vertical') => void
   showToast: (message: string, variant?: 'info' | 'success' | 'error') => void
   clearToast: () => void
   openConfirmDialog: (dialog: {
@@ -243,6 +246,7 @@ export const useAppStore = create<AppState>((set) => ({
   libraryVersion: 0,
   lastNoteColor: initialSettings.lastNoteColor || 'yellow',
   pdfZoom: initialSettings.pdfZoom || 1.2,
+  scrollMode: initialSettings.scrollMode || 'horizontal',
   toast: null,
   confirmDialog: null,
 
@@ -348,6 +352,12 @@ export const useAppStore = create<AppState>((set) => ({
       const merged: UserSettings = { ...s.settings, pdfZoom: clamped }
       persistSettings(merged)
       return { pdfZoom: clamped, settings: merged }
+    }),
+  setScrollMode: (mode) =>
+    set((s) => {
+      const merged: UserSettings = { ...s.settings, scrollMode: mode }
+      persistSettings(merged)
+      return { scrollMode: mode, settings: merged }
     }),
   showToast: (message, variant = 'info') => {
     set({ toast: { message, variant } })

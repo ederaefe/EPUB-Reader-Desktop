@@ -27,6 +27,7 @@ import { AnnotationPopover } from './AnnotationPopover'
 import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
+import { SideNavigation } from './SideNavigation'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
@@ -1695,6 +1696,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       )}
 
       {/* Main Reading Viewport */}
+      <SideNavigation
+        onPrev={handlePrev}
+        onNext={handleNext}
+        isLeftDisabled={false} // Simplified for plan
+        isRightDisabled={false}
+      />
       <div
         onContextMenu={(e) => {
           e.preventDefault()

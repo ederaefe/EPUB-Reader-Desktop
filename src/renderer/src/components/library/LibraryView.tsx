@@ -290,6 +290,13 @@ export const LibraryView: React.FC = () => {
     [visibleBookIds]
   )
 
+  const handleSelectThisBook = useCallback((book: Book) => {
+    if (book.id === undefined) return
+    setIsSelectionMode(true)
+    setSelectedBookIds(new Set([book.id]))
+    lastSelectedIdRef.current = book.id
+  }, [])
+
   // Active custom category when browsing a user-created shelf
   const activeCustomCategory = useMemo(() => {
     if (
@@ -811,20 +818,48 @@ export const LibraryView: React.FC = () => {
               </>
             )}
 
-            {/* Contextual Bulk Action Controls when in Select Mode */}
             {isSelectionMode && (
               <div className="flex items-center gap-1 ml-1">
                 <span className="h-3.5 w-px bg-[var(--app-border)] mx-1" />
-                <button
-                  type="button"
-                  disabled={selectedBooks.length === 0}
-                  onClick={() => handlePinBooks(selectedBooks, !allSelectedArePinned)}
-                  className="h-7 px-2 rounded-md text-[11px] flex items-center gap-1.5 text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title={allSelectedArePinned ? 'Unpin selected' : 'Pin selected to top'}
-                >
-                  {allSelectedArePinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-                  <span>{allSelectedArePinned ? 'Unpin' : 'Pin'}</span>
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    disabled={selectedBooks.length === 0}
+                    onClick={() => setShowBulkCategoryMenu(!showBulkCategoryMenu)}
+                    className="h-7 px-2 rounded-md text-[11px] flex items-center gap-1.5 text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] disabled:opacity-35 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    title="Assign category to selected"
+                  >
+                    <Folder className="w-3.5 h-3.5" />
+                    <span>Category</span>
+                    <ChevronDown className="w-3 h-3 opacity-60" />
+                  </button>
+                  {showBulkCategoryMenu && (
+                    <div className="absolute top-full left-0 mt-1 w-40 bg-[#171a21] border border-[#2d323f] rounded-[2px] shadow-xl py-1 z-50 text-[11px]">
+                      <button
+                        onClick={() => {
+                          handleAssignCategoryBooks(selectedBooks, null)
+                          setShowBulkCategoryMenu(false)
+                        }}
+                        className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left hover:bg-[#232732] transition-colors text-[var(--app-text)]"
+                      >
+                        Remove Category
+                      </button>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            handleAssignCategoryBooks(selectedBooks, cat.id!)
+                            setShowBulkCategoryMenu(false)
+                          }}
+                          className="w-full px-2 py-1.5 flex items-center gap-1.5 text-left hover:bg-[#232732] transition-colors text-[var(--app-text)]"
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="truncate">{cat.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   disabled={selectedBooks.length === 0}
@@ -1009,6 +1044,7 @@ export const LibraryView: React.FC = () => {
                   isSelected={book.id !== undefined && selectedBookIds.has(book.id)}
                   selectedCount={selectedVisibleIds.length}
                   onToggleSelect={handleToggleSelectBook}
+                  onSelectThis={handleSelectThisBook}
                   onPinAction={(target, nextPinned) =>
                     handlePinBooks(resolveActionTargets(target), nextPinned)
                   }
@@ -1048,6 +1084,7 @@ export const LibraryView: React.FC = () => {
                   isSelected={book.id !== undefined && selectedBookIds.has(book.id)}
                   selectedCount={selectedVisibleIds.length}
                   onToggleSelect={handleToggleSelectBook}
+                  onSelectThis={handleSelectThisBook}
                   onPinAction={(target, nextPinned) =>
                     handlePinBooks(resolveActionTargets(target), nextPinned)
                   }
