@@ -183,7 +183,10 @@ export const LibraryView: React.FC = () => {
         const q = searchQuery.toLowerCase()
         const titleMatch = b.title.toLowerCase().includes(q)
         const authorMatch = b.author?.toLowerCase().includes(q)
-        if (!titleMatch && !authorMatch) return false
+        const tagMatch = Array.isArray(b.tags) && b.tags.some((t) => t.toLowerCase().includes(q))
+        const publisherMatch = b.publisher?.toLowerCase().includes(q)
+        const seriesMatch = b.series?.toLowerCase().includes(q)
+        if (!titleMatch && !authorMatch && !tagMatch && !publisherMatch && !seriesMatch) return false
       }
 
       return true
@@ -580,7 +583,21 @@ export const LibraryView: React.FC = () => {
         isFavorite: false,
         isRead: false,
         isPinned: false,
-        pinnedAt: null
+        pinnedAt: null,
+        tags: meta.embedded.tags || [],
+        description: meta.embedded.description,
+        publisher: meta.embedded.publisher,
+        publishedDate: meta.embedded.publishedDate,
+        language: meta.embedded.language,
+        identifier: meta.embedded.identifier,
+        series: meta.embedded.series,
+        seriesIndex: meta.embedded.seriesIndex,
+        rights: meta.embedded.rights,
+        subject: meta.embedded.subject,
+        creatorTool: meta.embedded.creatorTool,
+        producer: meta.embedded.producer,
+        formatVersion: meta.embedded.formatVersion,
+        metadataHydrated: true
       })
       return true
     } catch (err: any) {
@@ -727,7 +744,21 @@ export const LibraryView: React.FC = () => {
           isFavorite: false,
           isRead: false,
           isPinned: false,
-          pinnedAt: null
+          pinnedAt: null,
+          tags: meta.embedded.tags || [],
+          description: meta.embedded.description,
+          publisher: meta.embedded.publisher,
+          publishedDate: meta.embedded.publishedDate,
+          language: meta.embedded.language,
+          identifier: meta.embedded.identifier,
+          series: meta.embedded.series,
+          seriesIndex: meta.embedded.seriesIndex,
+          rights: meta.embedded.rights,
+          subject: meta.embedded.subject,
+          creatorTool: meta.embedded.creatorTool,
+          producer: meta.embedded.producer,
+          formatVersion: meta.embedded.formatVersion,
+          metadataHydrated: true
         })
         importedCount++
       }

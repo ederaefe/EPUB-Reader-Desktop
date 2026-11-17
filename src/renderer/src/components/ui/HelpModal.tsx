@@ -28,7 +28,7 @@ export const HelpModal: React.FC = () => {
     { key: 'F11', desc: 'Toggle Fullscreen distraction-free' },
     { key: 'Ctrl + B', desc: 'Add bookmark on current page' },
     { key: 'Ctrl + F', desc: 'Search text in book' },
-    { key: 'Ctrl + O', desc: 'Add book to library' },
+    { key: 'Ctrl + O', desc: 'Open book or import folder' },
     { key: 'Esc', desc: 'Exit fullscreen / Close open drawers' }
   ]
 

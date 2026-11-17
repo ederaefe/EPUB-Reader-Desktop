@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   X,
-  FilePlus2,
-  FolderPlus,
+  BookOpen,
+  FolderInput,
   Library,
   Search,
   Check,
   ChevronLeft,
-  ChevronRight,
-  BookOpen
+  ChevronRight
 } from 'lucide-react'
 import type { Book, Category } from '../../db'
 
@@ -142,28 +141,35 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
     onAddFolder()
   }
 
+  const dialogTitle =
+    step === 'library' && targetCategory
+      ? `Open from Library into "${targetCategory.name}"`
+      : targetCategory
+        ? `Open in "${targetCategory.name}"`
+        : 'Open to Library'
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] select-none p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-[2px] select-none p-4 animate-in fade-in duration-150"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={targetCategory ? `Add to ${targetCategory.name}` : 'Add to Library'}
+        aria-label={dialogTitle}
         className={`${
-          step === 'library' ? 'w-[520px]' : 'w-[440px]'
-        } max-w-full bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl flex flex-col overflow-hidden text-xs text-[#c9d1d9] transition-[width] duration-150`}
+          step === 'library' ? 'w-[520px]' : 'w-[460px]'
+        } max-w-full bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-xl shadow-2xl flex flex-col overflow-hidden text-xs text-[var(--app-text)] transition-[width] duration-150 animate-in zoom-in-95`}
       >
         {/* Top Modal Header */}
-        <div className="h-10 bg-[#14161c] border-b border-[#232732] px-3.5 flex items-center justify-between shrink-0">
+        <div className="h-11 bg-[var(--app-chrome)] border-b border-[var(--app-border)] px-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             {step === 'library' && (
               <button
                 type="button"
                 onClick={() => setStep('choose')}
-                className="p-1 -ml-1 rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#232732] transition-colors"
+                className="w-6 h-6 -ml-1 flex items-center justify-center rounded-md text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-overlay-tint)] transition-colors"
                 title="Back"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -175,118 +181,129 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                 style={{ backgroundColor: targetCategory.color }}
               />
             )}
-            <h2 className="text-[12px] font-semibold text-white truncate">
-              {step === 'library' && targetCategory
-                ? `Add from Library to "${targetCategory.name}"`
-                : targetCategory
-                  ? `Add to "${targetCategory.name}"`
-                  : 'Add to Library'}
+            <h2 className="text-[13px] font-semibold text-[var(--app-text-strong)] truncate">
+              {dialogTitle}
             </h2>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+            className="settings-close-btn w-6 h-6 flex items-center justify-center rounded-md"
             title="Close (Esc)"
+            aria-label="Close"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Step 1: Choose Import Source */}
+        {/* Step 1: Choose Source (harmonized with shelf Open squircle card) */}
         {step === 'choose' ? (
           <>
-            <div className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 space-y-3 bg-[var(--app-bg)]">
+              <div className="grid grid-cols-2 gap-3.5">
+                {/* Open Book Card */}
                 <button
                   type="button"
                   onClick={handleChooseFiles}
-                  className="p-4 bg-[#1c1f26] hover:bg-[#232836] border border-[#2a2f3d] hover:border-[#2a69df] rounded-[2px] flex flex-col items-start text-left transition-colors group focus:outline-none focus-visible:border-[#2a69df]"
+                  className="px-4 py-6 rounded-xl bg-[var(--app-surface)] hover:bg-[var(--app-surface-hover)] border-2 border-dashed border-[var(--app-border-strong)] hover:border-[var(--app-accent)] flex flex-col items-center text-center transition-all duration-150 hover:-translate-y-0.5 group focus:outline-none focus-visible:border-[var(--app-accent)]"
                 >
-                  <div className="w-9 h-9 rounded-[2px] bg-[#14171f] border border-[#2a2f3d] group-hover:border-[#2a69df]/50 group-hover:bg-[#2a69df]/15 flex items-center justify-center mb-3 transition-colors">
-                    <FilePlus2 className="w-4.5 h-4.5 text-[#58a6ff]" />
+                  <div className="w-12 h-12 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] group-hover:bg-[var(--app-accent-soft)] group-hover:border-[var(--app-accent)]/40 flex items-center justify-center mb-3.5 transition-all duration-150">
+                    <BookOpen
+                      className="w-5 h-5 text-[var(--app-text-muted)] group-hover:text-[var(--app-accent-text)] transition-colors"
+                      strokeWidth={2}
+                    />
                   </div>
-                  <div className="text-[13px] font-semibold text-white">Add Book</div>
-                  <div className="text-[11px] text-[#8b949e] mt-0.5 leading-snug">
+                  <div className="text-[13px] font-semibold text-[var(--app-text-strong)]">
+                    Open Book
+                  </div>
+                  <div className="text-[11px] font-normal text-[var(--app-text-muted)] mt-1 leading-relaxed max-w-[165px]">
                     Select one or more files from your computer
                   </div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#6e7681] mt-2.5">
-                    EPUB, PDF, MOBI, TXT
+                  <div className="mt-3.5 px-2 py-0.5 rounded-md bg-[var(--app-surface-2)] border border-[var(--app-border)] text-[9.5px] font-mono uppercase tracking-wider text-[var(--app-text-subtle)] group-hover:text-[var(--app-text-muted)] transition-colors">
+                    EPUB · PDF · MOBI · TXT
                   </div>
                 </button>
 
+                {/* Import Folder Card */}
                 <button
                   type="button"
                   onClick={handleChooseFolder}
-                  className="p-4 bg-[#1c1f26] hover:bg-[#232836] border border-[#2a2f3d] hover:border-[#2a69df] rounded-[2px] flex flex-col items-start text-left transition-colors group focus:outline-none focus-visible:border-[#2a69df]"
+                  className="px-4 py-6 rounded-xl bg-[var(--app-surface)] hover:bg-[var(--app-surface-hover)] border-2 border-dashed border-[var(--app-border-strong)] hover:border-[var(--app-accent)] flex flex-col items-center text-center transition-all duration-150 hover:-translate-y-0.5 group focus:outline-none focus-visible:border-[var(--app-accent)]"
                 >
-                  <div className="w-9 h-9 rounded-[2px] bg-[#14171f] border border-[#2a2f3d] group-hover:border-[#2a69df]/50 group-hover:bg-[#2a69df]/15 flex items-center justify-center mb-3 transition-colors">
-                    <FolderPlus className="w-4.5 h-4.5 text-[#8b949e] group-hover:text-[#58a6ff] transition-colors" />
+                  <div className="w-12 h-12 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] group-hover:bg-[var(--app-accent-soft)] group-hover:border-[var(--app-accent)]/40 flex items-center justify-center mb-3.5 transition-all duration-150">
+                    <FolderInput
+                      className="w-5 h-5 text-[var(--app-text-muted)] group-hover:text-[var(--app-accent-text)] transition-colors"
+                      strokeWidth={2}
+                    />
                   </div>
-                  <div className="text-[13px] font-semibold text-white">Add Folder</div>
-                  <div className="text-[11px] text-[#8b949e] mt-0.5 leading-snug">
+                  <div className="text-[13px] font-semibold text-[var(--app-text-strong)]">
+                    Import Folder
+                  </div>
+                  <div className="text-[11px] font-normal text-[var(--app-text-muted)] mt-1 leading-relaxed max-w-[165px]">
                     Scan a directory and bulk import all books
                   </div>
-                  <div className="text-[10px] font-mono uppercase tracking-wider text-[#6e7681] mt-2.5">
+                  <div className="mt-3.5 px-2 py-0.5 rounded-md bg-[var(--app-surface-2)] border border-[var(--app-border)] text-[9.5px] font-mono uppercase tracking-wider text-[var(--app-text-subtle)] group-hover:text-[var(--app-text-muted)] transition-colors">
                     Recursive Scan
                   </div>
                 </button>
               </div>
 
-              {/* Bulk Pick from Main Library (shown when inside a custom category) */}
+              {/* Pick from Main Library (shown when inside a custom category) */}
               {targetCategory && (
                 <button
                   type="button"
                   onClick={() => setStep('library')}
-                  className="w-full p-3.5 bg-[#1c1f26] hover:bg-[#232836] border border-[#2a2f3d] hover:border-[#2a69df] rounded-[2px] flex items-center justify-between text-left transition-colors group focus:outline-none focus-visible:border-[#2a69df]"
+                  className="w-full px-3.5 py-3 rounded-xl bg-[var(--app-surface)] hover:bg-[var(--app-surface-hover)] border border-dashed border-[var(--app-border-strong)] hover:border-[var(--app-accent)] flex items-center justify-between text-left transition-all duration-150 group focus:outline-none focus-visible:border-[var(--app-accent)]"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-[2px] bg-[#14171f] border border-[#2a2f3d] group-hover:border-[#2a69df]/50 group-hover:bg-[#2a69df]/15 flex items-center justify-center shrink-0 transition-colors">
-                      <Library className="w-4 h-4 text-[#58a6ff]" />
+                    <div className="w-9 h-9 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] group-hover:bg-[var(--app-accent-soft)] group-hover:border-[var(--app-accent)]/40 flex items-center justify-center shrink-0 transition-colors">
+                      <Library className="w-4 h-4 text-[var(--app-text-muted)] group-hover:text-[var(--app-accent-text)] transition-colors" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[13px] font-semibold text-white">
-                        Bulk Add from Main Library
+                      <div className="text-[12.5px] font-semibold text-[var(--app-text-strong)]">
+                        Open from Main Library
                       </div>
-                      <div className="text-[11px] text-[#8b949e] truncate">
+                      <div className="text-[11px] font-normal text-[var(--app-text-muted)] truncate">
                         {eligibleBooks.length > 0
                           ? `Select from ${eligibleBooks.length} existing ${eligibleBooks.length === 1 ? 'book' : 'books'} in your library`
                           : 'All existing library books are already in this category'}
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-[#6e7681] group-hover:text-white shrink-0 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-[var(--app-text-subtle)] group-hover:text-[var(--app-text-strong)] shrink-0 transition-colors" />
                 </button>
               )}
             </div>
 
-            <div className="px-4 py-2.5 bg-[#14161c] border-t border-[#232732] flex items-center justify-between text-[11px] text-[#6e7681]">
-              <span>You can also drag and drop files directly onto the shelf.</span>
-              <span className="font-mono text-[10px] text-[#8b949e]">Ctrl+O</span>
+            <div className="px-4 py-2.5 bg-[var(--app-chrome)] border-t border-[var(--app-border)] flex items-center justify-between text-[11px] text-[var(--app-text-muted)]">
+              <span className="font-normal">You can also drag and drop files directly onto the shelf.</span>
+              <kbd className="settings-kbd px-1.5 py-0.5 rounded font-mono text-[10px] shrink-0">
+                Ctrl+O
+              </kbd>
             </div>
           </>
         ) : (
           /* Step 2: Bulk Picker from Main Library */
           <>
             {/* Filter & Select-All Strip */}
-            <div className="p-3 bg-[#1a1d25] border-b border-[#232732] flex items-center gap-2 shrink-0">
+            <div className="p-3 bg-[var(--app-chrome)] border-b border-[var(--app-border)] flex items-center gap-2 shrink-0">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-[#6e7681] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-[var(--app-text-subtle)] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={filterText}
                   onChange={(e) => setFilterText(e.target.value)}
                   placeholder="Filter by title or author..."
                   autoFocus
-                  className="ice-input w-full h-7 pl-8 pr-2.5 text-xs rounded-[2px]"
+                  className="ice-input w-full h-7 pl-8 pr-2.5 text-xs rounded-md"
                 />
               </div>
               {filteredEligibleBooks.length > 0 && (
                 <button
                   type="button"
                   onClick={handleToggleSelectAllVisible}
-                  className="ice-btn-dark h-7 px-2.5 text-[11px] rounded-[2px] shrink-0"
+                  className="settings-btn-secondary h-7 px-2.5 text-[11px] rounded-md shrink-0"
                 >
                   {allVisibleSelected ? 'Deselect all' : 'Select all'}
                 </button>
@@ -294,10 +311,10 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
             </div>
 
             {/* Book Checklist */}
-            <div className="max-h-[320px] overflow-y-auto divide-y divide-[#232732] bg-[#171a21]">
+            <div className="max-h-[320px] overflow-y-auto divide-y divide-[var(--app-border)] bg-[var(--app-surface)]">
               {filteredEligibleBooks.length === 0 ? (
-                <div className="py-10 px-6 text-center text-[#8b949e] space-y-2">
-                  <p className="text-xs">
+                <div className="py-10 px-6 text-center text-[var(--app-text-muted)] space-y-2.5">
+                  <p className="text-xs font-normal">
                     {eligibleBooks.length === 0
                       ? 'Every book in your main library is already assigned to this category.'
                       : 'No matching books found.'}
@@ -306,9 +323,9 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setStep('choose')}
-                      className="ice-btn-dark px-3 h-7 text-[11px] rounded-[2px] mt-1"
+                      className="settings-btn-secondary px-3 h-7 text-[11px] rounded-md mt-1"
                     >
-                      Import new files instead
+                      Open new files instead
                     </button>
                   )}
                 </div>
@@ -326,22 +343,24 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                       type="button"
                       onClick={() => book.id !== undefined && toggleBookSelection(book.id)}
                       className={`w-full px-3.5 py-2 flex items-center gap-3 text-left transition-colors ${
-                        isChecked ? 'bg-[#2a69df]/12 hover:bg-[#2a69df]/18' : 'hover:bg-[#1f2430]'
+                        isChecked
+                          ? 'bg-[var(--app-accent-soft)]'
+                          : 'hover:bg-[var(--app-surface-hover)]'
                       }`}
                     >
                       {/* Checkbox */}
                       <div
-                        className={`w-4 h-4 rounded-[2px] border flex items-center justify-center shrink-0 transition-colors ${
+                        className={`w-4 h-4 rounded-[3px] border flex items-center justify-center shrink-0 transition-colors ${
                           isChecked
-                            ? 'bg-[#2a69df] border-[#2a69df] text-white'
-                            : 'bg-[#14161c] border-[#3c4354]'
+                            ? 'bg-[var(--app-accent)] border-[var(--app-accent)] text-white'
+                            : 'bg-[var(--app-checkbox-bg)] border-[var(--app-checkbox-border)]'
                         }`}
                       >
                         {isChecked && <Check className="w-3 h-3" strokeWidth={2.5} />}
                       </div>
 
                       {/* Mini Cover Thumbnail */}
-                      <div className="w-6 h-8 bg-[#14161c] border border-[#2d323f] rounded-[2px] overflow-hidden shrink-0 flex items-center justify-center">
+                      <div className="w-6 h-8 bg-[var(--app-chrome)] border border-[var(--app-border)] rounded-[3px] overflow-hidden shrink-0 flex items-center justify-center">
                         {book.coverDataUrl ? (
                           <img
                             src={book.coverDataUrl}
@@ -350,16 +369,16 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                             loading="lazy"
                           />
                         ) : (
-                          <BookOpen className="w-3 h-3 text-[#6e7681]" />
+                          <BookOpen className="w-3 h-3 text-[var(--app-text-subtle)]" />
                         )}
                       </div>
 
                       {/* Title & Author */}
                       <div className="flex-1 min-w-0">
-                        <div className="text-[12px] font-medium text-white truncate leading-tight">
+                        <div className="text-[12px] font-medium text-[var(--app-text-strong)] truncate leading-tight">
                           {book.title}
                         </div>
-                        <div className="text-[11px] text-[#8b949e] truncate leading-tight mt-0.5">
+                        <div className="text-[11px] font-normal text-[var(--app-text-muted)] truncate leading-tight mt-0.5">
                           {book.author || 'Unknown'}
                         </div>
                       </div>
@@ -367,18 +386,18 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                       {/* Existing Category Tag (if moving from another shelf) */}
                       {currentCat && (
                         <span
-                          className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-[#14161c] border border-[#2d323f] rounded-[2px] shrink-0 max-w-[110px]"
+                          className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-[var(--app-surface-2)] border border-[var(--app-border)] rounded shrink-0 max-w-[110px]"
                           title={`Currently in ${currentCat.name}`}
                         >
                           <span
                             className="w-1.5 h-1.5 rounded-full shrink-0"
                             style={{ backgroundColor: currentCat.color }}
                           />
-                          <span className="text-[#8b949e] truncate">{currentCat.name}</span>
+                          <span className="text-[var(--app-text-muted)] truncate">{currentCat.name}</span>
                         </span>
                       )}
 
-                      <span className="uppercase text-[10px] font-mono text-[#6e7681] shrink-0">
+                      <span className="uppercase text-[10px] font-mono text-[var(--app-text-subtle)] shrink-0">
                         {book.format}
                       </span>
                     </button>
@@ -388,17 +407,17 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
             </div>
 
             {/* Action Footer */}
-            <div className="px-3.5 py-2.5 bg-[#14161c] border-t border-[#232732] flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-[#8b949e]">
+            <div className="px-3.5 py-2.5 bg-[var(--app-chrome)] border-t border-[var(--app-border)] flex items-center justify-between shrink-0">
+              <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
                 {selectedIds.size === 0
-                  ? 'Select books to add'
+                  ? 'Select books to include'
                   : `${selectedIds.size} ${selectedIds.size === 1 ? 'book' : 'books'} selected`}
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="ice-btn-dark h-7 px-3 text-[11px] rounded-[2px]"
+                  className="settings-btn-secondary h-7 px-3 text-[11px] rounded-md"
                 >
                   Cancel
                 </button>
@@ -406,11 +425,11 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
                   type="button"
                   onClick={handleConfirmBulkAdd}
                   disabled={selectedIds.size === 0 || isApplying}
-                  className="h-7 px-3 text-[11px] font-medium bg-[#2a69df] hover:bg-[#3576f0] disabled:opacity-45 disabled:hover:bg-[#2a69df] text-white rounded-[2px] transition-colors"
+                  className="settings-btn-primary h-7 px-3 text-[11px] rounded-md"
                 >
                   {isApplying
-                    ? 'Adding...'
-                    : `Add ${selectedIds.size > 0 ? selectedIds.size : ''} to ${targetCategory?.name || 'Category'}`}
+                    ? 'Saving...'
+                    : `Open ${selectedIds.size > 0 ? selectedIds.size : ''} in ${targetCategory?.name || 'Category'}`}
                 </button>
               </div>
             </div>

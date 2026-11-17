@@ -106,7 +106,21 @@ export const App: React.FC = () => {
             isFavorite: false,
             isRead: false,
             isPinned: false,
-            pinnedAt: null
+            pinnedAt: null,
+            tags: meta.embedded.tags || [],
+            description: meta.embedded.description,
+            publisher: meta.embedded.publisher,
+            publishedDate: meta.embedded.publishedDate,
+            language: meta.embedded.language,
+            identifier: meta.embedded.identifier,
+            series: meta.embedded.series,
+            seriesIndex: meta.embedded.seriesIndex,
+            rights: meta.embedded.rights,
+            subject: meta.embedded.subject,
+            creatorTool: meta.embedded.creatorTool,
+            producer: meta.embedded.producer,
+            formatVersion: meta.embedded.formatVersion,
+            metadataHydrated: true
           })
           book = await db.books.get(id)
           bumpLibraryVersion()
@@ -463,7 +477,21 @@ export const App: React.FC = () => {
         totalPages: meta.totalPages || 1,
         categoryId: numericCatId,
         isFavorite: false,
-        isRead: false
+        isRead: false,
+        tags: meta.embedded.tags || [],
+        description: meta.embedded.description,
+        publisher: meta.embedded.publisher,
+        publishedDate: meta.embedded.publishedDate,
+        language: meta.embedded.language,
+        identifier: meta.embedded.identifier,
+        series: meta.embedded.series,
+        seriesIndex: meta.embedded.seriesIndex,
+        rights: meta.embedded.rights,
+        subject: meta.embedded.subject,
+        creatorTool: meta.embedded.creatorTool,
+        producer: meta.embedded.producer,
+        formatVersion: meta.embedded.formatVersion,
+        metadataHydrated: true
       })
       importedCount++
     }

@@ -4,6 +4,8 @@ import { readFile, readdir, writeFile, mkdir, stat, rename, unlink } from 'fs/pr
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { createHash } from 'crypto'
 import { convertPdfToEpub } from './pdfToEpubEngine'
+import { checkBookFileWritable, writeBookMetadataToFile } from './metadataService'
+import type { WriteBookMetadataRequest } from '../shared/bookMetadata'
 import {
   checkIsOnline,
   downloadFont,
@@ -630,6 +632,24 @@ ipcMain.handle('fonts:getCss', async (_, fontId: string) => {
 })
 ipcMain.handle('fonts:isOnline', () => {
   return checkIsOnline()
+})
+
+// Book Metadata Check & Atomic File Write-Back IPC
+ipcMain.handle('book:checkWritable', async (_, filePath: string) => {
+  return await checkBookFileWritable(filePath, assertSafePath)
+})
+ipcMain.handle('book:writeMetadata', async (_, req: WriteBookMetadataRequest) => {
+  if (!req || typeof req.filePath !== 'string' || !req.metadata) {
+    return { success: false, error: 'Invalid metadata write request.' }
+  }
+  return await writeBookMetadataToFile(
+    req.filePath,
+    req.format,
+    req.metadata,
+    Boolean(req.updateCover),
+    assertSafePath,
+    writeAtomic
+  )
 })
 
 if (process.platform === 'win32') {

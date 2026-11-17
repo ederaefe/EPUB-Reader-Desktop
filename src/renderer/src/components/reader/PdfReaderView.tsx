@@ -22,6 +22,7 @@ import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { syncBookNotesCount } from '../../services/annotationService'
+import { buildPdfToc, findActivePdfTocItem } from '../../services/tocService'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
@@ -47,10 +48,20 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 }) => {
   const {
     settings,
+    updateSettings,
     activeBookBuffer,
     setCurrentChapterTitle,
     isImmersiveFullscreen,
     setImmersiveFullscreen,
+    isTOCDrawerOpen,
+    toggleTOCDrawer,
+    isNotesDrawerOpen,
+    toggleNotesDrawer,
+    isBookmarksDrawerOpen,
+    toggleBookmarksDrawer,
+    isSearchDrawerOpen,
+    toggleSearchDrawer,
+    isSettingsDrawerOpen,
     toggleSettingsDrawer,
     isConvertingPdf,
     pdfConvertProgress,
@@ -71,6 +82,16 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   const [totalPages, setTotalPages] = useState<number>(Math.max(1, book.totalPages || 1))
   const [pdfBookmarks, setPdfBookmarks] = useState<BookmarkItem[]>([])
 
+  // Keep book identity in stable refs so DB progress updates never tear down and reload the PDF
+  const bookKey = `${book.id ?? ''}::${book.filePath}`
+  const bookIdRef = useRef(book.id)
+  const bookFilePathRef = useRef(book.filePath)
+  const bookTotalPagesRef = useRef(book.totalPages || 1)
+  const lastLoadedBookKeyRef = useRef<string>('')
+  bookIdRef.current = book.id
+  bookFilePathRef.current = book.filePath
+  bookTotalPagesRef.current = book.totalPages || 1
+
   useEffect(() => {
     if (!book.id) return
     db.bookmarks
@@ -83,14 +104,14 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
   const isCurrentPdfPageBookmarked = pdfBookmarks.some((bm) => bm.pageNumber === currentPage)
 
-  const handleTogglePdfBookmark = async () => {
-    if (!book.id) return
+  const handleTogglePdfBookmark = useCallback(async () => {
+    if (!bookIdRef.current) return
     const existing = pdfBookmarks.find((bm) => bm.pageNumber === currentPage)
     if (existing?.id) {
       await db.bookmarks.delete(existing.id)
     } else {
       await db.bookmarks.add({
-        bookId: book.id,
+        bookId: bookIdRef.current,
         cfi: String(currentPage),
         label: `Page ${currentPage}`,
         pageNumber: currentPage,
@@ -99,7 +120,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       })
     }
     bumpBookmarksVersion()
-  }
+  }, [pdfBookmarks, currentPage, totalPages, bumpBookmarksVersion])
   const [toc, setToc] = useState<TocItem[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
@@ -119,10 +140,16 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   }
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
 
-  // Load PDF document
+  // Load PDF document (keyed by stable bookKey so DB progress writes never tear down the PDF)
   useEffect(() => {
     let cancelled = false
     let loadedDoc: pdfjsLib.PDFDocumentProxy | null = null
+
+    if (lastLoadedBookKeyRef.current !== bookKey) {
+      lastLoadedBookKeyRef.current = bookKey
+      setCurrentPage(Math.max(1, book.currentPage || 1))
+      setToc([])
+    }
 
     async function loadPdf() {
       setLoadError(null)
@@ -132,10 +159,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           // Copy buffer so pdfjs worker transfer never detaches store buffer
           data = new Uint8Array(activeBookBuffer.slice(0))
         } else if (window.desktopAPI?.readFileBuffer) {
-          const buf = await window.desktopAPI.readFileBuffer(book.filePath)
+          const buf = await window.desktopAPI.readFileBuffer(bookFilePathRef.current)
           data = new Uint8Array(buf)
         } else {
-          const resp = await fetch(book.filePath)
+          const resp = await fetch(bookFilePathRef.current)
           data = new Uint8Array(await resp.arrayBuffer())
         }
 
@@ -148,43 +175,21 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
         setPdfDoc(loadedDoc)
         setTotalPages(loadedDoc.numPages)
-        setCurrentChapterTitle(`PDF (${loadedDoc.numPages} pages)`)
+        setCurrentPage((p) => Math.max(1, Math.min(loadedDoc!.numPages, p)))
 
-        // Extract native PDF outline for TOC drawer
+        // Recursively extract native PDF outline (including nested sub-chapters)
         try {
           const outline = await loadedDoc.getOutline()
-          if (outline && outline.length > 0 && !cancelled) {
-            const mapped: TocItem[] = []
-            for (let i = 0; i < outline.length; i++) {
-              const item = outline[i]
-              let pageNum = 1
-              try {
-                let dest = item.dest
-                if (typeof dest === 'string') {
-                  dest = await loadedDoc.getDestination(dest)
-                }
-                if (Array.isArray(dest) && dest[0]) {
-                  const idx = await loadedDoc.getPageIndex(dest[0])
-                  pageNum = idx + 1
-                }
-              } catch {
-                // keep default page 1
-              }
-              mapped.push({
-                id: `pdf-toc-${i}`,
-                label: item.title || `Section ${i + 1}`,
-                href: String(pageNum),
-                pageNumber: pageNum
-              })
-            }
+          const mapped = await buildPdfToc(loadedDoc, outline)
+          if (!cancelled) {
             setToc(mapped)
           }
         } catch {
-          setToc([])
+          if (!cancelled) setToc([])
         }
 
-        if (book.id && loadedDoc.numPages !== book.totalPages) {
-          db.books.update(book.id, { totalPages: loadedDoc.numPages })
+        if (bookIdRef.current && loadedDoc.numPages !== bookTotalPagesRef.current) {
+          db.books.update(bookIdRef.current, { totalPages: loadedDoc.numPages })
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -198,7 +203,16 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       cancelled = true
       loadedDoc?.destroy()
     }
-  }, [book, activeBookBuffer, setCurrentChapterTitle])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookKey, activeBookBuffer])
+
+  const activePdfTocItem = findActivePdfTocItem(toc, currentPage)
+  const activePdfChapterLabel = activePdfTocItem?.label || `Page ${currentPage} / ${totalPages}`
+
+  // Keep OS window title & reader chapter metadata synced as the user turns PDF pages
+  useEffect(() => {
+    setCurrentChapterTitle(activePdfChapterLabel)
+  }, [activePdfChapterLabel, setCurrentChapterTitle])
 
   // Render active PDF page(s) to HiDPI canvas + selectable text layer
   useEffect(() => {
@@ -361,11 +375,57 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       } else if (e.key === 'End') {
         e.preventDefault()
         setCurrentPage(totalPages)
+      } else if (e.key === 'F10') {
+        e.preventDefault()
+        updateSettings({
+          pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+        })
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        handleTogglePdfBookmark()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        if (contextMenu) {
+          setContextMenu(null)
+        } else if (
+          isTOCDrawerOpen ||
+          isBookmarksDrawerOpen ||
+          isNotesDrawerOpen ||
+          isSearchDrawerOpen ||
+          isSettingsDrawerOpen
+        ) {
+          toggleTOCDrawer(false)
+          toggleBookmarksDrawer(false)
+          toggleNotesDrawer(false)
+          toggleSearchDrawer(false)
+          toggleSettingsDrawer(false)
+        } else {
+          onBack()
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [handleNext, handlePrev, totalPages])
+  }, [
+    handleNext,
+    handlePrev,
+    totalPages,
+    settings.pageSpread,
+    updateSettings,
+    handleTogglePdfBookmark,
+    contextMenu,
+    isTOCDrawerOpen,
+    isBookmarksDrawerOpen,
+    isNotesDrawerOpen,
+    isSearchDrawerOpen,
+    isSettingsDrawerOpen,
+    toggleTOCDrawer,
+    toggleBookmarksDrawer,
+    toggleNotesDrawer,
+    toggleSearchDrawer,
+    toggleSettingsDrawer,
+    onBack
+  ])
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -427,17 +487,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       },
       {
         id: 'bookmark',
-        label: `Bookmark Page ${currentPage}`,
-        icon: <Bookmark className="w-3.5 h-3.5 text-[#2a69df]" />,
-        onClick: async () => {
-          if (!book.id) return
-          await db.bookmarks.add({
-            bookId: book.id,
-            cfi: String(currentPage),
-            label: `Page ${currentPage}`,
-            pageNumber: currentPage,
-            createdAt: Date.now()
-          })
+        label: isCurrentPdfPageBookmarked
+          ? `Remove Bookmark (p.${currentPage})`
+          : `Bookmark Page ${currentPage}`,
+        shortcut: 'Ctrl+B',
+        icon: <Bookmark className={`w-3.5 h-3.5 text-[#2a69df] ${isCurrentPdfPageBookmarked ? 'fill-current' : ''}`} />,
+        onClick: () => {
+          handleTogglePdfBookmark()
         }
       },
       { id: 'div-fs', divider: true },
@@ -479,7 +535,11 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     >
       {/* Top Docked Header (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
-        <ReaderTopBar onBack={onBack} currentChapter={`Page ${currentPage} / ${totalPages}`} />
+        <ReaderTopBar
+          onBack={onBack}
+          currentChapter={activePdfChapterLabel}
+          isCurrentPageBookmarked={isCurrentPdfPageBookmarked}
+        />
       )}
 
       {/* Floating Exit Fullscreen Control */}
@@ -571,9 +631,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       <TOCDrawer
         toc={toc}
         currentHref={String(currentPage)}
-        onSelectChapter={(href) => {
-          const p = parseInt(href, 10)
-          if (!Number.isNaN(p) && p >= 1 && p <= totalPages) setCurrentPage(p)
+        activeTocId={activePdfTocItem?.id || ''}
+        onSelectChapter={(href, item) => {
+          const p = item?.pageNumber ?? parseInt(href, 10)
+          if (!Number.isNaN(p) && p >= 1 && p <= totalPages) {
+            setCurrentPage(p)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+          }
         }}
       />
       <NotesDrawer

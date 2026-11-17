@@ -24,6 +24,26 @@ export interface Book {
   notesCount?: number
   /** Cached serialized epub.js locations JSON for instant page/seek readiness on reopen. */
   locationsCache?: string
+  /** User-curated and embedded subject/keyword tags (multi-entry indexed in Dexie v4). */
+  tags?: string[]
+  description?: string
+  publisher?: string
+  publishedDate?: string
+  language?: string
+  identifier?: string
+  series?: string
+  seriesIndex?: string
+  rights?: string
+  subject?: string
+  creatorTool?: string
+  producer?: string
+  formatVersion?: string
+  /** True once full embedded file metadata has been extracted and merged into Dexie. */
+  metadataHydrated?: boolean
+  /** Random integer percentage (75..85) where the one-time crimson lightsaber glow triggers. */
+  climaxGlowTarget?: number
+  /** Permanently true once the one-time crimson lightsaber glow has played for this book. */
+  climaxGlowTriggered?: boolean
 }
 
 export interface Category {
@@ -162,6 +182,23 @@ class ReaderDatabase extends Dexie {
           await bookmarksTable.where('bookId').anyOf(legacyDeletedIds).delete()
           await booksTable.bulkDelete(legacyDeletedIds)
         }
+      })
+    this.version(4)
+      .stores({
+        books:
+          '++id, filePath, format, categoryId, isFavorite, isRead, isPinned, pinnedAt, lastOpenedAt, *tags',
+        categories: '++id, name',
+        annotations: '++id, bookId, cfiRange, color, pageNumber, createdAt',
+        bookmarks: '++id, bookId, cfi, pageNumber, createdAt',
+        settings: '++id'
+      })
+      .upgrade(async (tx) => {
+        const booksTable = tx.table('books')
+        await booksTable.toCollection().modify((book: any) => {
+          if (!Array.isArray(book.tags)) {
+            book.tags = []
+          }
+        })
       })
   }
 }

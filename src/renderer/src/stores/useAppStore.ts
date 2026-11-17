@@ -160,6 +160,7 @@ interface AppState {
   setFormatFilter: (fmt: string | null) => void
   setViewMode: (mode: 'grid' | 'list') => void
   setActiveBook: (book: Book | null, buffer?: ArrayBuffer | null) => void
+  updateActiveBook: (patch: Partial<Book>) => void
   setCurrentChapterTitle: (title: string) => void
   setPdfViewMode: (mode: 'original' | 'reflow') => void
   setReflowEpubBuffer: (buffer: ArrayBuffer | null) => void
@@ -268,6 +269,15 @@ export const useAppStore = create<AppState>((set) => ({
       pdfViewMode: 'original',
       reflowEpubBuffer: null
     }),
+  updateActiveBook: (patch) =>
+    set((s) =>
+      s.activeBook
+        ? {
+            activeBook: { ...s.activeBook, ...patch },
+            libraryVersion: s.libraryVersion + 1
+          }
+        : s
+    ),
   setCurrentChapterTitle: (title) => set({ currentChapterTitle: title }),
   setPdfViewMode: (mode) => set({ pdfViewMode: mode }),
   setReflowEpubBuffer: (buffer) => set({ reflowEpubBuffer: buffer }),

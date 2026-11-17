@@ -1,4 +1,9 @@
 import { contextBridge, ipcRenderer, webFrame } from 'electron'
+import type {
+  CheckBookWritableResult,
+  WriteBookMetadataRequest,
+  WriteBookMetadataResult
+} from '../shared/bookMetadata'
 
 export interface DesktopAPI {
   minimize: () => Promise<void>
@@ -55,6 +60,8 @@ export interface DesktopAPI {
   }>
   getFontCss: (fontId: string) => Promise<string | null>
   isOnline: () => Promise<boolean>
+  checkBookWritable: (filePath: string) => Promise<CheckBookWritableResult>
+  writeBookMetadata: (req: WriteBookMetadataRequest) => Promise<WriteBookMetadataResult>
 }
 
 const api: DesktopAPI = {
@@ -125,7 +132,9 @@ const api: DesktopAPI = {
   listDownloadedFonts: () => ipcRenderer.invoke('fonts:listDownloaded'),
   downloadFont: (fontId: string) => ipcRenderer.invoke('fonts:download', fontId),
   getFontCss: (fontId: string) => ipcRenderer.invoke('fonts:getCss', fontId),
-  isOnline: () => ipcRenderer.invoke('fonts:isOnline')
+  isOnline: () => ipcRenderer.invoke('fonts:isOnline'),
+  checkBookWritable: (filePath: string) => ipcRenderer.invoke('book:checkWritable', filePath),
+  writeBookMetadata: (req: WriteBookMetadataRequest) => ipcRenderer.invoke('book:writeMetadata', req)
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

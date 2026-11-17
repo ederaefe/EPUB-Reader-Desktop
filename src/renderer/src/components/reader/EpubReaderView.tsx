@@ -41,6 +41,7 @@ import {
   removeAnnotationFromRendition,
   syncBookNotesCount
 } from '../../services/annotationService'
+import { buildResolvedToc, findActiveTocItem, findAnchorElement, resolveTocHrefToSpine } from '../../services/tocService'
 
 interface EpubReaderViewProps {
   book: Book
@@ -99,6 +100,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   }
   const [currentChapter, setCurrentChapter] = useState('')
   const [currentHref, setCurrentHref] = useState('')
+  const [activeTocId, setActiveTocId] = useState('')
   const [currentCfi, setCurrentCfi] = useState<string>(book.progressCfi || '')
   const [currentEndCfi, setCurrentEndCfi] = useState<string>('')
   const [currentPage, setCurrentPage] = useState<number>(book.currentPage || 1)
@@ -171,6 +173,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const isScrubbingRef = useRef(false)
   const locationsReadyRef = useRef(false)
   const seekRequestIdRef = useRef(0)
+  const chapterJumpNonceRef = useRef(0)
   const handleToggleTTSRef = useRef<() => void>(() => {})
   const handleStopTTSRef = useRef<() => void>(() => {})
   const handleJumpEndRef = useRef<() => void>(() => {})
@@ -200,9 +203,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   // Theme palettes aligned with Vercel/Geist Obsidian + Paper surfaces
   const themeStyles = {
     day: { bg: '#ffffff', text: '#171717', link: '#0070f3', bottomBg: '#fafafa', border: 'rgba(0,0,0,0.08)' },
-    night: { bg: '#0d0d0e', text: '#dcdcdc', link: '#66b2ff', bottomBg: '#0a0a0a', border: 'rgba(255,255,255,0.08)' },
+    night: { bg: '#0d0d0e', text: '#f4f6f9', link: '#8cc4ff', bottomBg: '#0a0a0a', border: 'rgba(255,255,255,0.10)' },
     'light-sepia': { bg: '#f6ebd4', text: '#4a3a26', link: '#8b5a2b', bottomBg: '#efe2c6', border: 'rgba(95,75,50,0.16)' },
-    'dark-sepia': { bg: '#221c16', text: '#d8cbb8', link: '#e6c8a5', bottomBg: '#1a1510', border: 'rgba(255,255,255,0.08)' }
+    'dark-sepia': { bg: '#221c16', text: '#f2e8d9', link: '#f3d9b8', bottomBg: '#1a1510', border: 'rgba(255,255,255,0.10)' }
   }
 
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
@@ -735,10 +738,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         renditionInstance!.themes.register('night', {
           ...baseRules,
-          body: { background: '#0d0d0e !important', color: '#dcdcdc !important' },
-          'p, div, span, li, blockquote': { color: '#dcdcdc !important' },
-          'h1, h2, h3, h4, h5': { color: '#f5f5f5 !important' },
-          a: { color: '#66b2ff !important' }
+          body: { background: '#0d0d0e !important', color: '#f4f6f9 !important' },
+          'p, div, span, li, blockquote': { color: '#f4f6f9 !important' },
+          'h1, h2, h3, h4, h5': { color: '#ffffff !important' },
+          a: { color: '#8cc4ff !important' }
         })
 
         renditionInstance!.themes.register('day', {
@@ -759,10 +762,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         renditionInstance!.themes.register('dark-sepia', {
           ...baseRules,
-          body: { background: '#2d261e !important', color: '#d5c7b3 !important' },
-          'p, div, span, li, blockquote': { color: '#d5c7b3 !important' },
-          'h1, h2, h3, h4, h5': { color: '#ede3d5 !important' },
-          a: { color: '#e6c8a5 !important' }
+          body: { background: '#2d261e !important', color: '#f2e8d9 !important' },
+          'p, div, span, li, blockquote': { color: '#f2e8d9 !important' },
+          'h1, h2, h3, h4, h5': { color: '#fffbf2 !important' },
+          a: { color: '#f3d9b8 !important' }
         })
 
         renditionInstance!.themes.select(settings.theme)
@@ -775,16 +778,43 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         attachIframeHooks(contents)
       })
 
-      // Load Navigation TOC
-      epubInstance.loaded.navigation.then((nav) => {
-        if (isCancelled) return
-        const items: TocItem[] = nav.toc.map((item, i) => ({
-          id: item.id || `toc_${i}`,
-          label: item.label,
-          href: item.href
-        }))
-        setToc(items)
-      })
+      const syncActiveChapter = (location: any, tocItems: TocItem[]) => {
+        if (!location?.start) return
+        if (location.start.href) {
+          setCurrentHref(location.start.href)
+        }
+        // In vertical continuous mode, multiple iframes are mounted simultaneously;
+        // pick the Contents matching location.start.index rather than assuming index 0.
+        const contentsList = ((renditionInstance?.getContents?.() as unknown as any[]) || []).filter(Boolean)
+        const targetIdx = typeof location.start.index === 'number' ? location.start.index : -1
+        const activeContents =
+          (targetIdx >= 0 ? contentsList.find((c: any) => c?.sectionIndex === targetIdx) : null) ||
+          contentsList[0]
+        const iframeDoc = activeContents?.document as Document | undefined
+        const matched = findActiveTocItem(tocItems, location, iframeDoc, epubInstance)
+        if (matched) {
+          setActiveTocId(matched.id)
+          const label = matched.label.trim()
+          if (label) {
+            setCurrentChapter(label)
+            setCurrentChapterTitle(label)
+          }
+        }
+      }
+
+      // Load Navigation TOC once spine & packaging are ready so every href maps accurately to a spine section
+      Promise.all([epubInstance.ready, epubInstance.loaded.navigation])
+        .then(([, nav]) => {
+          if (isCancelled || !epubInstance) return
+          const items = buildResolvedToc(epubInstance, (nav as any)?.toc || [])
+          tocRef.current = items
+          setToc(items)
+          const curLoc = renditionInstance?.currentLocation?.() as any
+          if (curLoc?.start) {
+            syncActiveChapter(curLoc, items)
+          }
+        })
+        .catch(() => {})
 
       const applyLocationState = (location: any, persistToDb = true) => {
         if (isCancelled || !location || !location.start) return
@@ -797,18 +827,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         setProgressPercent(pct)
         setCurrentPage(page)
 
-        if (location.start.href) {
-          setCurrentHref(location.start.href)
-          const cleanHref = location.start.href.split('#')[0]
-          const matching = tocRef.current.find(
-            (t) => t.href && (cleanHref.includes(t.href.split('#')[0]) || t.href.includes(cleanHref))
-          )
-          const chapterLabel = matching ? matching.label.trim() : ''
-          if (chapterLabel) {
-            setCurrentChapter(chapterLabel)
-            setCurrentChapterTitle(chapterLabel)
-          }
-        }
+        syncActiveChapter(location, tocRef.current)
 
         // Feature 1: Record manual reading cadence between page turns (using live store state)
         const now = Date.now()
@@ -1640,9 +1659,162 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     onBack
   ])
 
-  const handleSelectChapter = (href: string) => {
-    renditionRef.current?.display(href)
-  }
+  const handleSelectChapter = useCallback(async (href: string, item?: TocItem) => {
+    const rendition = renditionRef.current as any
+    const epub = epubBookRef.current as any
+    if (!rendition || !epub) return
+
+    const jumpNonce = ++chapterJumpNonceRef.current
+    const resolved = resolveTocHrefToSpine(epub, item?.href || href)
+    const spineItems: any[] = epub?.spine?.spineItems || []
+    const spineItem =
+      resolved.spineItem ||
+      (typeof item?.spineIndex === 'number' && item.spineIndex >= 0 ? spineItems[item.spineIndex] : null)
+    const hash = resolved.hash || item?.hash || ''
+    const targetIdx = typeof spineItem?.index === 'number' ? spineItem.index : -1
+
+    // Reset stale manager scroll coordinates before jumping in vertical continuous mode
+    // so epub.js ContinuousViewManager.fill()/check() does not carry over the previous
+    // chapter's scrollTop and overshoot into the middle/bottom of the newly opened chapter.
+    if (scrollModeRef.current === 'vertical' && rendition.manager) {
+      rendition.manager.scrollTop = 0
+      rendition.manager.scrollLeft = 0
+    }
+
+    // Build ordered display candidates: hash-qualified spine href -> plain spine href -> spine index -> raw href
+    const displayCandidates: Array<string | number> = []
+    if (spineItem?.href) {
+      if (hash) displayCandidates.push(`${spineItem.href}#${hash}`)
+      displayCandidates.push(spineItem.href)
+    }
+    if (targetIdx >= 0) {
+      displayCandidates.push(targetIdx)
+    }
+    if (resolved.displayTarget && !displayCandidates.includes(resolved.displayTarget)) {
+      displayCandidates.push(resolved.displayTarget)
+    }
+    if (href && !displayCandidates.includes(href)) {
+      displayCandidates.push(href)
+    }
+
+    let displayed = false
+    for (const target of displayCandidates) {
+      try {
+        await rendition.display(target)
+        displayed = true
+        break
+      } catch {
+        // Try next resolved candidate
+      }
+    }
+
+    if (!displayed || jumpNonce !== chapterJumpNonceRef.current) return
+
+    // Locate the exact rendered view for the target spine section (never blindly contentsList[0],
+    // which in continuous vertical mode is often the prepended previous chapter).
+    const findTargetView = () => {
+      const viewsApi = rendition.manager?.views
+      const allViews: any[] = viewsApi?.all?.() || viewsApi?._views || []
+      if (targetIdx >= 0) {
+        const byIndex = allViews.find(
+          (v: any) => v?.index === targetIdx || v?.section?.index === targetIdx
+        )
+        if (byIndex) return byIndex
+      }
+      if (spineItem && typeof viewsApi?.find === 'function') {
+        const found = viewsApi.find(spineItem)
+        if (found) return found
+      }
+      return allViews[allViews.length - 1] || null
+    }
+
+    const alignViewportToChapterStart = async () => {
+      if (jumpNonce !== chapterJumpNonceRef.current) return
+      const manager = rendition.manager
+      const container = manager?.container as HTMLElement | undefined
+      const targetView = findTargetView()
+      if (!container || !targetView) return
+
+      const doc = (targetView.document || targetView.contents?.document) as Document | undefined
+      const anchorEl = hash ? findAnchorElement(doc, hash) : null
+
+      if (scrollModeRef.current === 'vertical') {
+        let targetTop = targetView.element?.offsetTop ?? 0
+        if (anchorEl) {
+          const anchorTop = anchorEl.getBoundingClientRect().top
+          if (Number.isFinite(anchorTop) && anchorTop > 0) {
+            targetTop += anchorTop
+          }
+        }
+        const clampedTop = Math.max(0, Math.round(targetTop))
+        manager.ignore = true
+        container.scrollTop = clampedTop
+        manager.scrollTop = clampedTop
+        rendition.reportLocation?.()
+      } else {
+        if (anchorEl) {
+          try {
+            const anchorCfi = targetView.contents?.cfiFromNode?.(anchorEl)
+            if (typeof anchorCfi === 'string' && anchorCfi.startsWith('epubcfi(')) {
+              await rendition.display(anchorCfi)
+            } else if (typeof targetView.locationOf === 'function' && typeof manager.moveTo === 'function') {
+              const offset = targetView.locationOf(`#${hash}`)
+              if (offset) manager.moveTo(offset, targetView.width?.() || 0)
+            }
+          } catch {
+            // Keep section-start display
+          }
+        } else if (typeof targetView.element?.offsetLeft === 'number') {
+          manager.ignore = true
+          container.scrollLeft = targetView.element.offsetLeft
+          manager.scrollLeft = container.scrollLeft
+        }
+        rendition.reportLocation?.()
+      }
+    }
+
+    await alignViewportToChapterStart()
+
+    // In vertical continuous mode, ContinuousViewManager.fill() can finish prepending and
+    // expanding the previous chapter slightly after display() resolves, shifting offsetTop.
+    // Re-pin cleanly once layout settles (cancelling immediately if the user scrolls/navigates).
+    if (scrollModeRef.current === 'vertical') {
+      const container = rendition.manager?.container as HTMLElement | undefined
+      let userInteracted = false
+      const markInteracted = () => {
+        userInteracted = true
+      }
+      container?.addEventListener('wheel', markInteracted, { once: true, passive: true })
+      container?.addEventListener('pointerdown', markInteracted, { once: true, passive: true })
+      window.addEventListener('keydown', markInteracted, { once: true, passive: true })
+
+      const scheduleRealign = (delayMs: number) => {
+        setTimeout(() => {
+          if (userInteracted || jumpNonce !== chapterJumpNonceRef.current) return
+          alignViewportToChapterStart().catch(() => {})
+        }, delayMs)
+      }
+      scheduleRealign(60)
+      scheduleRealign(220)
+      setTimeout(() => {
+        container?.removeEventListener('wheel', markInteracted)
+        container?.removeEventListener('pointerdown', markInteracted)
+        window.removeEventListener('keydown', markInteracted)
+      }, 280)
+    }
+
+    if (item) {
+      setActiveTocId(item.id)
+      const label = item.label.trim()
+      if (label) {
+        setCurrentChapter(label)
+        setCurrentChapterTitle(label)
+      }
+      if (spineItem?.href) {
+        setCurrentHref(spineItem.href)
+      }
+    }
+  }, [setCurrentChapterTitle])
 
   const handleJumpToCfi = async (cfi: string, pageNumber?: number) => {
     if (cfi && renditionRef.current) {
@@ -2307,6 +2479,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       <TOCDrawer
         toc={toc}
         currentHref={currentHref}
+        activeTocId={activeTocId}
         onSelectChapter={handleSelectChapter}
       />
       <NotesDrawer

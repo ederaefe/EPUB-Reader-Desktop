@@ -1,5 +1,12 @@
 import JSZip from 'jszip'
 import * as pdfjsLib from 'pdfjs-dist'
+import {
+  formatPdfDate,
+  normalizeTags,
+  parseDelimitedTags,
+  type EmbeddedBookMetadata,
+  type EmbeddedMetadataExtraEntry
+} from '../../../shared/bookMetadata'
 
 // Configure local bundled pdf.js worker (100% offline, never relies on external CDN)
 if (typeof window !== 'undefined') {
@@ -551,6 +558,7 @@ async function extractPdfCoverAndMeta(
   totalPages: number
   title: string | null
   author: string | null
+  embedded: EmbeddedBookMetadata
 }> {
   let pdf: pdfjsLib.PDFDocumentProxy | null = null
   try {
@@ -562,15 +570,81 @@ async function extractPdfCoverAndMeta(
     const totalPages = pdf.numPages || 1
     let title: string | null = null
     let author: string | null = null
+    const embedded: EmbeddedBookMetadata = {}
 
     try {
       const meta = await pdf.getMetadata()
-      const info = (meta?.info as any) || {}
-      if (info.Title && typeof info.Title === 'string' && info.Title.trim().length > 1) {
+      const info = (meta?.info as Record<string, any>) || {}
+      if (info.Title && typeof info.Title === 'string' && info.Title.trim().length > 0) {
         title = info.Title.trim()
+        embedded.title = title
       }
-      if (info.Author && typeof info.Author === 'string' && info.Author.trim().length > 1) {
+      if (info.Author && typeof info.Author === 'string' && info.Author.trim().length > 0) {
         author = info.Author.trim()
+        embedded.author = author
+      }
+      if (typeof info.Subject === 'string' && info.Subject.trim()) {
+        embedded.subject = info.Subject.trim()
+      }
+      if (typeof info.Keywords === 'string' && info.Keywords.trim()) {
+        embedded.tags = parseDelimitedTags(info.Keywords)
+      }
+      if (typeof info.Creator === 'string' && info.Creator.trim()) {
+        embedded.creatorTool = info.Creator.trim()
+      }
+      if (typeof info.Producer === 'string' && info.Producer.trim()) {
+        embedded.producer = info.Producer.trim()
+      }
+      if (typeof info.CreationDate === 'string' && info.CreationDate.trim()) {
+        embedded.creationDate = formatPdfDate(info.CreationDate)
+        embedded.publishedDate = embedded.creationDate
+      }
+      if (typeof info.ModDate === 'string' && info.ModDate.trim()) {
+        embedded.modificationDate = formatPdfDate(info.ModDate)
+      }
+      if (typeof info.PDFFormatVersion === 'string' && info.PDFFormatVersion.trim()) {
+        embedded.formatVersion = `PDF ${info.PDFFormatVersion.trim()}`
+      }
+      if (typeof info.Language === 'string' && info.Language.trim()) {
+        embedded.language = info.Language.trim()
+      }
+      // Capture any custom PDF info keys beyond standard properties
+      const standardPdfKeys = new Set([
+        'Title',
+        'Author',
+        'Subject',
+        'Keywords',
+        'Creator',
+        'Producer',
+        'CreationDate',
+        'ModDate',
+        'PDFFormatVersion',
+        'Language',
+        'IsAcroFormPresent',
+        'IsXFAPresent',
+        'IsCollectionPresent',
+        'IsLinearized',
+        'IsSignaturesPresent',
+        'EncryptFilterName',
+        'Trapped',
+        'Custom'
+      ])
+      const extraEntries: EmbeddedMetadataExtraEntry[] = []
+      for (const [k, v] of Object.entries(info)) {
+        if (standardPdfKeys.has(k)) continue
+        if (typeof v === 'string' && v.trim()) {
+          extraEntries.push({ key: k, value: v.trim() })
+        }
+      }
+      if (info.Custom && typeof info.Custom === 'object') {
+        for (const [k, v] of Object.entries(info.Custom)) {
+          if (typeof v === 'string' && v.trim()) {
+            extraEntries.push({ key: k, value: v.trim() })
+          }
+        }
+      }
+      if (extraEntries.length > 0) {
+        embedded.extraEntries = extraEntries
       }
     } catch {
       // Metadata dictionary optional
@@ -604,10 +678,10 @@ async function extractPdfCoverAndMeta(
       }
     }
 
-    return { coverDataUrl, totalPages, title, author }
+    return { coverDataUrl, totalPages, title, author, embedded }
   } catch (err) {
     console.warn('Failed to render PDF first-page thumbnail:', err)
-    return { coverDataUrl: null, totalPages: 100, title: null, author: null }
+    return { coverDataUrl: null, totalPages: 100, title: null, author: null, embedded: {} }
   } finally {
     try {
       await pdf?.destroy()
@@ -720,8 +794,266 @@ export function parseBookTitleAndAuthor(filename: string): { title: string; auth
 }
 
 /**
+ * Strips inline HTML markup that some publishers embed inside EPUB <dc:description>.
+ */
+function stripHtmlToPlainText(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (!/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(trimmed, 'text/html')
+    return (doc.body?.textContent || trimmed).replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  } catch {
+    return trimmed.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+}
+
+/**
+ * Extracts rich Dublin Core, EPUB 2/3 series, and custom <meta> entries from an OPF Document.
+ */
+function parseOpfMetadataFromDoc(opfDoc: Document): EmbeddedBookMetadata {
+  const result: EmbeddedBookMetadata = {}
+  const packageEl = opfDoc.querySelector('package')
+  const pkgVersion = packageEl?.getAttribute('version')?.trim()
+  if (pkgVersion) {
+    result.formatVersion = `EPUB ${pkgVersion}`
+  }
+
+  const metadataRoot =
+    opfDoc.querySelector('metadata') ||
+    Array.from(opfDoc.getElementsByTagName('*')).find((el) => el.localName === 'metadata') ||
+    opfDoc.documentElement
+
+  const allChildren = metadataRoot ? Array.from(metadataRoot.getElementsByTagName('*')) : []
+  const getByLocal = (name: string) =>
+    allChildren.filter((el) => el.localName.toLowerCase() === name.toLowerCase())
+
+  const firstText = (name: string): string => {
+    const el = getByLocal(name).find((n) => n.textContent?.trim())
+    return el?.textContent?.trim() || ''
+  }
+
+  const title = firstText('title')
+  if (title) result.title = title
+
+  const creators = getByLocal('creator')
+    .map((n) => n.textContent?.trim() || '')
+    .filter(Boolean)
+  if (creators.length > 0) {
+    result.author = Array.from(new Set(creators)).join(', ')
+  }
+
+  const subjects = normalizeTags(
+    getByLocal('subject').flatMap((n) =>
+      (n.textContent || '')
+        .split(/[,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    )
+  )
+  if (subjects.length > 0) result.tags = subjects
+
+  const descRaw = firstText('description')
+  if (descRaw) result.description = stripHtmlToPlainText(descRaw)
+
+  const publisher = firstText('publisher')
+  if (publisher) result.publisher = publisher
+
+  const date = firstText('date')
+  if (date) result.publishedDate = date.length > 10 && /^\d{4}-\d{2}-\d{2}T/.test(date) ? date.slice(0, 10) : date
+
+  const language = firstText('language')
+  if (language) result.language = language
+
+  // Prefer an ISBN identifier if multiple <dc:identifier> nodes exist
+  const identifiers = getByLocal('identifier').filter((n) => n.textContent?.trim())
+  const isbnNode = identifiers.find((n) => {
+    const scheme = (n.getAttribute('opf:scheme') || n.getAttribute('scheme') || '').toLowerCase()
+    const val = (n.textContent || '').toLowerCase()
+    return scheme.includes('isbn') || val.includes('isbn')
+  })
+  const chosenId = (isbnNode || identifiers[0])?.textContent?.trim()
+  if (chosenId) result.identifier = chosenId
+
+  const rights = firstText('rights')
+  if (rights) result.rights = rights
+
+  // Parse <meta> elements for series, modified date, generator, and extra read-only properties
+  const metaNodes = getByLocal('meta')
+  const extraEntries: EmbeddedMetadataExtraEntry[] = []
+  let seriesRefId: string | null = null
+
+  for (const m of metaNodes) {
+    const prop = (m.getAttribute('property') || '').trim()
+    const name = (m.getAttribute('name') || '').trim()
+    const content = (m.getAttribute('content') || m.textContent || '').trim()
+    if (!content) continue
+
+    if (prop === 'belongs-to-collection') {
+      result.series = content
+      seriesRefId = m.getAttribute('id')
+    } else if (prop === 'group-position') {
+      const refines = (m.getAttribute('refines') || '').replace(/^#/, '')
+      if (!seriesRefId || !refines || refines === seriesRefId) {
+        result.seriesIndex = content
+      }
+    } else if (name.toLowerCase() === 'calibre:series' && !result.series) {
+      result.series = content
+    } else if (name.toLowerCase() === 'calibre:series_index' && !result.seriesIndex) {
+      result.seriesIndex = content
+    } else if (prop === 'dcterms:modified') {
+      result.modificationDate = content.length > 10 ? content.slice(0, 10) : content
+    } else if (name.toLowerCase() === 'generator' || name.toLowerCase() === 'sigil version') {
+      result.creatorTool = content
+    } else if (
+      name.toLowerCase() !== 'cover' &&
+      prop !== 'collection-type' &&
+      prop !== 'role' &&
+      prop !== 'file-as' &&
+      prop !== 'title-type' &&
+      prop !== 'display-seq' &&
+      !name.startsWith('calibre:timestamp') &&
+      !name.startsWith('calibre:title_sort')
+    ) {
+      const label = prop || name
+      if (label && extraEntries.length < 12) {
+        extraEntries.push({ key: label, value: content })
+      }
+    }
+  }
+
+  if (extraEntries.length > 0) {
+    result.extraEntries = extraEntries
+  }
+
+  return result
+}
+
+/**
+ * Extracts full embedded metadata from an already-loaded EPUB or PDF file buffer.
+ * Used on-demand by the Reading Settings Metadata Editor to hydrate existing library books.
+ */
+export async function extractEmbeddedBookMetadata(
+  buffer: ArrayBuffer,
+  format: 'epub' | 'pdf' | 'mobi' | 'txt'
+): Promise<EmbeddedBookMetadata> {
+  try {
+    if (format === 'epub') {
+      const zip = await JSZip.loadAsync(buffer)
+      let opfPath: string | null = null
+      const containerXml = await zip.file('META-INF/container.xml')?.async('string')
+      if (containerXml) {
+        const parser = new DOMParser()
+        const containerDoc = parser.parseFromString(containerXml, 'application/xml')
+        opfPath = containerDoc.querySelector('rootfile')?.getAttribute('full-path') || null
+      }
+      if (!opfPath) {
+        opfPath = Object.keys(zip.files).find((f) => f.toLowerCase().endsWith('.opf')) || null
+      }
+      if (!opfPath) return {}
+      const opfXml = await findZipFile(zip, '', opfPath)?.async('string')
+      if (!opfXml) return {}
+      const parser = new DOMParser()
+      const opfDoc = parser.parseFromString(opfXml, 'application/xml')
+      return parseOpfMetadataFromDoc(opfDoc)
+    }
+
+    if (format === 'pdf') {
+      let pdf: pdfjsLib.PDFDocumentProxy | null = null
+      try {
+        const bytes = new Uint8Array(buffer.slice(0))
+        pdf = await pdfjsLib.getDocument({ data: bytes }).promise
+        const meta = await pdf.getMetadata()
+        const info = (meta?.info as Record<string, any>) || {}
+        const embedded: EmbeddedBookMetadata = {}
+        if (typeof info.Title === 'string' && info.Title.trim()) embedded.title = info.Title.trim()
+        if (typeof info.Author === 'string' && info.Author.trim()) embedded.author = info.Author.trim()
+        if (typeof info.Subject === 'string' && info.Subject.trim()) embedded.subject = info.Subject.trim()
+        if (typeof info.Keywords === 'string' && info.Keywords.trim()) {
+          embedded.tags = parseDelimitedTags(info.Keywords)
+        }
+        if (typeof info.Creator === 'string' && info.Creator.trim()) embedded.creatorTool = info.Creator.trim()
+        if (typeof info.Producer === 'string' && info.Producer.trim()) embedded.producer = info.Producer.trim()
+        if (typeof info.CreationDate === 'string' && info.CreationDate.trim()) {
+          embedded.creationDate = formatPdfDate(info.CreationDate)
+          embedded.publishedDate = embedded.creationDate
+        }
+        if (typeof info.ModDate === 'string' && info.ModDate.trim()) {
+          embedded.modificationDate = formatPdfDate(info.ModDate)
+        }
+        if (typeof info.PDFFormatVersion === 'string' && info.PDFFormatVersion.trim()) {
+          embedded.formatVersion = `PDF ${info.PDFFormatVersion.trim()}`
+        }
+        if (typeof info.Language === 'string' && info.Language.trim()) {
+          embedded.language = info.Language.trim()
+        }
+        return embedded
+      } finally {
+        try {
+          await pdf?.destroy()
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Embedded metadata extraction error:', err)
+  }
+  return {}
+}
+
+/**
+ * Validates and proportionally resizes a user-selected cover image file (PNG/JPG/WebP)
+ * so custom thumbnails remain crisp while keeping IndexedDB and EPUB archives lightweight.
+ */
+export async function resizeCoverImageFile(
+  file: File
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const MAX_FILE_BYTES = 15 * 1024 * 1024 // 15 MB guard
+  if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+    throw new Error('Please choose a PNG, JPG, or WebP image.')
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error('Cover image must be smaller than 15 MB.')
+  }
+
+  const objectUrl = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => reject(new Error('Could not decode selected image.'))
+      el.src = objectUrl
+    })
+
+    const maxW = 600
+    const maxH = 900
+    const ratio = Math.min(1, maxW / Math.max(1, img.naturalWidth), maxH / Math.max(1, img.naturalHeight))
+    const width = Math.max(1, Math.round(img.naturalWidth * ratio))
+    const height = Math.max(1, Math.round(img.naturalHeight * ratio))
+
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas 2D context unavailable.')
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, 0, 0, width, height)
+
+    const isPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')
+    const dataUrl = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.88)
+    return { dataUrl, width, height }
+  } finally {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+/**
  * Unified book import extractor:
- * 1. Parses Title, Author, and Page Count from embedded metadata.
+ * 1. Parses Title, Author, rich embedded metadata, and Page Count.
  * 2. Checks for an embedded thumbnail/cover image first.
  * 3. If none exists, renders the book's actual First Page (PDF Page 1, EPUB first spine page, or TXT page 1).
  */
@@ -729,19 +1061,26 @@ export async function extractBookMetadata(
   buffer: ArrayBuffer,
   ext: string,
   rawName: string
-): Promise<{ title: string; author: string; coverDataUrl: string | null; totalPages: number }> {
+): Promise<{
+  title: string
+  author: string
+  coverDataUrl: string | null
+  totalPages: number
+  embedded: EmbeddedBookMetadata
+}> {
   const parsed = parseBookTitleAndAuthor(rawName)
   let title = parsed.title
   let author = parsed.author
   let coverDataUrl: string | null = null
   let totalPages = 100
+  let embedded: EmbeddedBookMetadata = {}
   const normalizedExt = ext.toLowerCase()
 
   try {
     if (normalizedExt === 'epub') {
       const zip = await JSZip.loadAsync(buffer)
 
-      // Parse OPF metadata first so fallback title/author are accurate
+      // Parse OPF metadata first so fallback title/author and tags are accurate
       let opfPath: string | null = null
       const containerXml = await zip.file('META-INF/container.xml')?.async('string')
       if (containerXml) {
@@ -758,22 +1097,9 @@ export async function extractBookMetadata(
         if (opfXml) {
           const parser = new DOMParser()
           const opfDoc = parser.parseFromString(opfXml, 'application/xml')
-          const titleElem =
-            opfDoc.querySelector('metadata > title') ||
-            Array.from(opfDoc.getElementsByTagName('*')).find(
-              (el) => el.localName === 'title' && el.textContent?.trim()
-            )
-          const authorElem =
-            opfDoc.querySelector('metadata > creator') ||
-            Array.from(opfDoc.getElementsByTagName('*')).find(
-              (el) => el.localName === 'creator' && el.textContent?.trim()
-            )
-          if (titleElem?.textContent?.trim()) {
-            title = titleElem.textContent.trim()
-          }
-          if (authorElem?.textContent?.trim()) {
-            author = authorElem.textContent.trim()
-          }
+          embedded = parseOpfMetadataFromDoc(opfDoc)
+          if (embedded.title) title = embedded.title
+          if (embedded.author) author = embedded.author
           const spineItems = opfDoc.querySelectorAll('spine > itemref')
           if (spineItems.length > 0) {
             totalPages = Math.max(1, spineItems.length * 8)
@@ -787,6 +1113,7 @@ export async function extractBookMetadata(
       const pdfRes = await extractPdfCoverAndMeta(buffer)
       coverDataUrl = pdfRes.coverDataUrl
       totalPages = pdfRes.totalPages || 100
+      embedded = pdfRes.embedded
       if (pdfRes.title) title = pdfRes.title
       if (pdfRes.author) author = pdfRes.author
     } else if (normalizedExt === 'mobi' || normalizedExt === 'azw' || normalizedExt === 'azw3') {
@@ -804,7 +1131,7 @@ export async function extractBookMetadata(
     coverDataUrl = renderFirstPageCanvas([], title, author)
   }
 
-  return { title, author, coverDataUrl, totalPages }
+  return { title, author, coverDataUrl, totalPages, embedded }
 }
 
 /**

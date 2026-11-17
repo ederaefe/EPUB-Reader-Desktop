@@ -18,7 +18,8 @@ import {
   Plus,
   Check,
   SlidersHorizontal,
-  Keyboard
+  Keyboard,
+  BookOpen
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -27,8 +28,11 @@ import type { AutoscrollMode } from '../../db'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
+import { BookMetadataEditor } from './BookMetadataEditor'
+import { formatFileSize } from '../../../../shared/bookMetadata'
 
 type SettingsTab = 'display' | 'flow' | 'document'
+type DrawerSubview = 'tabs' | 'metadata'
 
 const THEME_SWATCHES: Array<{
   id: 'day' | 'light-sepia' | 'dark-sepia' | 'night'
@@ -80,15 +84,29 @@ export const SettingsDrawer: React.FC = () => {
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('display')
+  const [subview, setSubview] = useState<DrawerSubview>('tabs')
+
+  // Reset drill-in view whenever drawer closes or active book changes
+  useEffect(() => {
+    if (!isSettingsDrawerOpen) {
+      setSubview('tabs')
+    }
+  }, [isSettingsDrawerOpen, activeBook?.id])
 
   useEffect(() => {
     if (!isSettingsDrawerOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') toggleSettingsDrawer(false)
+      if (e.key === 'Escape') {
+        if (subview === 'metadata') {
+          setSubview('tabs')
+        } else {
+          toggleSettingsDrawer(false)
+        }
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isSettingsDrawerOpen, toggleSettingsDrawer])
+  }, [isSettingsDrawerOpen, subview, toggleSettingsDrawer])
 
   if (!isSettingsDrawerOpen) return null
 
@@ -235,6 +253,14 @@ export const SettingsDrawer: React.FC = () => {
 
       {/* Elevated Geist Obsidian Panel */}
       <aside className="fixed top-10 right-3 bottom-3 w-[328px] bg-[#111111] border border-white/[0.09] rounded-[10px] z-50 flex flex-col justify-between shadow-[0_24px_64px_rgba(0,0,0,0.75)] select-none app-no-drag overflow-hidden animate-in slide-in-from-right-2 fade-in duration-150">
+        {subview === 'metadata' && activeBook ? (
+          <BookMetadataEditor
+            book={activeBook}
+            onBack={() => setSubview('tabs')}
+            onClose={() => toggleSettingsDrawer(false)}
+          />
+        ) : (
+        <>
         {/* Top Bar + Segmented 3-Tab Switcher */}
         <div className="px-3.5 pt-3 pb-2.5 border-b border-white/[0.07] space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
@@ -753,6 +779,63 @@ export const SettingsDrawer: React.FC = () => {
           {/* ===================== TAB 3: PDF & MORE ===================== */}
           {activeTab === 'document' && (
             <>
+              {activeBook && (
+                <button
+                  type="button"
+                  onClick={() => setSubview('metadata')}
+                  className="settings-btn-secondary w-full p-2.5 rounded-lg flex items-center gap-3 text-left group transition-all active:scale-[0.99]"
+                  title="Inspect and edit book metadata, tags, and cover thumbnail"
+                >
+                  <div
+                    data-preserve-theme="true"
+                    className="w-[38px] h-[54px] rounded-[4px] overflow-hidden shrink-0 border border-white/[0.12] bg-[#141414] flex items-center justify-center"
+                  >
+                    {activeBook.coverDataUrl ? (
+                      <img
+                        src={activeBook.coverDataUrl}
+                        alt={activeBook.title}
+                        className="w-full h-full object-cover block"
+                      />
+                    ) : (
+                      <BookOpen className="w-4 h-4 text-[#777777]" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="text-[12px] font-semibold truncate leading-snug">
+                      {activeBook.title}
+                    </div>
+                    <div className="text-[10.5px] opacity-70 truncate">
+                      {activeBook.author || 'Unknown Author'}
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                      <span className="text-[9.5px] font-mono uppercase tabular-nums opacity-60">
+                        {activeBook.format} · {formatFileSize(activeBook.fileSize)}
+                      </span>
+                      {activeBook.tags && activeBook.tags.length > 0 && (
+                        <>
+                          {activeBook.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-1.5 py-[1px] rounded-[3px] bg-[var(--app-surface-2)] border border-[var(--app-border)] text-[9.5px] opacity-85 truncate max-w-[78px]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {activeBook.tags.length > 2 && (
+                            <span className="text-[9.5px] font-mono tabular-nums opacity-60">
+                              +{activeBook.tags.length - 2}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <ArrowRight className="w-3.5 h-3.5 opacity-55 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+              )}
+
               {isPdf && (
                 <div className="p-3.5 bg-[#161616] border border-white/[0.08] rounded-lg space-y-3">
                   <div>
@@ -896,6 +979,8 @@ export const SettingsDrawer: React.FC = () => {
             </>
           )}
         </div>
+        </>
+        )}
       </aside>
     </>
   )

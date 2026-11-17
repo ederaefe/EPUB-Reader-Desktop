@@ -4,6 +4,7 @@
 import JSZip from 'jszip'
 import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings, type NoteColor } from '../db'
 import { useAppStore } from '../stores/useAppStore'
+import { normalizeTags } from '../../../shared/bookMetadata'
 
 export interface LibraryBackupData {
   version: number
@@ -322,7 +323,29 @@ export class BackupService {
           isFavorite: Boolean(remoteBook.isFavorite),
           isRead: Boolean(remoteBook.isRead),
           isPinned: Boolean(remoteBook.isPinned),
-          pinnedAt: typeof remoteBook.pinnedAt === 'number' && Number.isFinite(remoteBook.pinnedAt) ? remoteBook.pinnedAt : null
+          pinnedAt: typeof remoteBook.pinnedAt === 'number' && Number.isFinite(remoteBook.pinnedAt) ? remoteBook.pinnedAt : null,
+          tags: normalizeTags(remoteBook.tags),
+          description: sanitizeString(remoteBook.description, 4096) || undefined,
+          publisher: sanitizeString(remoteBook.publisher, 256) || undefined,
+          publishedDate: sanitizeString(remoteBook.publishedDate, 64) || undefined,
+          language: sanitizeString(remoteBook.language, 32) || undefined,
+          identifier: sanitizeString(remoteBook.identifier, 128) || undefined,
+          series: sanitizeString(remoteBook.series, 256) || undefined,
+          seriesIndex: sanitizeString(remoteBook.seriesIndex, 32) || undefined,
+          rights: sanitizeString(remoteBook.rights, 512) || undefined,
+          subject: sanitizeString(remoteBook.subject, 512) || undefined,
+          creatorTool: sanitizeString(remoteBook.creatorTool, 256) || undefined,
+          producer: sanitizeString(remoteBook.producer, 256) || undefined,
+          formatVersion: sanitizeString(remoteBook.formatVersion, 32) || undefined,
+          metadataHydrated: Boolean(remoteBook.metadataHydrated),
+          climaxGlowTarget:
+            typeof remoteBook.climaxGlowTarget === 'number' &&
+            Number.isFinite(remoteBook.climaxGlowTarget) &&
+            remoteBook.climaxGlowTarget >= 75 &&
+            remoteBook.climaxGlowTarget <= 85
+              ? Math.round(remoteBook.climaxGlowTarget)
+              : undefined,
+          climaxGlowTriggered: Boolean(remoteBook.climaxGlowTriggered)
         })
         if (remoteBook.id) bookIdMapping.set(remoteBook.id, newBookId as number)
         addedBooks++
