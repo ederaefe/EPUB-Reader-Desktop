@@ -1126,3 +1126,13 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
 - **Save Dialog Async Hardening**: Awaited Electron save dialog response in `NotesDrawer.tsx` to ensure accurate success and cancellation toast handling.
 - **Type Safety and Build Certification**: Zero compiler errors in `tsc --noEmit` and successful production bundle generation across main, preload, and renderer packages.
 
+---
+
+## Increment 25: Reading Progress Boundary Precision & Cover Canvas Refinement
+
+### Summary
+- **Reading Progress Boundary Precision (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**: Refined percentage calculation algorithms so advancing past page 1 or initial CFI location guarantees at least 1% progress rather than truncating to 0%, while ensuring reaching the final page marks 100% and sets `isRead: true`.
+- **Cover Canvas Author Presentation (`coverService.ts`)**: Prevented canvas generator from writing generic fallback captions when book author metadata is missing or unknown.
+- **Import Wiring (`LibraryView.tsx`)**: Streamlined `generateCoverCanvas` import for library card thumbnail fallbacks.
+
+
