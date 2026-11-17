@@ -228,13 +228,14 @@ export const FullSettingsModal: React.FC = () => {
                     <span>Dimming</span>
                     <span className="font-mono text-white text-[11px]">{settings.dimming}%</span>
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="75"
+                  <ValueStepper
                     value={settings.dimming}
-                    onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-                    className="ice-slider w-full"
+                    min={0}
+                    max={75}
+                    step={5}
+                    unit="%"
+                    ariaLabel="Dimming"
+                    onChange={(val) => updateSettings({ dimming: val })}
                   />
                 </div>
 

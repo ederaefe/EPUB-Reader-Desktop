@@ -1148,4 +1148,54 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - In `generateCoverCanvas()`, suppressed the placeholder text "Unknown Author" from being drawn across generated cover canvases when author metadata is missing.
    - In `LibraryView.tsx`, when books are cleansed of scrape prefixes and their author/title is resolved, generated canvas covers automatically re-render with the true metadata.
 
+---
 
+## Increment 26: Vercel-Ready Product Landing Website & GitHub Releases Dynamic Bridge
+
+### Architecture & Implementation
+1. **Root Product Landing Website (`index.html`)**:
+   - Built a high-performance, accessible, mobile-first static landing page for Semply Ebook Reader designed for immediate zero-build deployment on Vercel.
+   - Incorporated structured data schemas: `SoftwareApplication` JSON-LD (applicationCategory, price, downloadUrl, featureList) and `FAQPage` JSON-LD (addressing formats, offline reflow, local-first privacy, and security).
+   - Configured OpenGraph (`og:*`) and Twitter Card (`twitter:*`) metadata, canonical tags, and machine discovery links to `./documentations/llms.txt` and `./documentations/llms-full.txt`.
+2. **Obsidian Product Styling Engine (`landing.css`)**:
+   - Designed a dark aesthetic honoring the Vercel Geist and Semply Obsidian design system (`#080808` canvas, `#101010` surface, `#0070f3` electric blue accent, `#10b981` verified emerald).
+   - Built a 7-card Bento feature grid with custom SVG icons (Offline MuPDF WASM Reflow, Dual-Mode Auto-Scroll, 77 Curated Fonts, Dual-Anchor SVG Annotations, 4 Authentic Reading Themes, Instant Full-Book Spine Search, and Non-Destructive Additive Backup).
+   - Created an architectural comparison table benchmarking Semply against Calibre, Apple Books/Kindle, and web-based readers.
+   - Implemented an authentic interactive hero reader mockup featuring live client-side theme switching across all 4 Semply themes (`Obsidian`, `Light`, `Paper`, `Dusk`).
+3. **Live GitHub Releases Client-Side Connector (`landing.js`)**:
+   - Added automatic client OS detection (`navigator.userAgentData.platform` / `navigator.userAgent`) targeting Windows (`.exe`), macOS (`.dmg`), and Linux (`.AppImage`).
+   - Integrated asynchronous GitHub Releases API fetcher hitting `https://api.github.com/repos/ederaefe/EPUB-Reader-Desktop/releases/latest` to parse tag names, asset file sizes, and direct download URLs.
+   - Implemented dual-layer fallback resilience (`localStorage` caching + verified direct GitHub release URLs) so download buttons remain 100% functional even when client IPs encounter GitHub API rate limits.
+   - Added accessible FAQ accordion animations and Headroom auto-hiding header navigation.
+4. **Security & Server Communication Transparency Panel**:
+   - Designed a prominent security architecture section detailing the application's network perimeter:
+     1. Cryptographic Update Verification via TLS 1.3 to `api.github.com`.
+     2. On-demand cloud typography via Google Fonts CDN with permanent local disk caching.
+     3. 100% local-first storage perimeter with zero telemetry and zero cloud document ingestion.
+     4. Cryptographic SHA-256 checksums and public GitHub build provenance.
+5. **Vercel Hosting & Discovery Assets (`vercel.json`, `robots.txt`, `sitemap.xml`, `assets/`)**:
+   - Configured `vercel.json` with strict HTTP security headers (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) and clean URL rewrites routing `/docs` to `/documentations/index.html`.
+   - Generated root `robots.txt` and `sitemap.xml` for full search engine indexing.
+   - Established self-contained root `assets/` directory hosting the application logo and favicon.
+
+
+
+
+
+---
+
+## Increment 26: Persistent Subtle Liquid Climax Progress Bar in Reader Mode
+
+### Architecture & Implementation
+1. **Liquid Capillary Conduit (`FluidClimaxProgressBar.tsx`)**:
+   - Replaced the transient 5-dot footer with a persistent, ultra-subtle glass capillary liquid tube (`h-[4px]` resting, `h-2` on hover).
+   - Engineered cylindrical liquid refraction: top specular highlight sheen (`linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.1) 100%)`) with leading liquid surface tension meniscus bulb and dynamic luminescence bloom.
+   - Text-free and uncluttered: removed all page counts (`Page X of Y`), `p. (number)`, and narrative stage labels. On active hover/drag, only a minimal, subtle floating percentage tag appears above the cursor position.
+2. **Deterministic Narrative Climax Chromatic Algorithm**:
+   - Seeded uniquely per book using a 32-bit FNV-1a hash of book title, author, and database ID.
+   - Each book journeys across its own signature starting hue (e.g. Azure, Emerald, Amethyst, Electric Cyan, Amber Ochre, Seafoam) and resolution hue (e.g. Celestial Blue, Royal Violet, Jade, Sunlit Gold).
+   - Invariant midpoint narrative climax: as reading advances into the narrative midpoint (~45% to 70%, peaking at ~58%), a Gaussian weight curve smoothly interpolates the fluid into vibrant glowing Ruby/Crimson Red (`hsl(358, 97%, 52%)`) with intensified radiant glow, cooling back into the book's resolution hue towards 100%.
+3. **Smooth Interactive Seeking Across EPUB & PDF Readers**:
+   - Integrated into `EpubReaderView.tsx` with dual-mode seek handling (percentage CFI calculation with spine item index fallback).
+   - Integrated into `PdfReaderView.tsx` with bounds-checked target page mapping.
+   - Mouse down, drag, and release events provide instantaneous, fluid scrubbing feedback.
