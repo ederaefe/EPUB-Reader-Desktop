@@ -11,7 +11,8 @@ import {
   CheckSquare,
   Pin,
   PinOff,
-  ImageIcon
+  ImageIcon,
+  MoreVertical
 } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
@@ -56,34 +57,20 @@ export const BookCard: React.FC<BookCardProps> = ({
   onAssignCategoryAction,
   onDeleteRequest
 }) => {
-  const [showCategoryMenu, setShowCategoryMenu] = useState(false)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const showToast = useAppStore((s) => s.showToast)
 
   const assignedCategory = categories.find((c) => c.id === book.categoryId)
   const isBatchContext = isSelectionMode && isSelected && selectedCount > 1
 
-  const toggleFavorite = async (e: React.MouseEvent) => {
+  const handleOpenMenuFromButton = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    if (!book.id) return
-    if (onFavoriteAction) {
-      onFavoriteAction(book, !book.isFavorite)
+    if (contextMenuPos) {
+      setContextMenuPos(null)
       return
     }
-    await db.books.update(book.id, { isFavorite: !book.isFavorite })
-    onUpdate()
-  }
-
-  const handleAssignCategory = async (e: React.MouseEvent, catId: number | null) => {
-    e.stopPropagation()
-    if (!book.id) return
-    setShowCategoryMenu(false)
-    if (onAssignCategoryAction) {
-      onAssignCategoryAction(book, catId)
-      return
-    }
-    await db.books.update(book.id, { categoryId: catId })
-    onUpdate()
+    const rect = e.currentTarget.getBoundingClientRect()
+    setContextMenuPos({ x: rect.left, y: rect.bottom + 4 })
   }
 
   const handleRevealInExplorer = async () => {
@@ -370,59 +357,17 @@ export const BookCard: React.FC<BookCardProps> = ({
                 : '—'}
             </span>
             {!isSelectionMode && (
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {categories.length > 0 && (
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowCategoryMenu(!showCategoryMenu)
-                      }}
-                      className={`p-1 rounded hover:bg-[#333846] ${assignedCategory ? 'text-[#2a69df]' : 'text-[#8b949e]'}`}
-                      title="Assign Category"
-                    >
-                      <Folder className="w-3.5 h-3.5" />
-                    </button>
-                    {showCategoryMenu && (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-full mt-1 w-36 bg-[#171a21] border border-[#2d323f] rounded-[2px] shadow-xl py-1 z-30 text-[11px]"
-                      >
-                        <div className="px-2 py-1 text-[10px] text-[#6e7681] border-b border-[#232732] font-medium uppercase tracking-wider">
-                          Category
-                        </div>
-                        <button
-                          onClick={(e) => handleAssignCategory(e, null)}
-                          className={`w-full px-2 py-1 flex items-center justify-between text-left hover:bg-[#282c37] transition-colors ${
-                            !book.categoryId ? 'text-white font-medium bg-[#232732]' : 'text-[#8b949e]'
-                          }`}
-                        >
-                          <span>None</span>
-                        </button>
-                        {categories.map((cat) => (
-                          <button
-                            key={cat.id}
-                            onClick={(e) => handleAssignCategory(e, cat.id!)}
-                            className={`w-full px-2 py-1 flex items-center gap-1.5 text-left hover:bg-[#282c37] transition-colors ${
-                              book.categoryId === cat.id ? 'text-white font-medium bg-[#232732]' : 'text-[#c8d1dc]'
-                            }`}
-                          >
-                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                            <span className="truncate">{cat.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <button
-                  onClick={toggleFavorite}
-                  className={`p-1 rounded hover:bg-[#333846] ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#8b949e]'}`}
-                  title={book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                >
-                  <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'fill-current' : ''}`} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleOpenMenuFromButton}
+                className={`p-1 rounded hover:bg-[#333846] text-[#8b949e] hover:text-white transition-opacity ${
+                  contextMenuPos ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+                }`}
+                title="Book options"
+                aria-label={`More options for ${book.title}`}
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>
@@ -524,68 +469,22 @@ export const BookCard: React.FC<BookCardProps> = ({
             </div>
           )}
 
-          {/* Subtle actions (Category & Single Favorite Button) */}
+          {/* Subtle 3-dot menu button (opens the same context menu as right-click) */}
           {!isSelectionMode && (
-            <div
-              className={`absolute top-1.5 right-1.5 flex items-center gap-0.5 p-0.5 rounded-[3px] border border-white/15 z-20 transition-opacity ${
-                book.isFavorite ? 'opacity-100 bg-black/80' : 'opacity-0 group-hover:opacity-100 bg-black/75'
-              }`}
+            <button
+              type="button"
+              onClick={handleOpenMenuFromButton}
               data-preserve-theme="true"
+              className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-[4px] border border-white/15 bg-black/75 hover:bg-black/90 text-[#e5e7eb] hover:text-white flex items-center justify-center z-20 transition-opacity ${
+                contextMenuPos
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+              }`}
+              title="Book options"
+              aria-label={`More options for ${book.title}`}
             >
-              {categories.length > 0 && (
-                <div className={`relative ${book.isFavorite ? 'hidden group-hover:block' : ''}`}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setShowCategoryMenu(!showCategoryMenu)
-                    }}
-                    className={`p-1 rounded-[2px] hover:bg-white/20 transition-colors cursor-pointer ${
-                      assignedCategory ? 'text-[#58a6ff]' : 'text-[#c8d1dc]'
-                    }`}
-                    title="Assign Category"
-                  >
-                    <Folder className="w-3 h-3" />
-                  </button>
-                  {showCategoryMenu && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-full mt-1 w-36 bg-[#171a21] border border-[#2d323f] rounded-[2px] shadow-xl py-1 z-30 text-[11px]"
-                    >
-                      <div className="px-2 py-1 text-[10px] text-[#8b949e] border-b border-[#232732] font-medium uppercase tracking-wider">
-                        Category
-                      </div>
-                      <button
-                        onClick={(e) => handleAssignCategory(e, null)}
-                        className={`w-full px-2 py-1 flex items-center justify-between text-left hover:bg-[#282c37] transition-colors ${
-                          !book.categoryId ? 'text-white font-medium bg-[#232732]' : 'text-[#8b949e]'
-                        }`}
-                      >
-                        <span>None</span>
-                      </button>
-                      {categories.map((cat) => (
-                        <button
-                          key={cat.id}
-                          onClick={(e) => handleAssignCategory(e, cat.id!)}
-                          className={`w-full px-2 py-1 flex items-center gap-1.5 text-left hover:bg-[#282c37] transition-colors ${
-                            book.categoryId === cat.id ? 'text-white font-medium bg-[#232732]' : 'text-[#c8d1dc]'
-                          }`}
-                        >
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                          <span className="truncate">{cat.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                onClick={toggleFavorite}
-                className={`p-1 rounded-[2px] hover:bg-white/20 cursor-pointer ${book.isFavorite ? 'text-[#e3b341]' : 'text-[#c8d1dc]'}`}
-                title={book.isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-              >
-                <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'fill-current' : ''}`} />
-              </button>
-            </div>
+              <MoreVertical className="w-3.5 h-3.5" />
+            </button>
           )}
 
           {/* Bottom embedded progress indicator - ONLY shown when book has been read to at least 1% */}

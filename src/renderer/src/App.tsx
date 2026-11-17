@@ -229,6 +229,21 @@ export const App: React.FC = () => {
   // Global hotkeys & desktop ergonomics (block middle-click browser scroll circle + add Ctrl+O Open Book)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key.toLowerCase() === 'x' || e.code === 'KeyX')) {
+        const state = useAppStore.getState()
+        if (state.currentView === 'reader' && state.activeBook) {
+          e.preventDefault()
+          if (state.isImmersiveFullscreen) {
+            state.setImmersiveFullscreen(false)
+            window.desktopAPI?.setFullscreen?.(false)
+          }
+          state.toggleSettingsDrawer(false)
+          state.toggleBookMetadataModal(false)
+          state.setActiveBook(null)
+          state.setView('library')
+          return
+        }
+      }
       if (e.key === 'Control' || e.key === 'F5') {
         e.preventDefault()
         return

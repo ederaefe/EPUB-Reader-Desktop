@@ -46,7 +46,8 @@ const HOTKEYS_RIGHT: Array<{ label: string; keys: string[] }> = [
   { label: 'Search in book', keys: ['Ctrl + F'] },
   { label: 'Switch theme', keys: ['F9'] },
   { label: 'Switch column count', keys: ['F10'] },
-  { label: 'Switch fullscreen', keys: ['F11'] }
+  { label: 'Switch fullscreen', keys: ['F11'] },
+  { label: 'Back to library', keys: ['Alt + X'] }
 ]
 
 export const FullSettingsModal: React.FC = () => {

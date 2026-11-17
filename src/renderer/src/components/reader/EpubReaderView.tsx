@@ -134,6 +134,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const bookInitialCfiRef = useRef(book.progressCfi)
   const lastLoadedBookKeyRef = useRef<string>('')
   const navigateStepRef = useRef<(dir: 'next' | 'prev') => Promise<void>>(async () => {})
+  const onBackRef = useRef(onBack)
+  onBackRef.current = onBack
   const hasMountedFullscreenRef = useRef(false)
 
   bookIdRef.current = book.id
@@ -430,6 +432,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
     })
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key.toLowerCase() === 'x' || e.code === 'KeyX')) {
+        e.preventDefault()
+        e.stopPropagation()
+        onBackRef.current()
+        return
+      }
       // Keep bare Control key and destructive/zoom Ctrl combos unresponsive
       if (e.key === 'Control' || e.key === 'F5') {
         e.preventDefault()

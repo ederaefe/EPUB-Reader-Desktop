@@ -83,6 +83,6 @@ The initial glassmorphic web prototype ("Encapsulated Obsidian Glassmorphism") w
 
 ## 5. Iconography & Interaction Restraint
 - **Icon System**: Lucide React (`14px–16px` crisp vector strokes) paired with native tooltips (`title` / `aria-label`).
-- **3-Tab Reading Settings Command Center (`SettingsDrawer.tsx`)**: Organizes all reading controls into clean, borderless spacing-driven tabs (**Display**, **Scroll**, and **View**) with a quiet footer **Metadata** text trigger opening the centered `BookMetadataModal`, keeping `ReaderTopBar` minimal (exclusively Fullscreen + Settings on the right).
+- **3-Tab Reading Settings Command Center (`SettingsDrawer.tsx`)**: Organizes all reading controls into clean, borderless spacing-driven tabs (**Display**, **Scroll**, and **More**) with a quiet footer **Metadata** text trigger opening the centered `BookMetadataModal`, keeping `ReaderTopBar` minimal (exclusively Fullscreen + Settings on the right).
 - **Immersive Restraint**: Bottom progress displays 5 subtle dots at rest and expands to `currentPage / totalPages` + interactive scrubber on hover; Immersive Fullscreen (`F11`) hides all window and reader chrome except book text and an optional muted bottom-right Auto-Scroll countdown.
 - **Mutually Exclusive Drawers**: Opening any reader drawer (`Contents`, `Notes`, `Bookmarks`, `Find`, `Settings`) automatically closes any other open drawer and suspends active Auto-Scroll countdowns until dismissed.

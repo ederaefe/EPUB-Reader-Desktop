@@ -21,7 +21,7 @@ import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
 
-type SettingsTab = 'display' | 'scroll' | 'view'
+type SettingsTab = 'display' | 'scroll' | 'more'
 
 const THEME_SWATCHES: Array<{
   id: 'day' | 'light-sepia' | 'dark-sepia' | 'night'
@@ -171,7 +171,7 @@ export const SettingsDrawer: React.FC = () => {
 
       {/* Calm, Borderless Reading Settings Panel */}
       <aside className="fixed top-10 right-3 bottom-3 w-[320px] bg-[var(--app-surface)] border border-[var(--app-border)] rounded-[10px] z-50 flex flex-col justify-between shadow-[0_24px_64px_rgba(0,0,0,0.55)] select-none app-no-drag overflow-hidden animate-in slide-in-from-right-2 fade-in duration-150">
-        {/* Header + Borderless 3-Tab Navigation (Display | Scroll | View) */}
+        {/* Header + Borderless 3-Tab Navigation (Display | Scroll | More) */}
         <div className="px-4 pt-3.5 pb-0 shrink-0">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[13px] font-semibold tracking-[-0.015em] text-[var(--app-text-strong)]">
@@ -197,7 +197,7 @@ export const SettingsDrawer: React.FC = () => {
               [
                 { id: 'display', label: 'Display' },
                 { id: 'scroll', label: 'Scroll' },
-                { id: 'view', label: 'View' }
+                { id: 'more', label: 'More' }
               ] as const
             ).map((tab) => {
               const active = activeTab === tab.id
@@ -343,6 +343,46 @@ export const SettingsDrawer: React.FC = () => {
                         </button>
                       )
                     })}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold text-[var(--app-text)]">
+                    Page layout
+                  </span>
+                  <div
+                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[144px]"
+                    role="radiogroup"
+                    aria-label="Page layout"
+                  >
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={settings.pageSpread === 'single'}
+                      onClick={() => updateSettings({ pageSpread: 'single' })}
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
+                        settings.pageSpread === 'single'
+                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
+                      }`}
+                    >
+                      <Square className="w-2.5 h-2.5" />
+                      <span>Single</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={settings.pageSpread === 'double'}
+                      onClick={() => updateSettings({ pageSpread: 'double' })}
+                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
+                        settings.pageSpread === 'double'
+                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
+                      }`}
+                    >
+                      <Columns className="w-2.5 h-2.5" />
+                      <span>Spread</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -770,137 +810,95 @@ export const SettingsDrawer: React.FC = () => {
             </div>
           )}
 
-          {/* ===================== TAB 3: VIEW ===================== */}
-          {activeTab === 'view' && (
+          {/* ===================== TAB 3: MORE ===================== */}
+          {activeTab === 'more' && (
             <div className="space-y-6">
-              {/* Unified Persistent PDF / EPUB View Switcher (PDF books only) */}
-              {isPdf && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[12px] font-semibold text-[var(--app-text)]">
-                        View as
+              {/* View Mode Switcher: PDF | EPUB */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-semibold text-[var(--app-text)]">
+                      View as
+                    </div>
+                    {isPdf && pdfViewMode === 'original' && (
+                      <div className="text-[10px] font-normal text-[var(--app-text-subtle)]">
+                        convert
                       </div>
-                      {pdfViewMode === 'original' && (
-                        <div className="text-[10px] font-normal text-[var(--app-text-subtle)]">
-                          convert
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[124px] shrink-0"
-                      role="radiogroup"
-                      aria-label="View format"
-                    >
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={pdfViewMode === 'original'}
-                        disabled={isConvertingPdf}
-                        onClick={() => handleSelectPdfView('original')}
-                        className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                          pdfViewMode === 'original'
-                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                            : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                        }`}
-                      >
-                        PDF
-                      </button>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={pdfViewMode === 'reflow'}
-                        disabled={isConvertingPdf}
-                        onClick={() => handleSelectPdfView('reflow')}
-                        className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                          pdfViewMode === 'reflow'
-                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                            : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                        }`}
-                      >
-                        {isConvertingPdf ? '...' : 'EPUB'}
-                      </button>
-                    </div>
+                    )}
                   </div>
 
-                  {isConvertingPdf && pdfConvertProgress && (
-                    <div className="space-y-1">
-                      <div className="w-full h-1 bg-[var(--app-surface-2)] rounded overflow-hidden">
-                        <div
-                          className="h-full bg-[var(--app-accent)] transition-all duration-150"
-                          style={{ width: `${pdfConvertProgress.percent}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-[10px] font-normal text-[var(--app-text-subtle)]">
-                        <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
-                        <span className="font-mono tabular-nums">{pdfConvertProgress.percent}%</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Page Layout & PDF Zoom */}
-              <div className="space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-[var(--app-text)]">
-                    Page layout
-                  </span>
                   <div
-                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[144px]"
+                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[124px] shrink-0"
                     role="radiogroup"
-                    aria-label="Page layout"
+                    aria-label="View format"
                   >
                     <button
                       type="button"
                       role="radio"
-                      aria-checked={settings.pageSpread === 'single'}
-                      onClick={() => updateSettings({ pageSpread: 'single' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
-                        settings.pageSpread === 'single'
+                      aria-checked={isPdf ? pdfViewMode === 'original' : false}
+                      disabled={!isPdf || isConvertingPdf}
+                      onClick={() => handleSelectPdfView('original')}
+                      title={!isPdf ? 'Native EPUB book' : undefined}
+                      className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
+                        isPdf && pdfViewMode === 'original'
                           ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                          : !isPdf
+                          ? 'text-[var(--app-text-subtle)] opacity-40'
                           : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
                       }`}
                     >
-                      <Square className="w-2.5 h-2.5" />
-                      <span>Single</span>
+                      PDF
                     </button>
                     <button
                       type="button"
                       role="radio"
-                      aria-checked={settings.pageSpread === 'double'}
-                      onClick={() => updateSettings({ pageSpread: 'double' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
-                        settings.pageSpread === 'double'
+                      aria-checked={!isPdf || pdfViewMode === 'reflow'}
+                      disabled={isConvertingPdf}
+                      onClick={() => handleSelectPdfView('reflow')}
+                      className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
+                        !isPdf || pdfViewMode === 'reflow'
                           ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
                           : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
                       }`}
                     >
-                      <Columns className="w-2.5 h-2.5" />
-                      <span>Spread</span>
+                      {isConvertingPdf ? '...' : 'EPUB'}
                     </button>
                   </div>
                 </div>
 
-                {isOriginalPdf && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-semibold text-[var(--app-text)]">
-                      Page zoom
-                    </span>
-                    <ValueStepper
-                      value={Math.round(pdfZoom * 100)}
-                      min={50}
-                      max={300}
-                      step={15}
-                      unit="%"
-                      ariaLabel="PDF zoom"
-                      onChange={(val) => setPdfZoom(val / 100)}
-                      compact
-                    />
+                {isConvertingPdf && pdfConvertProgress && (
+                  <div className="space-y-1">
+                    <div className="w-full h-1 bg-[var(--app-surface-2)] rounded overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--app-accent)] transition-all duration-150"
+                        style={{ width: `${pdfConvertProgress.percent}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] font-normal text-[var(--app-text-subtle)]">
+                      <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
+                      <span className="font-mono tabular-nums">{pdfConvertProgress.percent}%</span>
+                    </div>
                   </div>
                 )}
               </div>
+
+              {isOriginalPdf && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold text-[var(--app-text)]">
+                    Page zoom
+                  </span>
+                  <ValueStepper
+                    value={Math.round(pdfZoom * 100)}
+                    min={50}
+                    max={300}
+                    step={15}
+                    unit="%"
+                    ariaLabel="PDF zoom"
+                    onChange={(val) => setPdfZoom(val / 100)}
+                    compact
+                  />
+                </div>
+              )}
 
               {/* Quiet Borderless Utility Rows */}
               <div className="space-y-1 pt-2">
