@@ -187,6 +187,45 @@ export const LibraryView: React.FC = () => {
     return filtered
   }, [books, selectedCategory, formatFilter, searchQuery, sortBy, sortDir])
 
+  // Active custom category when browsing a user-created shelf
+  const activeCustomCategory = useMemo(() => {
+    if (
+      selectedCategory === 'all' ||
+      selectedCategory === 'recent' ||
+      selectedCategory === 'favorites' ||
+      selectedCategory === 'read' ||
+      selectedCategory === 'deleted'
+    ) {
+      return null
+    }
+    return categories.find((c) => String(c.id) === selectedCategory) || null
+  }, [selectedCategory, categories])
+
+  // Human-readable active shelf label for the decluttered top bar
+  const shelfTitle = useMemo(() => {
+    if (activeCustomCategory) return activeCustomCategory.name
+    if (selectedCategory === 'recent') return 'Recently Read'
+    if (selectedCategory === 'favorites') return 'Favorites'
+    if (selectedCategory === 'read') return 'Read'
+    if (selectedCategory === 'deleted') return 'Deleted'
+    return 'All Books'
+  }, [selectedCategory, activeCustomCategory])
+
+  // Keyboard shortcut: Ctrl+O opens the unified Import modal in Library View
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        const tag = (e.target as HTMLElement | null)?.tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return
+        if (selectedCategory === 'deleted') return
+        e.preventDefault()
+        setIsImportModalOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedCategory])
+
   // Active book for Quick-Resume bar
   const resumeBook = useMemo(() => {
     const active = books.filter((b) => !b.isDeleted && b.lastOpenedAt)
@@ -195,9 +234,9 @@ export const LibraryView: React.FC = () => {
   }, [books])
 
   // Process & add a single file into DB with thumbnail extraction
-  const processAndAddFile = async (filePath: string) => {
+  const processAndAddFile = async (filePath: string, targetCategoryId: number | null = null) => {
     const ext = filePath.split('.').pop()?.toLowerCase() || 'epub'
-    let targetPath = filePath
+    const targetPath = filePath
     let format: 'epub' | 'pdf' | 'mobi' | 'txt' = 'epub'
 
     if (ext === 'pdf') {
@@ -226,26 +265,39 @@ export const LibraryView: React.FC = () => {
         progressPercent: 0,
         currentPage: 1,
         totalPages: meta.totalPages || 100,
-        categoryId: null,
+        categoryId: targetCategoryId,
         isFavorite: false,
         isRead: false,
         isDeleted: false
       })
+      return true
     } catch (err: any) {
       console.error('Error importing book:', filePath, err)
+      return false
     }
   }
 
   // Import Files Handler
   const handleImportFiles = async () => {
+    const targetCatId = activeCustomCategory?.id ?? null
+    const targetCatName = activeCustomCategory?.name ?? null
     setIsLoading(true)
     setStatusMessage('Selecting files...')
     const paths = await window.desktopAPI?.openFiles()
     if (paths && paths.length > 0) {
+      let importedCount = 0
       for (const p of paths) {
-        await processAndAddFile(p)
+        if (await processAndAddFile(p, targetCatId)) importedCount++
       }
       await loadData()
+      if (importedCount > 0) {
+        const noun = importedCount === 1 ? 'book' : 'books'
+        showToast(
+          targetCatName
+            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
+            : `Imported ${importedCount} ${noun}`
+        )
+      }
     }
     setIsLoading(false)
     setStatusMessage(null)
@@ -253,19 +305,44 @@ export const LibraryView: React.FC = () => {
 
   // Bulk Folder Import Handler
   const handleImportFolder = async () => {
+    const targetCatId = activeCustomCategory?.id ?? null
+    const targetCatName = activeCustomCategory?.name ?? null
     setIsLoading(true)
     setStatusMessage('Scanning folder...')
     const folder = await window.desktopAPI?.openFolder()
     if (folder) {
       const files = await window.desktopAPI.scanFolder(folder)
       setStatusMessage(`Found ${files.length} books. Importing...`)
+      let importedCount = 0
       for (const f of files) {
-        await processAndAddFile(f)
+        if (await processAndAddFile(f, targetCatId)) importedCount++
       }
       await loadData()
+      if (importedCount > 0) {
+        const noun = importedCount === 1 ? 'book' : 'books'
+        showToast(
+          targetCatName
+            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
+            : `Imported ${importedCount} ${noun} from folder`
+        )
+      }
     }
     setIsLoading(false)
     setStatusMessage(null)
+  }
+
+  // Bulk assign existing library books into the active custom category
+  const handleBulkAddToCategory = async (bookIds: number[], categoryId: number) => {
+    if (bookIds.length === 0) return
+    await Promise.all(bookIds.map((id) => db.books.update(id, { categoryId })))
+    await loadData()
+    const targetCat = categories.find((c) => c.id === categoryId)
+    const noun = bookIds.length === 1 ? 'book' : 'books'
+    showToast(
+      targetCat
+        ? `Added ${bookIds.length} ${noun} to "${targetCat.name}"`
+        : `Updated ${bookIds.length} ${noun}`
+    )
   }
 
   // Open Book in Reader
@@ -288,7 +365,7 @@ export const LibraryView: React.FC = () => {
       setActiveBook(book, buffer)
       setView('reader')
     } catch (e: any) {
-      alert(`Could not open file: ${e.message}`)
+      showToast(`Could not open file: ${e.message}`)
     } finally {
       setIsLoading(false)
     }
@@ -298,8 +375,11 @@ export const LibraryView: React.FC = () => {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const targetCatId = activeCustomCategory?.id ?? null
+      const targetCatName = activeCustomCategory?.name ?? null
       setIsLoading(true)
-      for (let i = 0; i < e.dataTransfer.files.length; i++) {
+      const count = e.dataTransfer.files.length
+      for (let i = 0; i < count; i++) {
         const file = e.dataTransfer.files[i]
         const buffer = await file.arrayBuffer()
         const ext = file.name.split('.').pop()?.toLowerCase() || 'epub'
@@ -331,7 +411,7 @@ export const LibraryView: React.FC = () => {
           progressPercent: 0,
           currentPage: 1,
           totalPages: 100,
-          categoryId: null,
+          categoryId: targetCatId,
           isFavorite: false,
           isRead: false,
           isDeleted: false
@@ -339,37 +419,45 @@ export const LibraryView: React.FC = () => {
       }
       await loadData()
       setIsLoading(false)
+      const noun = count === 1 ? 'book' : 'books'
+      showToast(
+        targetCatName
+          ? `Added ${count} ${noun} to "${targetCatName}"`
+          : `Imported ${count} ${noun}`
+      )
     }
   }
 
+  const canShowAddCard = selectedCategory !== 'deleted' && searchQuery.trim() === ''
+
   return (
-    <div className="flex-1 flex overflow-hidden bg-[#1c1f26]">
+    <div className="flex-1 flex overflow-hidden bg-[#1c1f26] relative">
       {/* Left Sidebar */}
       <Sidebar counts={counts} categories={categories} categoryCounts={categoryCounts} onRefresh={loadData} />
 
       {/* Main Catalog View */}
       <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#1c1f26]">
-        {/* Top Docked Action Strip (1:1 Icecream Reader) */}
-        <header className="h-10 bg-[#171a21] border-b border-[#232732] px-3 flex items-center justify-between select-none shrink-0">
-          {/* Left Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleImportFiles}
-              className="ice-btn-dark px-3 h-7 text-xs flex items-center gap-1.5 rounded-[2px]"
-              title="Add book from computer (Ctrl+O)"
-            >
-              <Plus className="w-3.5 h-3.5 text-[#2a69df]" />
-              <span>Add book</span>
-            </button>
-
-            <button
-              onClick={handleImportFolder}
-              className="ice-btn-dark px-3 h-7 text-xs flex items-center gap-1.5 rounded-[2px]"
-              title="Add books from folder"
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-[#8b949e]" />
-              <span>Add folder</span>
-            </button>
+        {/* Decluttered Top Docked Action Strip */}
+        <header className="h-10 bg-[#171a21] border-b border-[#232732] px-4 flex items-center justify-between select-none shrink-0">
+          {/* Left Context: Active Shelf Label */}
+          <div className="flex items-center gap-2 min-w-0">
+            {activeCustomCategory && (
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: activeCustomCategory.color }}
+              />
+            )}
+            <span className="text-[12px] font-semibold text-[#c8d1dc] truncate">
+              {shelfTitle}
+            </span>
+            {formatFilter && (
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 bg-[#1c1f26] border border-[#2d323f] text-[#8b949e] rounded-[2px]">
+                {formatFilter}
+              </span>
+            )}
+            <span className="text-[11px] text-[#6e7681]">
+              {filteredBooks.length}
+            </span>
           </div>
 
           {/* Right Controls: Search & View Toggle */}
@@ -454,15 +542,17 @@ export const LibraryView: React.FC = () => {
           className="flex-1 overflow-y-auto p-5"
         >
           {statusMessage && (
-            <div className="mb-4 px-3 py-2 bg-[#232732] border border-[#2a69df]/40 text-[#79c0ff] text-xs rounded">
+            <div className="mb-4 px-3 py-2 bg-[#232732] border border-[#2a69df]/40 text-[#79c0ff] text-xs rounded-[2px]">
               {statusMessage}
             </div>
           )}
 
-          {filteredBooks.length === 0 ? (
+          {filteredBooks.length === 0 && !canShowAddCard ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 select-none">
               <p className="text-[13px] text-[#8b949e] mb-6">
-                No books found in &quot;{selectedCategory === 'recent' ? 'Recently Read' : selectedCategory === 'favorites' ? 'Favorites' : selectedCategory === 'read' ? 'Read' : selectedCategory === 'deleted' ? 'Deleted' : 'All'}&quot;.
+                {searchQuery.trim()
+                  ? `No books matching "${searchQuery.trim()}".`
+                  : `No books found in "${shelfTitle}".`}
               </p>
               <div className="opacity-20 flex items-center justify-center relative w-24 h-24">
                 <div className="flex gap-1.5 items-end">
@@ -479,6 +569,14 @@ export const LibraryView: React.FC = () => {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="flex flex-wrap gap-5">
+              {canShowAddCard && (
+                <AddBookCard
+                  onClick={() => setIsImportModalOpen(true)}
+                  viewMode="grid"
+                  disabled={isLoading}
+                  categoryName={activeCustomCategory?.name ?? null}
+                />
+              )}
               {filteredBooks.map((book) => (
                 <BookCard
                   key={book.id}
@@ -491,7 +589,15 @@ export const LibraryView: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="bg-[#1f232d] border border-[#2b2f3a] rounded divide-y divide-[#2b2f3a]">
+            <div className="bg-[#1f232d] border border-[#2b2f3a] rounded-[2px] divide-y divide-[#2b2f3a]">
+              {canShowAddCard && (
+                <AddBookCard
+                  onClick={() => setIsImportModalOpen(true)}
+                  viewMode="list"
+                  disabled={isLoading}
+                  categoryName={activeCustomCategory?.name ?? null}
+                />
+              )}
               {filteredBooks.map((book) => (
                 <BookCard
                   key={book.id}
@@ -511,6 +617,30 @@ export const LibraryView: React.FC = () => {
       </div>
 
       <SettingsDrawer />
+
+      {/* Unified Import & Bulk Category Assignment Modal */}
+      <ImportBooksModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onAddFiles={handleImportFiles}
+        onAddFolder={handleImportFolder}
+        targetCategory={activeCustomCategory}
+        allBooks={books}
+        categories={categories}
+        onBulkAddToCategory={handleBulkAddToCategory}
+      />
+
+      {/* Contextual Toast Notification */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-16 right-5 z-50 flex items-center gap-2 px-3.5 py-2 bg-[#171a21] border border-[#2a69df]/60 text-[#e2e8f0] text-xs rounded-[2px] shadow-xl select-none"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 text-[#58a6ff] shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   )
 }

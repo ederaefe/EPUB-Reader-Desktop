@@ -290,3 +290,35 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
    - Made drawer mutation callbacks optional with built-in Dexie fallbacks so both `EpubReaderView` and `PdfReaderView` share full bookmark and note management seamlessly.
 3. **Library Import Experience & Packaging (`AddBookCard.tsx`, `ImportBooksModal.tsx`, `electron-builder.config.ts`)**:
    - Added interactive `AddBookCard` and `ImportBooksModal` for streamlined book/folder import and refreshed branding icons and `electron-builder.config.ts` for desktop packaging.
+
+
+---
+
+## Increment 16: Comprehensive Icecream-Faithful Notes, Highlights & Bookmarks Engine
+
+### Architecture & Root-Cause Resolution
+1. **Dedicated Annotation & Excerpt Engine (`src/renderer/src/services/annotationService.ts`)**:
+   - **Theme-Aware SVG Highlighting**: Replaced `epub.js`'s default `{ fill: 'yellow', 'fill-opacity': '0.3', 'mix-blend-mode': 'multiply' }` (which rendered highlights nearly invisible on dark backgrounds) with theme-aware SVG styling (`mix-blend-mode: screen` on `night` and `dark-sepia`; `mix-blend-mode: multiply` on `day` and `light-sepia`) across all 6 authentic Icecream styles (`yellow`, `blue`, `green`, `purple`, `red`, and true stroke `underline`).
+   - **Dual-Anchor Persistence (`db/index.ts` v2)**: Extended Dexie schema to store `pageNumber`, `chapterTitle`, `href`, `updatedAt`, and ported Icecream's `IceRange` (`makeXPath` + text offsets) alongside `EpubCFI` on every annotation, plus `excerpt`, `chapterTitle`, `xpath`, and `progressPercent` on bookmarks, and `notesCount` on books.
+   - **Auto-Excerpt Bookmarking (`extractVisiblePageData`)**: Ported Icecream `jsengine.js`'s `getFirstVisibleElement()` / `getBookmarkData()` so every bookmark captures an authentic first-sentence excerpt from the bookmarked spread.
+   - **Multi-Format Notes Export**: Added standalone Icecream-styled HTML report export, Markdown export, and plain-text clipboard copy (`exportNotesToHtml`, `exportNotesToMarkdown`, `exportNotesToPlainText`).
+2. **Interactive On-Page Highlight Popover (`src/renderer/src/components/reader/AnnotationPopover.tsx`)**:
+   - Clicking any existing highlight on the page opens a viewport-clamped popover supporting live color switching, inline comment editing (`Ctrl+Enter`), quote+note copy, Read Aloud (TTS), and synchronized deletion from both IndexedDB and the live rendition.
+3. **Reader Selection, Hydration & Bookmark Ribbon (`EpubReaderView.tsx`, `SelectionPopup.tsx`, `ReaderTopBar.tsx`, `PdfReaderView.tsx`)**:
+   - Fixed off-screen selection popup coordinates by computing offsets relative to `frameElement.getBoundingClientRect()` and clamping strictly inside viewport bounds.
+   - Added full annotation hydration on book load and theme change, automatic iframe selection cleanup after highlighting, duplicate-safe highlight/bookmark guards, `Ctrl+B` instant bookmark toggle, clickable top-right **On-Page Bookmark Ribbon**, and custom contextual toasts with **Undo** support.
+4. **Flagship Drawers & Sortable Library Notes Column (`NotesDrawer.tsx`, `BookmarksDrawer.tsx`, `LibraryView.tsx`, `BookCard.tsx`)**:
+   - Upgraded `NotesDrawer` with live count, search, all 6 color + commented-only filters, sort (`Page order`, `Newest`, `Oldest`, `Color`), Chapter Grouping toggle, inline edit + live recolor, HTML/Markdown/Text export, and inline 2-step Clear All confirmation.
+   - Upgraded `BookmarksDrawer` with auto-excerpts, inline rename, search, sort, duplicate-safe page toggle, and Clear All confirmation.
+   - Wired live `notesCount` display in `BookCard` list view and interactive ascending/descending sorting across all 5 library columns (`Title`, `Author`, `Date`, `Notes`, `Progress`).
+
+
+
+---
+
+## Increment 16: Decluttered Library Toolbar, First-Slot Book Import Card & Category Bulk Add
+
+### Summary
+- **Top Toolbar Declutter (`LibraryView.tsx`)**: Removed the `+ Add book` and `Add folder` buttons from the top catalog header strip, replacing the left slot with a clean active shelf label and item count while preserving Search and Grid/List controls on the right.
+- **First-Slot Book-Shaped Import Card (`AddBookCard.tsx`)**: Added a book-proportioned dashed `+` slot rendered in the very first position of both Grid View and List View (across main shelves and custom categories, hidden in Deleted/Trash and active search).
+- **Unified Import & Bulk Category Modal (`ImportBooksModal.tsx`)**: Clicking the `+` book slot (or pressing `Ctrl+O`) opens a matte desktop dialog offering **Add Book** (file explorer) and **Add Folder** (recursive directory scan), automatically assigning newly imported books to the active custom category when browsing one. When inside a custom category, the modal also provides a **Bulk Add from Main Library** workflow with live filtering, select-all/deselect-all, and multi-select bulk assignment into that category, paired with a contextual bottom-right toast confirmation.
