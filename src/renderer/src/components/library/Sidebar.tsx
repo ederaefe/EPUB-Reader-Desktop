@@ -50,7 +50,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
     setFormatFilter,
     toggleSettingsDrawer,
     toggleFullSettingsModal,
-    toggleHelpModal
+    toggleHelpModal,
+    openConfirmDialog,
+    showToast
   } = useAppStore()
 
   const [formatsExpanded, setFormatsExpanded] = useState(false)
@@ -72,14 +74,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
     onRefresh()
   }
 
-  const handleDeleteCategory = async (e: React.MouseEvent, catId: number) => {
+  const handleDeleteCategory = (e: React.MouseEvent, catId: number) => {
     e.stopPropagation()
-    await db.categories.delete(catId)
-    await db.books.where('categoryId').equals(catId).modify({ categoryId: null })
-    if (selectedCategory === String(catId)) {
-      setSelectedCategory('all')
-    }
-    onRefresh()
+    const cat = categories.find((c) => c.id === catId)
+    const catName = cat?.name || 'this category'
+    const count = categoryCounts ? categoryCounts[catId] || 0 : 0
+    openConfirmDialog({
+      title: `Delete Category "${catName}"?`,
+      message:
+        count > 0
+          ? `"${catName}" contains ${count} book${count === 1 ? '' : 's'}. The books will not be deleted, but will be moved to Uncategorized. This action cannot be undone.`
+          : `Are you sure you want to delete the category "${catName}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Category',
+      cancelLabel: 'Cancel',
+      danger: true,
+      onConfirm: async () => {
+        await db.categories.delete(catId)
+        await db.books.where('categoryId').equals(catId).modify({ categoryId: null })
+        if (selectedCategory === String(catId)) {
+          setSelectedCategory('all')
+        }
+        onRefresh()
+        showToast(`Deleted category "${catName}"`, 'info')
+      }
+    })
   }
 
   const isNavActive = (cat: string, fmt: string | null = null) => {

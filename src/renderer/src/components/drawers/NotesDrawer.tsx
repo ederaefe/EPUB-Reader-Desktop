@@ -40,7 +40,7 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
   onUpdateAnnotation: onUpdateAnnotationProp,
   onClearAllAnnotations: onClearAllAnnotationsProp
 }) => {
-  const { isNotesDrawerOpen, toggleNotesDrawer, activeBook, annotationsVersion } = useAppStore()
+  const { isNotesDrawerOpen, toggleNotesDrawer, activeBook, annotationsVersion, openConfirmDialog } = useAppStore()
   const [annotations, setAnnotations] = useState<Annotation[]>([])
 
   const onDeleteAnnotation = async (annotation: Annotation) => {
@@ -83,7 +83,6 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
   // UI feedback states
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
-  const [confirmClearAll, setConfirmClearAll] = useState(false)
   const [drawerNotice, setDrawerNotice] = useState<string | null>(null)
 
   const showNotice = (msg: string) => {
@@ -288,9 +287,21 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={async () => {
-                await onDeleteAnnotation(ann)
-                showNotice('Note deleted')
+              onClick={() => {
+                const snippet = ann.text
+                  ? `"${ann.text.slice(0, 50)}${ann.text.length > 50 ? '...' : ''}"`
+                  : 'this note'
+                openConfirmDialog({
+                  title: 'Delete Note?',
+                  message: `Are you sure you want to delete ${snippet}? This action cannot be undone.`,
+                  confirmLabel: 'Delete Note',
+                  cancelLabel: 'Cancel',
+                  danger: true,
+                  onConfirm: async () => {
+                    await onDeleteAnnotation(ann)
+                    showNotice('Note deleted')
+                  }
+                })
               }}
               className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-[#f85149] hover:bg-[#2d3343] cursor-pointer"
               title="Delete note"
@@ -592,43 +603,29 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
             )}
           </div>
 
-          {/* Footer: Clear All with Inline Confirmation */}
+          {/* Footer: Clear All */}
           {annotations.length > 0 && (
             <div className="p-2 border-t border-[#232732] bg-[#14161c] shrink-0">
-              {confirmClearAll ? (
-                <div className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="text-[#f85149] font-medium">Delete all {annotations.length} notes?</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmClearAll(false)}
-                      className="ice-btn-dark px-2 h-6 text-[11px] rounded-[2px]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await onClearAllAnnotations()
-                        setConfirmClearAll(false)
-                        showNotice('All notes cleared')
-                      }}
-                      className="px-2.5 h-6 text-[11px] rounded-[2px] bg-[#c42b1c] hover:bg-[#d93829] text-white font-medium transition-colors"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmClearAll(true)}
-                  className="ice-btn-dark w-full h-7 text-[11px] gap-1.5 text-[#8b949e] hover:text-[#f85149] rounded-[2px]"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Clear all notes</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  openConfirmDialog({
+                    title: `Delete All ${annotations.length} Notes?`,
+                    message: `Are you sure you want to delete all ${annotations.length} notes and highlights for this book? This action cannot be undone.`,
+                    confirmLabel: `Delete All ${annotations.length} Notes`,
+                    cancelLabel: 'Cancel',
+                    danger: true,
+                    onConfirm: async () => {
+                      await onClearAllAnnotations()
+                      showNotice('All notes cleared')
+                    }
+                  })
+                }}
+                className="ice-btn-dark w-full h-7 text-[11px] gap-1.5 text-[#8b949e] hover:text-[#f85149] rounded-[2px] cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear all {annotations.length} notes</span>
+              </button>
             </div>
           )}
         </div>

@@ -21,6 +21,7 @@ import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { syncBookNotesCount } from '../../services/annotationService'
+import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
@@ -99,7 +100,6 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     bumpBookmarksVersion()
   }
   const [toc, setToc] = useState<TocItem[]>([])
-  const [isBottomHovered, setIsBottomHovered] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
 
@@ -552,58 +552,18 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         )}
       </div>
 
-      {/* Bottom Progress Scrubber (hidden in immersive fullscreen) */}
+      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
-        <footer
-          onMouseEnter={() => setIsBottomHovered(true)}
-          onMouseLeave={() => setIsBottomHovered(false)}
-          className="h-10 px-6 flex flex-col justify-end pb-2 relative z-30 select-none"
-        >
-          {isBottomHovered ? (
-            <div className="w-full flex flex-col gap-1 animate-fadeIn">
-              <div className="flex items-center justify-between text-[12px] text-white font-medium px-0.5">
-                <span>
-                  {currentPage} / {totalPages}
-                </span>
-                <div className="flex items-center gap-2 text-[11px] text-[#8b949e]">
-                  <button
-                    onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))}
-                    className="hover:text-white px-1"
-                    title="Zoom Out"
-                  >
-                    -
-                  </button>
-                  <span className="font-mono">{Math.round(zoom * 100)}%</span>
-                  <button
-                    onClick={() => setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))}
-                    className="hover:text-white px-1"
-                    title="Zoom In"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div className="w-full relative flex items-center h-4">
-                <input
-                  type="range"
-                  min="1"
-                  max={totalPages}
-                  value={currentPage}
-                  onChange={(e) => setCurrentPage(Number(e.target.value))}
-                  className="ice-slider w-full"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="w-full flex items-center justify-center pb-1 gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#6e7681]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-            </div>
-          )}
-        </footer>
+        <FluidClimaxProgressBar
+          progressPercent={totalPages > 0 ? (currentPage / totalPages) * 100 : 0}
+          book={book}
+          theme={settings.theme}
+          isImmersiveFullscreen={isImmersiveFullscreen}
+          onSeek={(val) => {
+            const targetPage = Math.max(1, Math.min(totalPages, Math.round((val / 100) * totalPages)))
+            setCurrentPage(targetPage)
+          }}
+        />
       )}
 
       {/* Drawers */}

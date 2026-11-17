@@ -3,6 +3,7 @@ import { Copy, Check, Trash2, Volume2, Underline, X, FileText, Save } from 'luci
 import type { Annotation, NoteColor } from '../../db'
 import { ICE_NOTE_COLOR_LIST, ICE_NOTE_COLORS } from '../../services/annotationService'
 import { ttsService } from '../../services/ttsService'
+import { useAppStore } from '../../stores/useAppStore'
 
 interface AnnotationPopoverProps {
   annotation: Annotation
@@ -19,6 +20,7 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
   onUpdate,
   onDelete
 }) => {
+  const { openConfirmDialog } = useAppStore()
   const [noteDraft, setNoteDraft] = useState(annotation.note || '')
   const [isEditingNote, setIsEditingNote] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -145,9 +147,21 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
             </button>
             <button
               type="button"
-              onClick={async () => {
-                await onDelete(annotation)
-                onClose()
+              onClick={() => {
+                const snippet = annotation.text
+                  ? `"${annotation.text.slice(0, 50)}${annotation.text.length > 50 ? '...' : ''}"`
+                  : 'this highlight'
+                openConfirmDialog({
+                  title: 'Delete Highlight?',
+                  message: `Are you sure you want to delete ${snippet}? This action cannot be undone.`,
+                  confirmLabel: 'Delete Highlight',
+                  cancelLabel: 'Cancel',
+                  danger: true,
+                  onConfirm: async () => {
+                    await onDelete(annotation)
+                    onClose()
+                  }
+                })
               }}
               className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-[#f85149] hover:bg-[#282c37] transition-colors cursor-pointer"
               title="Delete highlight"

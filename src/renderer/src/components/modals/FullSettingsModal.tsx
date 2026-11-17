@@ -23,6 +23,7 @@ import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { db, type AutoscrollMode } from '../../db'
 import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
+import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
 
 export const FullSettingsModal: React.FC = () => {

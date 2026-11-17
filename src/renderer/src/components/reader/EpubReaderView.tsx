@@ -26,6 +26,7 @@ import { SelectionPopup } from './SelectionPopup'
 import { AnnotationPopover } from './AnnotationPopover'
 import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
+import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
@@ -140,7 +141,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     []
   )
 
-  const [isBottomHovered, setIsBottomHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const openContextMenuRef = useRef<(x: number, y: number, text?: string, cfiRange?: string) => void>(() => {})
 
@@ -1763,44 +1763,28 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         </div>
       )}
 
-      {/* Bottom Floating Progress Area (hidden completely in immersive fullscreen) */}
+      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
-        <footer
-          onMouseEnter={() => setIsBottomHovered(true)}
-          onMouseLeave={() => setIsBottomHovered(false)}
-          className="h-10 px-6 flex flex-col justify-end pb-2 relative z-30 select-none transition-all duration-200"
-        >
-          {isBottomHovered ? (
-            <div className="w-full flex flex-col gap-1 animate-fadeIn">
-              <div className="text-[12px] text-white font-medium pl-0.5">
-                {currentPage || 1} / {totalPages || 1}
-              </div>
-              <div className="w-full relative flex items-center h-4">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={progressPercent || 0}
-                  onChange={(e) => {
-                    const val = Number(e.target.value)
-                    setProgressPercent(val)
-                    const cfi = epubBookRef.current?.locations.cfiFromPercentage(val / 100)
-                    if (cfi) renditionRef.current?.display(cfi)
-                  }}
-                  className="ice-slider w-full"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="w-full flex items-center justify-center pb-1 gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#6e7681]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-[#383d4a]" />
-            </div>
-          )}
-        </footer>
+        <FluidClimaxProgressBar
+          progressPercent={progressPercent || 0}
+          book={book}
+          theme={settings.theme}
+          isImmersiveFullscreen={isImmersiveFullscreen}
+          onSeek={(val) => {
+            setProgressPercent(val)
+            if (epubBookRef.current?.locations && epubBookRef.current.locations.length() > 0) {
+              const cfi = epubBookRef.current.locations.cfiFromPercentage(val / 100)
+              if (cfi) renditionRef.current?.display(cfi)
+            } else {
+              const spine = (epubBookRef.current?.spine as any)?.spineItems || (epubBookRef.current?.spine as any)
+              if (spine && spine.length) {
+                const targetIdx = Math.min(spine.length - 1, Math.max(0, Math.floor((val / 100) * spine.length)))
+                const item = spine[targetIdx]
+                if (item?.href) renditionRef.current?.display(item.href)
+              }
+            }
+          }}
+        />
       )}
 
       {/* Sliding Drawers */}

@@ -36,7 +36,8 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onRenameBookmark: onRenameBookmarkProp,
   onClearAllBookmarks: onClearAllBookmarksProp
 }) => {
-  const { isBookmarksDrawerOpen, toggleBookmarksDrawer, activeBook, bookmarksVersion } = useAppStore()
+  const { isBookmarksDrawerOpen, toggleBookmarksDrawer, activeBook, bookmarksVersion, openConfirmDialog, showToast } =
+    useAppStore()
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
 
   const isCurrentPageBookmarked =
@@ -92,7 +93,6 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   const [sortMode, setSortMode] = useState<BookmarkSort>('page')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [labelDraft, setLabelDraft] = useState('')
-  const [confirmClearAll, setConfirmClearAll] = useState(false)
 
   const loadBookmarks = async () => {
     if (!activeBook?.id) return
@@ -327,7 +327,18 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              if (bm.id) onDeleteBookmark(bm.id)
+                              const label = bm.label || `Page ${bm.pageNumber}`
+                              openConfirmDialog({
+                                title: 'Delete Bookmark?',
+                                message: `Are you sure you want to remove the bookmark for "${label}"?`,
+                                confirmLabel: 'Delete Bookmark',
+                                cancelLabel: 'Cancel',
+                                danger: true,
+                                onConfirm: async () => {
+                                  if (bm.id) await onDeleteBookmark(bm.id)
+                                  showToast('Bookmark deleted', 'info')
+                                }
+                              })
                             }}
                             className="w-5 h-5 flex items-center justify-center rounded-[2px] text-[#6e7681] hover:text-[#f85149] hover:bg-[#2d3343] opacity-70 group-hover:opacity-100 transition-opacity cursor-pointer"
                             title="Delete bookmark"
@@ -361,39 +372,26 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
           {/* Footer: Clear All Bookmarks */}
           {bookmarks.length > 0 && (
             <div className="p-2 border-t border-[#232732] bg-[#14161c] shrink-0">
-              {confirmClearAll ? (
-                <div className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="text-[#f85149] font-medium">Clear all {bookmarks.length} bookmarks?</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmClearAll(false)}
-                      className="ice-btn-dark px-2 h-6 text-[11px] rounded-[2px]"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await onClearAllBookmarks()
-                        setConfirmClearAll(false)
-                      }}
-                      className="px-2.5 h-6 text-[11px] rounded-[2px] bg-[#c42b1c] hover:bg-[#d93829] text-white font-medium transition-colors"
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmClearAll(true)}
-                  className="ice-btn-dark w-full h-7 text-[11px] gap-1.5 text-[#8b949e] hover:text-[#f85149] rounded-[2px]"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Clear all bookmarks</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  openConfirmDialog({
+                    title: `Clear All ${bookmarks.length} Bookmarks?`,
+                    message: `Are you sure you want to delete all ${bookmarks.length} bookmarks for this book? This action cannot be undone.`,
+                    confirmLabel: `Delete All ${bookmarks.length} Bookmarks`,
+                    cancelLabel: 'Cancel',
+                    danger: true,
+                    onConfirm: async () => {
+                      await onClearAllBookmarks()
+                      showToast('All bookmarks cleared', 'info')
+                    }
+                  })
+                }}
+                className="ice-btn-dark w-full h-7 text-[11px] gap-1.5 text-[#8b949e] hover:text-[#f85149] rounded-[2px] cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear all {bookmarks.length} bookmarks</span>
+              </button>
             </div>
           )}
         </div>

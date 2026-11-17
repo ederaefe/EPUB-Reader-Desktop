@@ -25,6 +25,7 @@ import { ttsService } from '../../services/ttsService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import type { AutoscrollMode } from '../../db'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
+import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
 
 type SettingsTab = 'display' | 'flow' | 'document'
@@ -338,36 +339,16 @@ export const SettingsDrawer: React.FC = () => {
               <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-medium text-[#888888]">Text size</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => updateSettings({ fontSize: Math.max(12, settings.fontSize - 1) })}
-                      className="w-6 h-6 rounded bg-[#0a0a0a] border border-white/[0.08] flex items-center justify-center text-[#aaaaaa] hover:text-white hover:border-white/20 cursor-pointer"
-                      title="Smaller text"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-10 text-center font-mono text-[11px] tabular-nums text-white">
-                      {settings.fontSize}px
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateSettings({ fontSize: Math.min(42, settings.fontSize + 1) })}
-                      className="w-6 h-6 rounded bg-[#0a0a0a] border border-white/[0.08] flex items-center justify-center text-[#aaaaaa] hover:text-white hover:border-white/20 cursor-pointer"
-                      title="Larger text"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
+                  <span className="font-mono text-[#ededed] text-[11px] tabular-nums">{settings.fontSize}px</span>
                 </div>
-                <input
-                  type="range"
-                  min="12"
-                  max="42"
-                  step="1"
+                <ValueStepper
                   value={settings.fontSize}
-                  onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })}
-                  className="ice-slider w-full"
+                  min={12}
+                  max={42}
+                  step={1}
+                  unit="px"
+                  ariaLabel="Font size"
+                  onChange={(val) => updateSettings({ fontSize: val })}
                 />
 
                 {/* Line Spacing 3-way segmented bar */}
@@ -426,19 +407,19 @@ export const SettingsDrawer: React.FC = () => {
 
                 {/* Dimming + Warm Light */}
                 <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-3">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="text-[#888888]">Screen dim</span>
                       <span className="font-mono text-[#ededed] tabular-nums">{settings.dimming}%</span>
                     </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="70"
-                      step="5"
+                    <ValueStepper
                       value={settings.dimming}
-                      onChange={(e) => updateSettings({ dimming: Number(e.target.value) })}
-                      className="ice-slider w-full"
+                      min={0}
+                      max={70}
+                      step={5}
+                      unit="%"
+                      ariaLabel="Screen dimming"
+                      onChange={(val) => updateSettings({ dimming: val })}
                     />
                   </div>
 
@@ -467,27 +448,29 @@ export const SettingsDrawer: React.FC = () => {
                           <span>Warmth</span>
                           <span className="font-mono text-[#f59e0b] tabular-nums">{settings.warmFilterTemp || 3200}K</span>
                         </div>
-                        <input
-                          type="range"
-                          min="2000"
-                          max="4500"
-                          step="100"
+                        <ValueStepper
                           value={settings.warmFilterTemp || 3200}
-                          onChange={(e) => updateSettings({ warmFilterTemp: Number(e.target.value) })}
-                          className="ice-slider w-full"
+                          min={2000}
+                          max={4500}
+                          step={100}
+                          unit="K"
+                          ariaLabel="Color temperature"
+                          onChange={(val) => updateSettings({ warmFilterTemp: val })}
+                          compact
                         />
                         <div className="flex items-center justify-between text-[10px] text-[#888888]">
                           <span>Strength</span>
                           <span className="font-mono text-white tabular-nums">{settings.warmFilterIntensity || 40}%</span>
                         </div>
-                        <input
-                          type="range"
-                          min="10"
-                          max="90"
-                          step="5"
+                        <ValueStepper
                           value={settings.warmFilterIntensity || 40}
-                          onChange={(e) => updateSettings({ warmFilterIntensity: Number(e.target.value) })}
-                          className="ice-slider w-full"
+                          min={10}
+                          max={90}
+                          step={5}
+                          unit="%"
+                          ariaLabel="Warm filter strength"
+                          onChange={(val) => updateSettings({ warmFilterIntensity: val })}
+                          compact
                         />
                       </div>
                     )}
@@ -512,22 +495,46 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
                     <div className="text-[11px] text-[#777777]">Hands-free page turning</div>
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={isAutoscrollActive}
-                    onClick={handleToggleAutoScroll}
-                    className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
-                      isAutoscrollActive ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
-                    }`}
-                    title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
-                  >
-                    <span
-                      className={`w-4 h-4 rounded-full shadow-sm block ${
-                        isAutoscrollActive ? 'bg-black' : 'bg-[#888888]'
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleToggleAutoScroll}
+                      className={`h-7 px-2.5 rounded flex items-center gap-1.5 text-xs font-semibold cursor-pointer transition-colors ${
+                        isAutoscrollActive
+                          ? 'bg-[#2a1416] text-[#f85149] hover:bg-[#3d181c] border border-[#f85149]/30'
+                          : 'bg-white text-black hover:bg-[#eaeaea]'
                       }`}
-                    />
-                  </button>
+                      title={isAutoscrollActive ? 'Pause auto-scroll' : 'Play auto-scroll'}
+                    >
+                      {isAutoscrollActive ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5" />
+                          <span>Pause</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Play</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isAutoscrollActive}
+                      onClick={handleToggleAutoScroll}
+                      className={`w-9 h-5 rounded-full p-0.5 flex items-center transition-colors cursor-pointer ${
+                        isAutoscrollActive ? 'bg-white justify-end' : 'bg-[#262626] justify-start'
+                      }`}
+                      title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded-full shadow-sm block ${
+                          isAutoscrollActive ? 'bg-black' : 'bg-[#888888]'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Clear 2-Card Mode Chooser */}
