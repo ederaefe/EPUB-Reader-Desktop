@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Book, UserSettings } from '../db'
+import type { Book, NoteColor, UserSettings } from '../db'
 
 interface AppState {
   // Navigation & views
@@ -13,6 +13,10 @@ interface AppState {
   activeBook: Book | null
   activeBookBuffer: ArrayBuffer | null
   currentChapterTitle: string
+  pdfViewMode: 'original' | 'reflow'
+  reflowEpubBuffer: ArrayBuffer | null
+  isConvertingPdf: boolean
+  pdfConvertProgress: { percent: number; stage: string } | null
 
   // Modals & drawers
   isTOCDrawerOpen: boolean
@@ -33,6 +37,11 @@ interface AppState {
   adaptiveWpm: number
   isImmersiveFullscreen: boolean
 
+  // Live reactive sync counters for Notes & Bookmarks
+  annotationsVersion: number
+  bookmarksVersion: number
+  lastNoteColor: NoteColor
+
   // User Settings (aligned with Semply Reader defaults)
   settings: UserSettings
 
@@ -44,6 +53,12 @@ interface AppState {
   setViewMode: (mode: 'grid' | 'list') => void
   setActiveBook: (book: Book | null, buffer?: ArrayBuffer | null) => void
   setCurrentChapterTitle: (title: string) => void
+  setPdfViewMode: (mode: 'original' | 'reflow') => void
+  setReflowEpubBuffer: (buffer: ArrayBuffer | null) => void
+  setPdfConversionState: (
+    converting: boolean,
+    progress?: { percent: number; stage: string } | null
+  ) => void
   toggleTOCDrawer: (open?: boolean) => void
   toggleNotesDrawer: (open?: boolean) => void
   toggleBookmarksDrawer: (open?: boolean) => void
@@ -59,6 +74,9 @@ interface AppState {
   setActiveTTSWord: (word: string | null) => void
   setAdaptiveWpm: (wpm: number) => void
   setImmersiveFullscreen: (active: boolean) => void
+  bumpAnnotationsVersion: () => void
+  bumpBookmarksVersion: () => void
+  setLastNoteColor: (color: NoteColor) => void
   updateSettings: (newSettings: Partial<UserSettings>) => void
 }
 
@@ -72,6 +90,10 @@ export const useAppStore = create<AppState>((set) => ({
   activeBook: null,
   activeBookBuffer: null,
   currentChapterTitle: '',
+  pdfViewMode: 'original',
+  reflowEpubBuffer: null,
+  isConvertingPdf: false,
+  pdfConvertProgress: null,
 
   isTOCDrawerOpen: false,
   isNotesDrawerOpen: false,
@@ -89,6 +111,9 @@ export const useAppStore = create<AppState>((set) => ({
   activeTTSWord: null,
   adaptiveWpm: 250,
   isImmersiveFullscreen: false,
+  annotationsVersion: 0,
+  bookmarksVersion: 0,
+  lastNoteColor: 'yellow',
 
   settings: {
     theme: 'night',
@@ -119,8 +144,18 @@ export const useAppStore = create<AppState>((set) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   setFormatFilter: (fmt) => set({ formatFilter: fmt }),
   setViewMode: (mode) => set({ viewMode: mode }),
-  setActiveBook: (book, buffer = null) => set({ activeBook: book, activeBookBuffer: buffer }),
+  setActiveBook: (book, buffer = null) =>
+    set({
+      activeBook: book,
+      activeBookBuffer: buffer,
+      pdfViewMode: 'original',
+      reflowEpubBuffer: null
+    }),
   setCurrentChapterTitle: (title) => set({ currentChapterTitle: title }),
+  setPdfViewMode: (mode) => set({ pdfViewMode: mode }),
+  setReflowEpubBuffer: (buffer) => set({ reflowEpubBuffer: buffer }),
+  setPdfConversionState: (converting, progress = null) =>
+    set({ isConvertingPdf: converting, pdfConvertProgress: progress }),
   toggleTOCDrawer: (open) =>
     set((s) => ({
       isTOCDrawerOpen: open ?? !s.isTOCDrawerOpen,
@@ -194,6 +229,9 @@ export const useAppStore = create<AppState>((set) => ({
         : {}),
       currentView: s.currentView
     })),
+  bumpAnnotationsVersion: () => set((s) => ({ annotationsVersion: s.annotationsVersion + 1 })),
+  bumpBookmarksVersion: () => set((s) => ({ bookmarksVersion: s.bookmarksVersion + 1 })),
+  setLastNoteColor: (color) => set({ lastNoteColor: color }),
   updateSettings: (newSettings) =>
     set((s) => {
       const merged: UserSettings = { ...s.settings, ...newSettings }

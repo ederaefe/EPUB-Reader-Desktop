@@ -4,6 +4,7 @@ import { db } from './db'
 import { TitleBar } from './components/ui/TitleBar'
 import { LibraryView } from './components/library/LibraryView'
 import { EpubReaderView } from './components/reader/EpubReaderView'
+import { PdfReaderView } from './components/reader/PdfReaderView'
 import { HelpModal } from './components/ui/HelpModal'
 import { FullSettingsModal } from './components/modals/FullSettingsModal'
 
@@ -15,9 +16,14 @@ export const App: React.FC = () => {
   const {
     currentView,
     activeBook,
+    pdfViewMode,
+    reflowEpubBuffer,
     isImmersiveFullscreen,
     setView,
     setActiveBook,
+    setPdfViewMode,
+    setReflowEpubBuffer,
+    setPdfConversionState,
     setImmersiveFullscreen,
     toggleHelpModal
   } = useAppStore()
@@ -54,15 +60,19 @@ export const App: React.FC = () => {
     seedDefaults()
   }, [])
 
-  // Sync OS fullscreen events from Electron main process
+  // Sync OS fullscreen events and PDF conversion progress from Electron main process
   useEffect(() => {
-    const unsubscribe = window.desktopAPI?.onFullscreenChange?.((fs) => {
+    const unsubFs = window.desktopAPI?.onFullscreenChange?.((fs) => {
       setImmersiveFullscreen(fs)
     })
+    const unsubPdf = window.desktopAPI?.onPdfConvertProgress?.((prog) => {
+      setPdfConversionState(prog.percent < 100, { percent: prog.percent, stage: prog.stage })
+    })
     return () => {
-      unsubscribe?.()
+      unsubFs?.()
+      unsubPdf?.()
     }
-  }, [setImmersiveFullscreen])
+  }, [setImmersiveFullscreen, setPdfConversionState])
 
   // Global hotkeys listener
   useEffect(() => {
@@ -98,6 +108,68 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [toggleHelpModal])
 
+  const handleActivatePdfReflow = async () => {
+    if (!activeBook || activeBook.format !== 'pdf') return
+    if (reflowEpubBuffer) {
+      setPdfViewMode('reflow')
+      return
+    }
+    if (!window.desktopAPI?.convertToEpub || !window.desktopAPI?.readFileBuffer) return
+    setPdfConversionState(true, { percent: 5, stage: 'Reflowing PDF with MuPDF engine...' })
+    try {
+      const res = await window.desktopAPI.convertToEpub({
+        pdfPath: activeBook.filePath,
+        mode: 'reflow-cache'
+      })
+      if (res.success && res.epubPath) {
+        const epubBuf = await window.desktopAPI.readFileBuffer(res.epubPath)
+        setReflowEpubBuffer(epubBuf)
+        setPdfViewMode('reflow')
+      } else {
+        alert(res.error || 'Could not reflow PDF.')
+      }
+    } catch (err: any) {
+      alert(err?.message || 'PDF reflow failed.')
+    } finally {
+      setPdfConversionState(false, null)
+    }
+  }
+
+  const handleExportPdfAsEpub = async () => {
+    if (!activeBook || activeBook.format !== 'pdf') return
+    if (!window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) return
+    const safeName = activeBook.title.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Converted_Book'
+    const chosenPath = await window.desktopAPI.showSaveDialog({
+      title: 'Export PDF as Offline EPUB',
+      defaultPath: `${safeName}.epub`,
+      filters: [{ name: 'EPUB eBook', extensions: ['epub'] }]
+    })
+    if (!chosenPath) return
+
+    setPdfConversionState(true, { percent: 5, stage: 'Converting PDF to EPUB...' })
+    try {
+      const res = await window.desktopAPI.convertToEpub({
+        pdfPath: activeBook.filePath,
+        outputPath: chosenPath,
+        mode: 'export'
+      })
+      if (!res.success) {
+        alert(res.error || 'PDF to EPUB export failed.')
+      }
+    } finally {
+      setPdfConversionState(false, null)
+    }
+  }
+
+  const handleBackToLibrary = () => {
+    if (isImmersiveFullscreen) {
+      setImmersiveFullscreen(false)
+      window.desktopAPI?.setFullscreen?.(false)
+    }
+    setActiveBook(null)
+    setView('library')
+  }
+
   const hideTitleBar = isImmersiveFullscreen && currentView === 'reader' && !!activeBook
 
   return (
@@ -107,17 +179,17 @@ export const App: React.FC = () => {
       <main className="flex-1 flex overflow-hidden">
         {currentView === 'library' || !activeBook ? (
           <LibraryView />
+        ) : activeBook.format === 'pdf' && pdfViewMode === 'original' ? (
+          <PdfReaderView
+            book={activeBook}
+            onBack={handleBackToLibrary}
+            onActivateReflow={handleActivatePdfReflow}
+            onExportEpub={handleExportPdfAsEpub}
+          />
         ) : (
           <EpubReaderView
             book={activeBook}
-            onBack={() => {
-              if (isImmersiveFullscreen) {
-                setImmersiveFullscreen(false)
-                window.desktopAPI?.setFullscreen?.(false)
-              }
-              setActiveBook(null)
-              setView('library')
-            }}
+            onBack={handleBackToLibrary}
           />
         )}
       </main>

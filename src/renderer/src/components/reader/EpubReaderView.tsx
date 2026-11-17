@@ -16,7 +16,7 @@ import {
   Settings
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
-import { db, type Book } from '../../db'
+import { db, type Annotation, type Book, type Bookmark as BookmarkItem, type IceRangeAnchor, type NoteColor } from '../../db'
 import { ReaderTopBar } from './ReaderTopBar'
 import { TOCDrawer, type TocItem } from '../drawers/TOCDrawer'
 import { NotesDrawer } from '../drawers/NotesDrawer'
@@ -24,6 +24,7 @@ import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SearchDrawer, type SearchMatch } from '../drawers/SearchDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { SelectionPopup } from './SelectionPopup'
+import { AnnotationPopover } from './AnnotationPopover'
 import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { RSVPSpeedReaderModal } from './RSVPSpeedReaderModal'
@@ -31,6 +32,14 @@ import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { getWarmFilterOverlay } from '../../services/colorTempService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
+import {
+  applyAnnotationToRendition,
+  captureIceRange,
+  extractVisiblePageData,
+  hydrateRenditionAnnotations,
+  removeAnnotationFromRendition,
+  syncBookNotesCount
+} from '../../services/annotationService'
 
 interface EpubReaderViewProps {
   book: Book
@@ -46,6 +55,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     settings,
     updateSettings,
     activeBookBuffer,
+    pdfViewMode,
+    reflowEpubBuffer,
+    setPdfViewMode,
     isTTSActive,
     setTTSActive,
     isAutoscrollActive,
@@ -67,7 +79,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     isFullSettingsModalOpen,
     setCurrentChapterTitle,
     isImmersiveFullscreen,
-    setImmersiveFullscreen
+    setImmersiveFullscreen,
+    annotationsVersion,
+    bookmarksVersion,
+    lastNoteColor,
+    bumpAnnotationsVersion,
+    bumpBookmarksVersion,
+    setLastNoteColor
   } = useAppStore()
 
   const [toc, setToc] = useState<TocItem[]>([])
@@ -83,6 +101,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [currentChapter, setCurrentChapter] = useState('')
   const [currentHref, setCurrentHref] = useState('')
   const [currentCfi, setCurrentCfi] = useState<string>(book.progressCfi || '')
+  const [currentEndCfi, setCurrentEndCfi] = useState<string>('')
   const [currentPage, setCurrentPage] = useState<number>(book.currentPage || 1)
   const [totalPages, setTotalPages] = useState<number>(book.totalPages || 1)
   const [progressPercent, setProgressPercent] = useState<number>(book.progressPercent || 0)
@@ -90,6 +109,40 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const [selectedText, setSelectedText] = useState<string | null>(null)
   const [selectedCfiRange, setSelectedCfiRange] = useState<string>('')
   const [selectionPos, setSelectionPos] = useState({ x: 0, y: 0 })
+  const [openNoteModalDirect, setOpenNoteModalDirect] = useState(false)
+  const selectedIceRangeRef = useRef<IceRangeAnchor | undefined>(undefined)
+  const selectionContentsRef = useRef<any>(null)
+
+  // Interactive clicked highlight popover state
+  const [activeAnnotation, setActiveAnnotation] = useState<{
+    annotation: Annotation
+    position: { x: number; y: number }
+  } | null>(null)
+  const annotationsListRef = useRef<Annotation[]>([])
+  const openAnnotationPopoverRef = useRef<(ann: Annotation, e: MouseEvent) => void>(() => {})
+
+  // Bookmarks state for instant current-page ribbon indicator
+  const [bookBookmarks, setBookBookmarks] = useState<BookmarkItem[]>([])
+  const toggleCurrentBookmarkRef = useRef<() => Promise<void>>(async () => {})
+
+  // Custom native desktop toast notification with optional Undo action
+  const [readerToast, setReaderToast] = useState<{
+    message: string
+    actionLabel?: string
+    onAction?: () => void
+  } | null>(null)
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const showToast = useCallback(
+    (message: string, actionLabel?: string, onAction?: () => void) => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+      setReaderToast({ message, actionLabel, onAction })
+      toastTimerRef.current = setTimeout(() => {
+        setReaderToast(null)
+      }, 3600)
+    },
+    []
+  )
+
   const [isBottomHovered, setIsBottomHovered] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const openContextMenuRef = useRef<(x: number, y: number, text?: string, cfiRange?: string) => void>(() => {})
@@ -101,6 +154,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   totalPagesRef.current = totalPages
   const currentCfiRef = useRef(currentCfi)
   currentCfiRef.current = currentCfi
+  const currentEndCfiRef = useRef(currentEndCfi)
+  currentEndCfiRef.current = currentEndCfi
+  const currentPageRef = useRef(currentPage)
+  currentPageRef.current = currentPage
+  const currentChapterRef = useRef(currentChapter)
+  currentChapterRef.current = currentChapter
+  const currentHrefRef = useRef(currentHref)
+  currentHrefRef.current = currentHref
+  const progressPercentRef = useRef(progressPercent)
+  progressPercentRef.current = progressPercent
+  const themeRef = useRef(settings.theme)
+  themeRef.current = settings.theme
   const [chapterFullText, setChapterFullText] = useState('')
 
   // Real-time manual reading cadence profiler refs
@@ -217,10 +282,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     contents.window.addEventListener('keydown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('touchstart', recordIframeActivity, { passive: true })
 
-    // Close context menu on left click or Escape inside the EPUB iframe
+    // Close context menu and popups on left click or Escape inside the EPUB iframe
     doc.addEventListener('mousedown', (e: MouseEvent) => {
       if (e.button === 0) {
         setContextMenu(null)
+        setActiveAnnotation(null)
+        setSelectedText(null)
+        setOpenNoteModalDirect(false)
       }
     })
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -231,9 +299,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         e.stopPropagation()
-        useAppStore.getState().toggleBookmarksDrawer(true)
+        toggleCurrentBookmarkRef.current()
       } else if (e.key === 'Escape') {
         setContextMenu(null)
+        setActiveAnnotation(null)
+        setSelectedText(null)
+        setOpenNoteModalDirect(false)
         const st = useAppStore.getState()
         if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
           st.toggleSearchDrawer(false)
@@ -268,7 +339,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       let cfiRange = ''
       if (text && sel && sel.rangeCount > 0) {
         try {
-          cfiRange = contents.cfiFromRange(sel.getRangeAt(0)) || ''
+          const range = sel.getRangeAt(0)
+          cfiRange = contents.cfiFromRange(range) || ''
+          selectedIceRangeRef.current = captureIceRange(range, doc, currentHrefRef.current)
+          selectionContentsRef.current = contents
         } catch {
           cfiRange = ''
         }
@@ -288,7 +362,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (!viewerRef.current) return
       viewerRef.current.innerHTML = ''
 
-      let sourceData: any = activeBookBuffer
+      let sourceData: any =
+        book.format === 'pdf' && pdfViewMode === 'reflow' && reflowEpubBuffer
+          ? reflowEpubBuffer
+          : activeBookBuffer
       if (!sourceData) {
         try {
           const resp = await fetch(book.filePath)
@@ -423,6 +500,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       const startLocation = book.progressCfi || undefined
       await renditionInstance.display(startLocation)
 
+      // Hydrate all saved annotations/highlights onto the rendition immediately
+      if (book.id && !isCancelled) {
+        try {
+          const saved = await db.annotations.where('bookId').equals(book.id).toArray()
+          annotationsListRef.current = saved
+          hydrateRenditionAnnotations(
+            renditionInstance,
+            saved,
+            themeRef.current,
+            (ann, e) => openAnnotationPopoverRef.current(ann, e)
+          )
+        } catch (err) {
+          console.warn('Annotation hydration failed:', err)
+        }
+      }
+
       // Inject Librera CSS normalization layer
       fetch('/src/assets/app-Librera.css')
         .then((res) => res.text())
@@ -441,6 +534,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         if (isCancelled || !location || !location.start) return
         const cfi = location.start.cfi
         setCurrentCfi(cfi)
+        setCurrentEndCfi(location.end?.cfi || '')
 
         let page = 1
         let pct = 0
@@ -467,7 +561,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const secTotal = Math.max(1, location.start.displayed?.total || 1)
           const progressRatio = (spineIdx + ((secPage - 1) / secTotal)) / Math.max(1, spineTotal)
           pct = Math.min(100, Math.max(0, Math.round(progressRatio * 100)))
-          const bookTotal = (epubInstance?.locations as any)?.total || totalPages || (book.totalPages || 507)
+          const bookTotal = (epubInstance?.locations as any)?.total || totalPagesRef.current || (book.totalPages || 507)
           page = Math.min(bookTotal, Math.max(1, Math.round(progressRatio * bookTotal)))
         }
 
@@ -476,8 +570,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         if (location.start.href) {
           setCurrentHref(location.start.href)
-          const matching = toc.find((t) => location.start.href.includes(t.href))
-          const chapterLabel = matching ? matching.label : ''
+          const cleanHref = location.start.href.split('#')[0]
+          const matching = tocRef.current.find(
+            (t) => t.href && (cleanHref.includes(t.href.split('#')[0]) || t.href.includes(cleanHref))
+          )
+          const chapterLabel = matching ? matching.label.trim() : ''
           if (chapterLabel) {
             setCurrentChapter(chapterLabel)
             setCurrentChapterTitle(chapterLabel)
@@ -524,17 +621,24 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       })
 
-      // Selection listener for notes & highlights
+      // Selection listener for notes & highlights (accurate iframe-relative viewport coordinates)
       renditionInstance.on('selected', (cfiRange: string, contents: any) => {
         if (isCancelled) return
         const selection = contents.window.getSelection()
         const text = selection?.toString().trim()
-        if (text) {
+        if (text && selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const rect = range.getBoundingClientRect()
+          const frameEl = contents.window.frameElement as HTMLElement | null
+          const iframeRect = frameEl?.getBoundingClientRect() || viewerRef.current?.getBoundingClientRect()
+
+          selectedIceRangeRef.current = captureIceRange(range, contents.document, currentHrefRef.current)
+          selectionContentsRef.current = contents
+          setActiveAnnotation(null)
+          setOpenNoteModalDirect(false)
           setSelectedText(text)
           setSelectedCfiRange(cfiRange)
-          const range = selection?.getRangeAt(0)
-          const rect = range?.getBoundingClientRect()
-          const iframeRect = viewerRef.current?.getBoundingClientRect()
+
           if (rect && iframeRect) {
             setSelectionPos({
               x: iframeRect.left + rect.left + rect.width / 2,
@@ -551,7 +655,37 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       isCancelled = true
       renditionInstance?.destroy()
     }
-  }, [book, activeBookBuffer, settings.pageSpread, attachIframeHooks])
+  }, [book, activeBookBuffer, pdfViewMode, reflowEpubBuffer, settings.pageSpread, attachIframeHooks])
+
+  // Load & sync bookmarks list for live current-page ribbon state
+  useEffect(() => {
+    if (!book.id) return
+    db.bookmarks
+      .where('bookId')
+      .equals(book.id)
+      .toArray()
+      .then((items) => setBookBookmarks(items))
+      .catch(() => {})
+  }, [book.id, bookmarksVersion])
+
+  // Keep SVG highlight blend-mode and opacity synced when theme changes
+  useEffect(() => {
+    if (!renditionRef.current || !book.id) return
+    db.annotations
+      .where('bookId')
+      .equals(book.id)
+      .toArray()
+      .then((saved) => {
+        annotationsListRef.current = saved
+        hydrateRenditionAnnotations(
+          renditionRef.current,
+          saved,
+          settings.theme,
+          (ann, e) => openAnnotationPopoverRef.current(ann, e)
+        )
+      })
+      .catch(() => {})
+  }, [settings.theme, book.id, annotationsVersion])
 
   // Synchronize dynamic settings
   useEffect(() => {
@@ -781,10 +915,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         })
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
-        toggleBookmarksDrawer(true)
+        toggleCurrentBookmarkRef.current()
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        if (
+        if (activeAnnotation) {
+          setActiveAnnotation(null)
+        } else if (selectedText) {
+          setSelectedText(null)
+          setOpenNoteModalDirect(false)
+        } else if (
           isTOCDrawerOpen ||
           isBookmarksDrawerOpen ||
           isNotesDrawerOpen ||
@@ -824,6 +963,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     toggleSearchDrawer,
     isSettingsDrawerOpen,
     toggleSettingsDrawer,
+    activeAnnotation,
+    selectedText,
     activeFootnote,
     isAutoscrollActive,
     setAutoscrollActive,
@@ -835,8 +976,25 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     renditionRef.current?.display(href)
   }
 
-  const handleJumpToCfi = (cfi: string) => {
-    renditionRef.current?.display(cfi)
+  const handleJumpToCfi = async (cfi: string, pageNumber?: number) => {
+    if (cfi && renditionRef.current) {
+      try {
+        await renditionRef.current.display(cfi)
+        return
+      } catch {
+        // Fall through to location fallback if CFI fails
+      }
+    }
+    if (pageNumber && epubBookRef.current?.locations?.length()) {
+      try {
+        const fallbackCfi = (epubBookRef.current.locations as any).cfiFromLocation(pageNumber)
+        if (fallbackCfi) {
+          await renditionRef.current?.display(fallbackCfi)
+        }
+      } catch {
+        // Ignore fallback failure
+      }
+    }
   }
 
   const handleClearSearchHighlight = useCallback(() => {
@@ -921,54 +1079,288 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     return allMatches
   }, [])
 
+  // Clear browser text selection inside the active EPUB iframe (Icecream window.getSelection().empty())
+  const clearIframeSelection = () => {
+    try {
+      selectionContentsRef.current?.window?.getSelection?.()?.removeAllRanges?.()
+      const contents = (renditionRef.current?.getContents() as any)?.[0]
+      contents?.window?.getSelection?.()?.removeAllRanges?.()
+    } catch {
+      // Ignore cross-frame selection cleanup errors
+    }
+  }
+
+  // Open interactive highlight popover when clicking any existing highlight mark on the page
+  openAnnotationPopoverRef.current = async (ann: Annotation, e: MouseEvent) => {
+    const fresh = ann.id ? (await db.annotations.get(ann.id)) || ann : ann
+    const targetRect = (e.target as Element | null)?.getBoundingClientRect?.()
+    const x = e.clientX || (targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2)
+    const y = e.clientY || (targetRect ? targetRect.top : window.innerHeight / 2)
+    setSelectedText(null)
+    setContextMenu(null)
+    setActiveAnnotation({ annotation: fresh, position: { x, y } })
+  }
+
+  const handleDeleteAnnotation = async (ann: Annotation) => {
+    if (!book.id || !ann.id) return
+    const backup = { ...ann }
+    await db.annotations.delete(ann.id)
+    removeAnnotationFromRendition(renditionRef.current, ann.cfiRange)
+    if (activeAnnotation?.annotation.id === ann.id) {
+      setActiveAnnotation(null)
+    }
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+
+    showToast('Highlight removed', 'Undo', async () => {
+      const { id: _oldId, ...rest } = backup
+      const newId = await db.annotations.add(rest)
+      const restored: Annotation = { ...rest, id: Number(newId) }
+      applyAnnotationToRendition(
+        renditionRef.current,
+        restored,
+        themeRef.current,
+        (a, ev) => openAnnotationPopoverRef.current(a, ev)
+      )
+      await syncBookNotesCount(book.id!)
+      bumpAnnotationsVersion()
+    })
+  }
+
+  const handleUpdateAnnotation = async (id: number, updates: { color?: NoteColor; note?: string }) => {
+    if (!book.id) return
+    const existing = await db.annotations.get(id)
+    if (!existing) return
+    const updated: Annotation = {
+      ...existing,
+      ...(updates.color !== undefined ? { color: updates.color } : {}),
+      ...(updates.note !== undefined ? { note: updates.note } : {}),
+      updatedAt: Date.now()
+    }
+    await db.annotations.update(id, {
+      color: updated.color,
+      note: updated.note,
+      updatedAt: updated.updatedAt
+    })
+    if (updates.color) {
+      setLastNoteColor(updates.color)
+    }
+    applyAnnotationToRendition(
+      renditionRef.current,
+      updated,
+      themeRef.current,
+      (a, ev) => openAnnotationPopoverRef.current(a, ev)
+    )
+    if (activeAnnotation?.annotation.id === id) {
+      setActiveAnnotation((prev) => (prev ? { ...prev, annotation: updated } : null))
+    }
+    bumpAnnotationsVersion()
+  }
+
+  const handleClearAllAnnotations = async () => {
+    if (!book.id) return
+    const existing = await db.annotations.where('bookId').equals(book.id).toArray()
+    for (const ann of existing) {
+      removeAnnotationFromRendition(renditionRef.current, ann.cfiRange)
+    }
+    await db.annotations.where('bookId').equals(book.id).delete()
+    setActiveAnnotation(null)
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+    showToast('All notes cleared')
+  }
+
   const handleAddAnnotation = async (
-    color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline',
+    color: NoteColor,
     textOverride?: string,
     cfiOverride?: string
   ) => {
     const textToSave = textOverride || selectedText
     const cfiToSave = cfiOverride || selectedCfiRange
     if (!book.id || !textToSave) return
-    await db.annotations.add({
+
+    // If an annotation already exists on the exact same CFI, update its color instead of duplicating
+    if (cfiToSave) {
+      const duplicate = await db.annotations
+        .where('bookId')
+        .equals(book.id)
+        .filter((a) => a.cfiRange === cfiToSave)
+        .first()
+      if (duplicate?.id) {
+        await handleUpdateAnnotation(duplicate.id, { color })
+        clearIframeSelection()
+        setSelectedText(null)
+        setOpenNoteModalDirect(false)
+        showToast('Highlight color updated')
+        return
+      }
+    }
+
+    const record: Annotation = {
       bookId: book.id,
       cfiRange: cfiToSave,
       text: textToSave,
       note: '',
       color,
+      pageNumber: currentPageRef.current,
+      chapterTitle: currentChapterRef.current || undefined,
+      href: currentHrefRef.current || undefined,
+      iceRange: selectedIceRangeRef.current,
       createdAt: Date.now()
-    })
-    if (cfiToSave) {
-      renditionRef.current?.annotations?.highlight(
-        cfiToSave,
-        {},
-        () => {},
-        `${color}note`
-      )
     }
+    const newId = await db.annotations.add(record)
+    const saved: Annotation = { ...record, id: Number(newId) }
+
+    setLastNoteColor(color)
+    applyAnnotationToRendition(
+      renditionRef.current,
+      saved,
+      themeRef.current,
+      (a, ev) => openAnnotationPopoverRef.current(a, ev)
+    )
+    clearIframeSelection()
     setSelectedText(null)
+    setOpenNoteModalDirect(false)
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+
+    showToast('Highlight saved', 'Undo', () => {
+      handleDeleteAnnotation(saved)
+    })
   }
 
-  const handleAddNote = async (note: string, textOverride?: string, cfiOverride?: string) => {
+  const handleAddNote = async (
+    note: string,
+    color: NoteColor = lastNoteColor,
+    textOverride?: string,
+    cfiOverride?: string
+  ) => {
     const textToSave = textOverride || selectedText
     const cfiToSave = cfiOverride || selectedCfiRange
     if (!book.id || !textToSave) return
-    await db.annotations.add({
+
+    // Update existing highlight on same CFI if present
+    if (cfiToSave) {
+      const duplicate = await db.annotations
+        .where('bookId')
+        .equals(book.id)
+        .filter((a) => a.cfiRange === cfiToSave)
+        .first()
+      if (duplicate?.id) {
+        await handleUpdateAnnotation(duplicate.id, { note, color })
+        clearIframeSelection()
+        setSelectedText(null)
+        setOpenNoteModalDirect(false)
+        showToast('Note updated')
+        return
+      }
+    }
+
+    const record: Annotation = {
       bookId: book.id,
       cfiRange: cfiToSave,
       text: textToSave,
       note,
-      color: 'blue',
+      color,
+      pageNumber: currentPageRef.current,
+      chapterTitle: currentChapterRef.current || undefined,
+      href: currentHrefRef.current || undefined,
+      iceRange: selectedIceRangeRef.current,
+      createdAt: Date.now()
+    }
+    const newId = await db.annotations.add(record)
+    const saved: Annotation = { ...record, id: Number(newId) }
+
+    setLastNoteColor(color)
+    applyAnnotationToRendition(
+      renditionRef.current,
+      saved,
+      themeRef.current,
+      (a, ev) => openAnnotationPopoverRef.current(a, ev)
+    )
+    clearIframeSelection()
+    setSelectedText(null)
+    setOpenNoteModalDirect(false)
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+
+    showToast(note ? 'Note saved' : 'Highlight saved', 'View Notes', () => {
+      toggleNotesDrawer(true)
+    })
+  }
+
+  // Bookmarks CRUD & Smart Toggle (Icecream getBookmarkData + duplicate guard)
+  const currentPageBookmark = bookBookmarks.find(
+    (bm) =>
+      bm.pageNumber === currentPage ||
+      (currentCfi && bm.cfi && bm.cfi === currentCfi)
+  )
+  const isCurrentPageBookmarked = Boolean(currentPageBookmark)
+
+  const handleToggleCurrentBookmark = async () => {
+    if (!book.id) return
+    const existing = await db.bookmarks
+      .where('bookId')
+      .equals(book.id)
+      .filter(
+        (bm) =>
+          bm.pageNumber === currentPageRef.current ||
+          Boolean(currentCfiRef.current && bm.cfi === currentCfiRef.current)
+      )
+      .first()
+
+    if (existing?.id) {
+      await db.bookmarks.delete(existing.id)
+      bumpBookmarksVersion()
+      showToast(`Removed bookmark on page ${existing.pageNumber}`)
+      return
+    }
+
+    const { excerpt, xpath } = extractVisiblePageData(
+      renditionRef.current,
+      epubBookRef.current,
+      currentCfiRef.current,
+      currentEndCfiRef.current
+    )
+
+    await db.bookmarks.add({
+      bookId: book.id,
+      cfi: currentCfiRef.current,
+      label: currentChapterRef.current
+        ? `${currentChapterRef.current} (p.${currentPageRef.current})`
+        : `Page ${currentPageRef.current}`,
+      excerpt: excerpt || undefined,
+      chapterTitle: currentChapterRef.current || undefined,
+      href: currentHrefRef.current || undefined,
+      xpath: xpath || undefined,
+      pageNumber: currentPageRef.current,
+      progressPercent: progressPercentRef.current,
       createdAt: Date.now()
     })
-    if (cfiToSave) {
-      renditionRef.current?.annotations?.highlight(
-        cfiToSave,
-        {},
-        () => {},
-        'bluenote'
-      )
-    }
-    setSelectedText(null)
+    bumpBookmarksVersion()
+    showToast(`Bookmarked page ${currentPageRef.current}`, 'View Bookmarks', () => {
+      toggleBookmarksDrawer(true)
+    })
+  }
+  toggleCurrentBookmarkRef.current = handleToggleCurrentBookmark
+
+  const handleDeleteBookmark = async (id: number) => {
+    await db.bookmarks.delete(id)
+    bumpBookmarksVersion()
+    showToast('Bookmark deleted')
+  }
+
+  const handleRenameBookmark = async (id: number, label: string) => {
+    await db.bookmarks.update(id, { label })
+    bumpBookmarksVersion()
+    showToast('Bookmark renamed')
+  }
+
+  const handleClearAllBookmarks = async () => {
+    if (!book.id) return
+    await db.bookmarks.where('bookId').equals(book.id).delete()
+    bumpBookmarksVersion()
+    showToast('All bookmarks cleared')
   }
 
   // Always-fresh right-click context menu builder (via ref so iframe hooks never re-mount EPUB)
@@ -987,11 +1379,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           id: 'highlight-swatches',
           label: 'Highlight',
           swatches: [
-            { color: 'blue', hex: '#aed9f1', title: 'Blue Highlight', onClick: () => handleAddAnnotation('blue', text, targetCfi) },
-            { color: 'purple', hex: '#ccb8e4', title: 'Purple Highlight', onClick: () => handleAddAnnotation('purple', text, targetCfi) },
-            { color: 'red', hex: '#f3a2a2', title: 'Red Highlight', onClick: () => handleAddAnnotation('red', text, targetCfi) },
             { color: 'yellow', hex: '#f3e3a2', title: 'Yellow Highlight', onClick: () => handleAddAnnotation('yellow', text, targetCfi) },
-            { color: 'green', hex: '#b1f3a4', title: 'Green Highlight', onClick: () => handleAddAnnotation('green', text, targetCfi) }
+            { color: 'blue', hex: '#aed9f1', title: 'Blue Highlight', onClick: () => handleAddAnnotation('blue', text, targetCfi) },
+            { color: 'green', hex: '#b1f3a4', title: 'Green Highlight', onClick: () => handleAddAnnotation('green', text, targetCfi) },
+            { color: 'purple', hex: '#ccb8e4', title: 'Purple Highlight', onClick: () => handleAddAnnotation('purple', text, targetCfi) },
+            { color: 'red', hex: '#f3a2a2', title: 'Red Highlight', onClick: () => handleAddAnnotation('red', text, targetCfi) }
           ]
         },
         {
@@ -1002,6 +1394,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             setSelectedText(text)
             if (targetCfi) setSelectedCfiRange(targetCfi)
             setSelectionPos({ x: clickX, y: clickY })
+            setOpenNoteModalDirect(true)
           }
         },
         { id: 'div-sel', divider: true },
@@ -1052,19 +1445,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         { id: 'div-nav', divider: true },
         {
           id: 'bookmark',
-          label: `Bookmark Page ${currentPage}`,
+          label: isCurrentPageBookmarked ? `Remove Bookmark (p.${currentPage})` : `Bookmark Page ${currentPage}`,
           shortcut: 'Ctrl+B',
-          icon: <Bookmark className="w-3.5 h-3.5 text-[#2a69df]" />,
-          onClick: async () => {
-            if (!book.id) return
-            await db.bookmarks.add({
-              bookId: book.id,
-              cfi: currentCfiRef.current,
-              label: `Page ${currentPage}`,
-              pageNumber: currentPage,
-              createdAt: Date.now()
-            })
-          }
+          icon: <Bookmark className={`w-3.5 h-3.5 text-[#2a69df] ${isCurrentPageBookmarked ? 'fill-current' : ''}`} />,
+          onClick: () => handleToggleCurrentBookmark()
         },
         {
           id: 'autoscroll',
@@ -1095,7 +1479,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           label: 'Reading Settings',
           icon: <Settings className="w-3.5 h-3.5" />,
           onClick: () => toggleSettingsDrawer(true)
-        }
+        },
+        ...(book.format === 'pdf' && pdfViewMode === 'reflow'
+          ? [
+              { id: 'div-pdf-back', divider: true },
+              {
+                id: 'back-original-pdf',
+                label: 'Switch Back to Original PDF',
+                icon: <FileText className="w-3.5 h-3.5 text-[#2a69df]" />,
+                onClick: () => setPdfViewMode('original')
+              }
+            ]
+          : [])
       ]
       setContextMenu({ x: clickX, y: clickY, items })
     }
@@ -1129,7 +1524,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     >
       {/* Top Docked Header (hidden completely in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
-        <ReaderTopBar onBack={onBack} currentChapter={currentChapter} />
+        <ReaderTopBar
+          onBack={onBack}
+          currentChapter={currentChapter}
+          isCurrentPageBookmarked={isCurrentPageBookmarked}
+        />
       )}
 
       {/* Floating Exit Fullscreen Control (only visible in immersive fullscreen) */}
@@ -1154,6 +1553,26 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           isImmersiveFullscreen ? 'py-6 px-4' : ''
         }`}
       >
+        {/* Icecream-style On-Page Top-Right Bookmark Ribbon Toggle */}
+        {!isImmersiveFullscreen && (
+          <button
+            type="button"
+            onClick={handleToggleCurrentBookmark}
+            className={`absolute top-2 right-5 z-30 w-7 h-8 flex items-center justify-center rounded-[2px] transition-all cursor-pointer app-no-drag ${
+              isCurrentPageBookmarked
+                ? 'text-[#2a69df] opacity-100 hover:scale-105'
+                : 'text-[#8b949e] opacity-25 hover:opacity-85 hover:text-white'
+            }`}
+            title={
+              isCurrentPageBookmarked
+                ? `Remove bookmark on page ${currentPage} (Ctrl+B)`
+                : `Bookmark page ${currentPage} (Ctrl+B)`
+            }
+          >
+            <Bookmark className={`w-5 h-5 ${isCurrentPageBookmarked ? 'fill-current drop-shadow' : ''}`} />
+          </button>
+        )}
+
         {/* Subtle Left Prev Page button (hidden in immersive fullscreen) */}
         {!isImmersiveFullscreen && (
           <button
@@ -1216,6 +1635,26 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         onClose={() => setAutoscrollActive(false)}
       />
 
+      {/* Custom Contextual Toast Notification */}
+      {readerToast && (
+        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-[#171a21] border border-[#2d323f] text-[#e6edf3] text-xs px-3.5 py-2 rounded-[3px] shadow-2xl flex items-center gap-3 app-no-drag animate-in fade-in duration-100">
+          <span>{readerToast.message}</span>
+          {readerToast.actionLabel && readerToast.onAction && (
+            <button
+              type="button"
+              onClick={() => {
+                const fn = readerToast.onAction
+                setReaderToast(null)
+                fn?.()
+              }}
+              className="text-[#58a6ff] hover:text-[#79c0ff] font-semibold cursor-pointer"
+            >
+              {readerToast.actionLabel}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Bottom Floating Progress Area (hidden completely in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
         <footer
@@ -1262,11 +1701,21 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         currentHref={currentHref}
         onSelectChapter={handleSelectChapter}
       />
-      <NotesDrawer onJumpToCfi={handleJumpToCfi} />
+      <NotesDrawer
+        onJumpToCfi={handleJumpToCfi}
+        onDeleteAnnotation={handleDeleteAnnotation}
+        onUpdateAnnotation={handleUpdateAnnotation}
+        onClearAllAnnotations={handleClearAllAnnotations}
+      />
       <BookmarksDrawer
         currentPage={currentPage}
         currentCfi={currentCfi}
+        isCurrentPageBookmarked={isCurrentPageBookmarked}
+        onToggleCurrentBookmark={handleToggleCurrentBookmark}
         onJumpToCfi={handleJumpToCfi}
+        onDeleteBookmark={handleDeleteBookmark}
+        onRenameBookmark={handleRenameBookmark}
+        onClearAllBookmarks={handleClearAllBookmarks}
       />
       <SearchDrawer
         onSearch={handleSearchBook}
@@ -1293,12 +1742,28 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         title={currentChapter || book.title}
       />
 
+      {/* Interactive Clicked Highlight Popover */}
+      {activeAnnotation && (
+        <AnnotationPopover
+          annotation={activeAnnotation.annotation}
+          position={activeAnnotation.position}
+          onClose={() => setActiveAnnotation(null)}
+          onUpdate={handleUpdateAnnotation}
+          onDelete={handleDeleteAnnotation}
+        />
+      )}
+
       {/* Inline Selection & Dictionary Popup */}
       {selectedText && (
         <SelectionPopup
           selectedText={selectedText}
           position={selectionPos}
-          onClose={() => setSelectedText(null)}
+          initialShowNoteInput={openNoteModalDirect}
+          defaultColor={lastNoteColor}
+          onClose={() => {
+            setSelectedText(null)
+            setOpenNoteModalDirect(false)
+          }}
           onHighlight={handleAddAnnotation}
           onAddNote={handleAddNote}
         />

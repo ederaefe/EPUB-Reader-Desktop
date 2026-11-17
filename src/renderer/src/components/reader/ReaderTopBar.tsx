@@ -14,9 +14,10 @@ import { useAppStore } from '../../stores/useAppStore'
 interface ReaderTopBarProps {
   onBack: () => void
   currentChapter?: string
+  isCurrentPageBookmarked?: boolean
 }
 
-export function ReaderTopBar({ onBack }: ReaderTopBarProps) {
+export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: ReaderTopBarProps) {
   const {
     isTOCDrawerOpen,
     toggleTOCDrawer,
@@ -96,7 +97,9 @@ export function ReaderTopBar({ onBack }: ReaderTopBarProps) {
           }`}
           title="Show bookmarks list (3)"
         >
-          <Bookmark className="w-3.5 h-3.5" />
+          <Bookmark
+            className={`w-3.5 h-3.5 ${isCurrentPageBookmarked ? 'text-[#2a69df] fill-current' : ''}`}
+          />
           <span>Bookmarks</span>
         </button>
 

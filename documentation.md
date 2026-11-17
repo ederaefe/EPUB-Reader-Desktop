@@ -266,3 +266,27 @@ A cross-platform desktop ebook and document reader designed with the **Encapsula
 ### Summary
 - Removed the redundant branding header block (`Semply Ebook Reader` with blue book icon) from the top of `src/renderer/src/components/library/Sidebar.tsx`, leaving the native `TitleBar.tsx` brand mark as the single clean header and reclaiming vertical space for library shelves and custom categories.
 - Cleaned up the unused `semplyLogo` import in `Sidebar.tsx`.
+
+
+---
+
+## Increment 14: Cropped Transparent Semply Icon & Native Taskbar Wiring
+
+### Summary
+- Cropped `resources/icon.png` tightly to the rounded squircle rim (`690x690`, 1px shadow inset), applied a 4x supersampled anti-aliased rounded-rectangle alpha mask to remove the outer square background completely, and generated multi-resolution Windows `.ico` (`16`–`256px`) and optimized `512x512` RGBA `.png` assets across `resources/`, `build/`, `src/renderer/favicon.*`, and `src/renderer/src/assets/icons/semply_logo.*`.
+- Updated `src/main/index.ts` to resolve the platform icon (`resolveAppIconPath()`), pass `icon` directly to `new BrowserWindow(...)`, and call `app.setAppUserModelId('com.ederaefe.semple-ebook-reader')` on Windows so the custom Semply icon replaces the default Electron atom icon in both `npm run dev` and packaged builds.
+- Updated `electron-builder.config.ts` with explicit `win.icon` / `mac.icon` / `linux.icon` paths and `extraResources` bundling for `resources/icon.{ico,png}`.
+
+
+---
+
+## Increment 14: MuPDF WASM Runtime Verification Fix, Enhanced Annotation Subsystem & Library Import UI
+
+### Summary of Changes
+1. **MuPDF WASM Extraction Fix (`src/main/pdfToEpubEngine.ts`)**:
+   - Verified via live Node runtime testing that `mupdf` v1.x WASM suppresses `stext.walk()` callbacks when the `segment` option is combined with `preserve-images,dehyphenate`. Updated Pass 1 and Pass 2 to use `dehyphenate` and `preserve-images,dehyphenate`, confirming live extraction of both structured text blocks and embedded PNG/JPEG images.
+2. **Annotation & Bookmark Drawer Resilience (`NotesDrawer.tsx`, `BookmarksDrawer.tsx`, `AnnotationPopover.tsx`, `annotationService.ts`)**:
+   - Added rich annotation color/note editing, search/sort/export (HTML, Markdown, Plain Text) via `annotationService.ts` and `AnnotationPopover.tsx`.
+   - Made drawer mutation callbacks optional with built-in Dexie fallbacks so both `EpubReaderView` and `PdfReaderView` share full bookmark and note management seamlessly.
+3. **Library Import Experience & Packaging (`AddBookCard.tsx`, `ImportBooksModal.tsx`, `electron-builder.config.ts`)**:
+   - Added interactive `AddBookCard` and `ImportBooksModal` for streamlined book/folder import and refreshed branding icons and `electron-builder.config.ts` for desktop packaging.

@@ -2,13 +2,28 @@ import { app, BrowserWindow, ipcMain, dialog, shell, Menu } from 'electron'
 import { join, extname, basename } from 'path'
 import { readFile, readdir, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
-import JSZip from 'jszip'
+import { createHash } from 'crypto'
+import { convertPdfToEpub } from './pdfToEpubEngine'
 
 let mainWindow: BrowserWindow | null = null
 
+function resolveAppIconPath(): string | undefined {
+  const iconFile = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  const candidates = [
+    join(process.resourcesPath, iconFile),
+    join(app.getAppPath(), 'resources', iconFile),
+    join(__dirname, '../../resources', iconFile),
+    join(app.getAppPath(), 'build', iconFile)
+  ]
+  return candidates.find((p) => existsSync(p))
+}
+
 function createWindow(): void {
+  const iconPath = resolveAppIconPath()
+
   mainWindow = new BrowserWindow({
     title: 'Semply Ebook Reader',
+    ...(iconPath ? { icon: iconPath } : {}),
     width: 1280,
     height: 820,
     minWidth: 960,
@@ -214,77 +229,64 @@ ipcMain.handle('dialog:showOpenDialog', async (_, options: { title?: string; fil
   return result.canceled ? null : result.filePaths[0]
 })
 
-// PDF to EPUB Conversion Engine
-ipcMain.handle('pdf:convertToEpub', async (_, pdfPath: string) => {
-  try {
-    const pdfBuffer = await readFile(pdfPath)
-    const pdfName = basename(pdfPath, extname(pdfPath))
-    const userData = app.getPath('userData')
-    const convertedDir = join(userData, 'converted_epubs')
-    if (!existsSync(convertedDir)) {
-      await mkdir(convertedDir, { recursive: true })
+// Offline MuPDF WASM PDF-to-EPUB Conversion Engine (Librera Reflow Architecture)
+ipcMain.handle(
+  'pdf:convertToEpub',
+  async (
+    _,
+    input:
+      | string
+      | {
+          pdfPath: string
+          outputPath?: string
+          mode?: 'reflow-cache' | 'library' | 'export'
+        }
+  ) => {
+    try {
+      const pdfPath = typeof input === 'string' ? input : input.pdfPath
+      const mode = typeof input === 'string' ? 'library' : input.mode || 'library'
+      const customOutputPath = typeof input === 'string' ? undefined : input.outputPath
+
+      const pdfName = basename(pdfPath, extname(pdfPath))
+      const userData = app.getPath('userData')
+      const subDir = mode === 'reflow-cache' ? 'reflow_cache' : 'converted_epubs'
+      const outDir = join(userData, subDir)
+      if (!existsSync(outDir)) {
+        await mkdir(outDir, { recursive: true })
+      }
+
+      let targetEpubPath = customOutputPath
+      if (!targetEpubPath) {
+        if (mode === 'reflow-cache') {
+          const pathHash = createHash('sha1').update(pdfPath).digest('hex').slice(0, 12)
+          targetEpubPath = join(outDir, `${pdfName}_${pathHash}-reflow.epub`)
+          if (existsSync(targetEpubPath)) {
+            mainWindow?.webContents.send('pdf:convertProgress', {
+              currentPage: 1,
+              totalPages: 1,
+              stage: 'Loaded cached reflow EPUB',
+              percent: 100
+            })
+            return { success: true, epubPath: targetEpubPath }
+          }
+        } else {
+          targetEpubPath = join(outDir, `${pdfName}.epub`)
+        }
+      }
+
+      const result = await convertPdfToEpub(pdfPath, targetEpubPath, (progress) => {
+        mainWindow?.webContents.send('pdf:convertProgress', progress)
+      })
+      return result
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'PDF to EPUB conversion failed' }
     }
-    const targetEpubPath = join(convertedDir, `${pdfName}_converted.epub`)
-
-    // Fast packaging into clean EPUB structure using JSZip
-    const zip = new JSZip()
-    zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' })
-    zip.folder('META-INF')?.file(
-      'container.xml',
-      `<?xml version="1.0" encoding="UTF-8"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>`
-    )
-
-    const oebps = zip.folder('OEBPS')
-    oebps?.file(
-      'style.css',
-      `body { font-family: sans-serif; line-height: 1.6; padding: 2rem; color: #d1d5db; background: #111827; }
-h1, h2 { color: #f3f4f6; }
-p { margin-bottom: 1.2rem; }`
-    )
-
-    const chapterHtml = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-  <title>${pdfName}</title>
-  <link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-  <h1>${pdfName}</h1>
-  <p>Converted document from PDF format.</p>
-</body>
-</html>`
-    oebps?.file('chapter_1.xhtml', chapterHtml)
-
-    const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>${pdfName}</dc:title>
-    <dc:language>en</dc:language>
-    <dc:identifier id="BookId">urn:uuid:${Date.now()}</dc:identifier>
-  </metadata>
-  <manifest>
-    <item id="style" href="style.css" media-type="text/css"/>
-    <item id="ch1" href="chapter_1.xhtml" media-type="application/xhtml+xml"/>
-  </manifest>
-  <spine>
-    <itemref idref="ch1"/>
-  </spine>
-</package>`
-    oebps?.file('content.opf', opf)
-
-    const epubContent = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
-    await writeFile(targetEpubPath, epubContent)
-    return { success: true, epubPath: targetEpubPath }
-  } catch (error: any) {
-    return { success: false, error: error?.message || 'Conversion failed' }
   }
-})
+)
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.ederaefe.semple-ebook-reader')
+}
 
 app.whenReady().then(() => {
   createWindow()

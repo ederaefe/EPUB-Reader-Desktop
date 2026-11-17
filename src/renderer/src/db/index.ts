@@ -18,6 +18,7 @@ export interface Book {
   isFavorite: boolean
   isRead: boolean
   isDeleted: boolean
+  notesCount?: number
 }
 
 export interface Category {
@@ -27,14 +28,29 @@ export interface Category {
   createdAt: number
 }
 
+export type NoteColor = 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline'
+
+export interface IceRangeAnchor {
+  startXPath: string
+  startOffset: number
+  endXPath: string
+  endOffset: number
+  href?: string
+}
+
 export interface Annotation {
   id?: number
   bookId: number
   cfiRange: string
   text: string
   note: string
-  color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline'
+  color: NoteColor
+  pageNumber?: number
+  chapterTitle?: string
+  href?: string
+  iceRange?: IceRangeAnchor
   createdAt: number
+  updatedAt?: number
 }
 
 export interface Bookmark {
@@ -42,7 +58,12 @@ export interface Bookmark {
   bookId: number
   cfi: string
   label: string
+  excerpt?: string
+  chapterTitle?: string
+  href?: string
+  xpath?: string
   pageNumber: number
+  progressPercent?: number
   createdAt: number
 }
 
@@ -87,6 +108,13 @@ class ReaderDatabase extends Dexie {
       categories: '++id, name',
       annotations: '++id, bookId, cfiRange',
       bookmarks: '++id, bookId',
+      settings: '++id'
+    })
+    this.version(2).stores({
+      books: '++id, filePath, format, categoryId, isFavorite, isRead, isDeleted, lastOpenedAt',
+      categories: '++id, name',
+      annotations: '++id, bookId, cfiRange, color, pageNumber, createdAt',
+      bookmarks: '++id, bookId, cfi, pageNumber, createdAt',
       settings: '++id'
     })
   }

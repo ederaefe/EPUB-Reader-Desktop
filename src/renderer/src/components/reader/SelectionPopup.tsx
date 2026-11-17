@@ -21,25 +21,32 @@ import {
   type WikipediaSummary
 } from '../../services/dictService'
 import { ttsService } from '../../services/ttsService'
+import type { NoteColor } from '../../db'
+import { ICE_NOTE_COLOR_LIST, ICE_NOTE_COLORS } from '../../services/annotationService'
 
 interface SelectionPopupProps {
   selectedText: string
   position: { x: number; y: number }
+  initialShowNoteInput?: boolean
+  defaultColor?: NoteColor
   onClose: () => void
-  onHighlight: (color: 'blue' | 'purple' | 'red' | 'yellow' | 'green' | 'underline') => void
-  onAddNote: (note: string) => void
+  onHighlight: (color: NoteColor) => void
+  onAddNote: (note: string, color: NoteColor) => void
 }
 
 export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   selectedText,
   position,
+  initialShowNoteInput = false,
+  defaultColor = 'yellow',
   onClose,
   onHighlight,
   onAddNote
 }) => {
   const [copied, setCopied] = useState(false)
-  const [showNoteInput, setShowNoteInput] = useState(false)
+  const [showNoteInput, setShowNoteInput] = useState(initialShowNoteInput)
   const [noteText, setNoteText] = useState('')
+  const [noteColor, setNoteColor] = useState<NoteColor>(defaultColor)
 
   // Contextual floating modals
   const [showDictModal, setShowDictModal] = useState(false)
@@ -49,6 +56,30 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const [showWikiModal, setShowWikiModal] = useState(false)
   const [wikiLoading, setWikiLoading] = useState(false)
   const [wikiSummary, setWikiSummary] = useState<WikipediaSummary | null>(null)
+
+  useEffect(() => {
+    setShowNoteInput(initialShowNoteInput)
+  }, [initialShowNoteInput])
+
+  useEffect(() => {
+    setNoteColor(defaultColor)
+  }, [defaultColor])
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  // Clamp bar position strictly within the desktop window
+  const barHalfWidth = 265
+  const clampedX = Math.max(barHalfWidth + 12, Math.min(window.innerWidth - barHalfWidth - 12, position.x))
+  const clampedY = position.y < 96 ? Math.min(window.innerHeight - 60, position.y + 24) : Math.max(44, position.y - 46)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(selectedText)
@@ -87,155 +118,207 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     onClose()
   }
 
-  const handleSaveNote = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!noteText.trim()) return
-    onAddNote(noteText.trim())
+  const handleSaveNote = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    onAddNote(noteText.trim(), noteColor)
     setShowNoteInput(false)
+    setNoteText('')
     onClose()
   }
 
   return (
     <>
       {/* 36px Native Floating Action Bar */}
-      <div
-        style={{ left: `${position.x}px`, top: `${Math.max(10, position.y - 44)}px` }}
-        className="fixed z-50 transform -translate-x-1/2 h-9 bg-[#1c1f26] border border-[#3c404d] rounded-[3px] p-1 flex items-center gap-1 shadow-2xl select-none animate-in fade-in duration-100"
-      >
-        {/* Copy button */}
-        <button
-          onClick={handleCopy}
-          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-          title="Copy Text"
+      {!showNoteInput && (
+        <div
+          style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
+          className="fixed z-50 transform -translate-x-1/2 h-9 bg-[#171a21] border border-[#2d323f] rounded-[3px] p-1 flex items-center gap-1 shadow-2xl select-none app-no-drag animate-in fade-in duration-100"
         >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#8b949e]" />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
-        </button>
-
-        {/* Highlight Colors (1:1 Native Desktop rectangular markers) */}
-        <div className="flex items-center gap-1 px-1.5 border-x border-[#2d323f]">
+          {/* Copy button */}
           <button
-            onClick={() => onHighlight('blue')}
-            className="w-4 h-4 rounded-[2px] border border-black/40 hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#aed9f1' }}
-            title="Blue Highlight"
-          />
-          <button
-            onClick={() => onHighlight('purple')}
-            className="w-4 h-4 rounded-[2px] border border-black/40 hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#ccb8e4' }}
-            title="Purple Highlight"
-          />
-          <button
-            onClick={() => onHighlight('red')}
-            className="w-4 h-4 rounded-[2px] border border-black/40 hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#f3a2a2' }}
-            title="Red Highlight"
-          />
-          <button
-            onClick={() => onHighlight('yellow')}
-            className="w-4 h-4 rounded-[2px] border border-black/40 hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#f3e3a2' }}
-            title="Yellow Highlight"
-          />
-          <button
-            onClick={() => onHighlight('green')}
-            className="w-4 h-4 rounded-[2px] border border-black/40 hover:scale-110 transition-transform"
-            style={{ backgroundColor: '#b1f3a4' }}
-            title="Green Highlight"
-          />
-          <button
-            onClick={() => onHighlight('underline')}
-            className="w-4 h-4 rounded-[2px] border border-[#3c404d] bg-[#282c37] text-white flex items-center justify-center hover:scale-110 transition-transform"
-            title="Underline"
+            type="button"
+            onClick={handleCopy}
+            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            title="Copy Text"
           >
-            <Underline className="w-2.5 h-2.5" />
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#8b949e]" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+
+          {/* Highlight Colors (1:1 Native Desktop rectangular markers) */}
+          <div className="flex items-center gap-1 px-1.5 border-x border-[#232732]">
+            {ICE_NOTE_COLOR_LIST.map((col) => (
+              <button
+                key={col.id}
+                type="button"
+                onClick={() => onHighlight(col.id)}
+                className="w-4 h-4 rounded-[2px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                style={
+                  col.isUnderline
+                    ? { backgroundColor: '#232732', border: '1px solid #353b4c', color: '#79c0ff' }
+                    : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.4)' }
+                }
+                title={`${col.label}${col.isUnderline ? '' : ' Highlight'}`}
+              >
+                {col.isUnderline && <Underline className="w-2.5 h-2.5 pointer-events-none" />}
+              </button>
+            ))}
+          </div>
+
+          {/* Note */}
+          <button
+            type="button"
+            onClick={() => setShowNoteInput(true)}
+            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            title="Add Note"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#2a69df]" />
+            <span>Note</span>
+          </button>
+
+          {/* Speak */}
+          <button
+            type="button"
+            onClick={handleSpeak}
+            className="ice-btn-dark w-7 h-7 flex items-center justify-center rounded-[2px]"
+            title="Read Aloud"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-[#8b949e]" />
+          </button>
+
+          {/* Dictionary Lookup */}
+          <button
+            type="button"
+            onClick={handleLookupDefinition}
+            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            title="Dictionary definition"
+          >
+            <BookMarked className="w-3.5 h-3.5 text-[#79c0ff]" />
+            <span>Define</span>
+          </button>
+
+          {/* Wikipedia Encyclopedic Summary */}
+          <button
+            type="button"
+            onClick={handleLookupWikipedia}
+            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            title="Wikipedia summary"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#f59e0b]" />
+            <span>Wiki</span>
+          </button>
+
+          {/* Translation (Google Translate & DeepL) */}
+          <button
+            type="button"
+            onClick={() => handleOpenExternalProvider('Google Translate')}
+            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            title="Translate selection (Google Translate / DeepL)"
+          >
+            <Languages className="w-3.5 h-3.5 text-[#4cd964]" />
+            <span>Translate</span>
           </button>
         </div>
+      )}
 
-        {/* Note */}
-        <button
-          onClick={() => setShowNoteInput(true)}
-          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-          title="Add Note"
-        >
-          <FileText className="w-3.5 h-3.5 text-[#2a69df]" />
-          <span>Note</span>
-        </button>
-
-        {/* Speak */}
-        <button
-          onClick={handleSpeak}
-          className="ice-btn-dark w-7 h-7 flex items-center justify-center rounded-[2px]"
-          title="Read Aloud"
-        >
-          <Volume2 className="w-3.5 h-3.5 text-[#8b949e]" />
-        </button>
-
-        {/* Dictionary Lookup */}
-        <button
-          onClick={handleLookupDefinition}
-          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-          title="Dictionary definition"
-        >
-          <BookMarked className="w-3.5 h-3.5 text-[#79c0ff]" />
-          <span>Define</span>
-        </button>
-
-        {/* Wikipedia Encyclopedic Summary */}
-        <button
-          onClick={handleLookupWikipedia}
-          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-          title="Wikipedia summary"
-        >
-          <Globe className="w-3.5 h-3.5 text-[#f59e0b]" />
-          <span>Wiki</span>
-        </button>
-
-        {/* Translation (Google Translate & DeepL) */}
-        <button
-          onClick={() => handleOpenExternalProvider('Google Translate')}
-          className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-          title="Translate selection (Google Translate / DeepL)"
-        >
-          <Languages className="w-3.5 h-3.5 text-[#4cd964]" />
-          <span>Translate</span>
-        </button>
-      </div>
-
-      {/* Note input popup */}
+      {/* Note Composer Modal */}
       {showNoteInput && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 app-no-drag"
+          onClick={() => {
+            setShowNoteInput(false)
+            onClose()
+          }}
+        >
           <form
             onSubmit={handleSaveNote}
-            className="bg-[#171a21] border border-[#2d323f] rounded-[3px] p-4 w-96 shadow-2xl space-y-3"
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#171a21] border border-[#2d323f] rounded-[3px] p-4 w-[420px] shadow-2xl space-y-3"
           >
-            <div className="text-xs font-semibold text-white">Add Note to Highlight</div>
-            <div className="text-[11px] text-[#8b949e] italic line-clamp-2 bg-[#12141a] p-2 rounded-[2px] border border-[#232732]">
-              &ldquo;{selectedText}&rdquo;
-            </div>
-            <textarea
-              autoFocus
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Write your note here..."
-              rows={3}
-              className="ice-input w-full p-2 text-xs rounded-[2px]"
-            />
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#2a69df]" />
+                <span className="text-xs font-semibold text-white">Add Note &amp; Highlight</span>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setShowNoteInput(false)
                   onClose()
                 }}
-                className="ice-btn-dark px-3 py-1 text-xs rounded-[2px]"
+                className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37]"
               >
-                Cancel
+                <X className="w-3.5 h-3.5 pointer-events-none" />
               </button>
-              <button type="submit" className="ice-btn-blue px-3 py-1 text-xs rounded-[2px]">
-                Save Note
-              </button>
+            </div>
+
+            <div
+              className="text-[11px] text-[#c9d1d9] font-serif italic line-clamp-3 bg-[#12141a] p-2.5 rounded-[2px] border border-[#232732] border-l-2"
+              style={{ borderLeftColor: (ICE_NOTE_COLORS[noteColor] || ICE_NOTE_COLORS.yellow).borderHex }}
+            >
+              &ldquo;{selectedText}&rdquo;
+            </div>
+
+            {/* Highlight Color Selector */}
+            <div className="flex items-center justify-between bg-[#14161c] border border-[#232732] rounded-[2px] px-2.5 py-1.5">
+              <span className="text-[11px] text-[#8b949e]">Highlight Style</span>
+              <div className="flex items-center gap-1.5">
+                {ICE_NOTE_COLOR_LIST.map((col) => {
+                  const active = noteColor === col.id
+                  return (
+                    <button
+                      key={col.id}
+                      type="button"
+                      onClick={() => setNoteColor(col.id)}
+                      className={`w-5 h-5 rounded-[2px] flex items-center justify-center transition-transform cursor-pointer ${
+                        active ? 'ring-2 ring-white scale-105' : 'opacity-75 hover:opacity-100'
+                      }`}
+                      style={
+                        col.isUnderline
+                          ? { backgroundColor: '#232732', border: '1px solid #353b4c', color: '#79c0ff' }
+                          : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
+                      }
+                      title={col.label}
+                    >
+                      {col.isUnderline && <Underline className="w-3 h-3 pointer-events-none" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <textarea
+              autoFocus
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  handleSaveNote()
+                }
+              }}
+              placeholder="Write your note or comment here... (Ctrl+Enter to save)"
+              rows={4}
+              className="ice-input w-full p-2.5 text-xs rounded-[2px] resize-none"
+            />
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-[#6e7681]">Ctrl+Enter to save</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNoteInput(false)
+                    onClose()
+                  }}
+                  className="ice-btn-dark px-3 h-7 text-xs rounded-[2px]"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="ice-btn-blue px-3.5 h-7 text-xs rounded-[2px]">
+                  Save Note
+                </button>
+              </div>
             </div>
           </form>
         </div>

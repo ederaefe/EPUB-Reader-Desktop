@@ -9,7 +9,15 @@ const config: Configuration = {
   files: [
     'out/**/*'
   ],
+  extraResources: [
+    {
+      from: 'resources',
+      to: '.',
+      filter: ['icon.ico', 'icon.png']
+    }
+  ],
   win: {
+    icon: 'build/icon.ico',
     target: [
       {
         target: 'nsis',
@@ -24,10 +32,12 @@ const config: Configuration = {
     createStartMenuShortcut: true
   },
   mac: {
+    icon: 'build/icon.png',
     target: ['dmg', 'zip'],
     category: 'public.app-category.productivity'
   },
   linux: {
+    icon: 'build/icon.png',
     target: ['AppImage', 'deb'],
     category: 'Office'
   }

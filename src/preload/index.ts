@@ -17,7 +17,26 @@ export interface DesktopAPI {
   writeFileBuffer: (filePath: string, buffer: ArrayBuffer) => Promise<boolean>
   showSaveDialog: (options: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>
   showOpenDialog: (options: { title?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>
-  convertToEpub: (pdfPath: string) => Promise<{ success: boolean; epubPath?: string; error?: string }>
+  convertToEpub: (
+    input:
+      | string
+      | {
+          pdfPath: string
+          outputPath?: string
+          mode?: 'reflow-cache' | 'library' | 'export'
+        }
+  ) => Promise<{
+    success: boolean
+    epubPath?: string
+    title?: string
+    author?: string
+    pageCount?: number
+    imageCount?: number
+    error?: string
+  }>
+  onPdfConvertProgress: (
+    callback: (progress: { currentPage: number; totalPages: number; stage: string; percent: number }) => void
+  ) => () => void
   setZoomFactor: (factor: number) => void
   getZoomFactor: () => number
 }
@@ -43,7 +62,12 @@ const api: DesktopAPI = {
   writeFileBuffer: (p, buffer) => ipcRenderer.invoke('fs:writeFileBuffer', p, buffer),
   showSaveDialog: (opts) => ipcRenderer.invoke('dialog:showSaveDialog', opts),
   showOpenDialog: (opts) => ipcRenderer.invoke('dialog:showOpenDialog', opts),
-  convertToEpub: (p) => ipcRenderer.invoke('pdf:convertToEpub', p),
+  convertToEpub: (input) => ipcRenderer.invoke('pdf:convertToEpub', input),
+  onPdfConvertProgress: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: any) => callback(progress)
+    ipcRenderer.on('pdf:convertProgress', listener)
+    return () => ipcRenderer.removeListener('pdf:convertProgress', listener)
+  },
   setZoomFactor: (factor: number) => {
     try {
       webFrame.setZoomFactor(factor)

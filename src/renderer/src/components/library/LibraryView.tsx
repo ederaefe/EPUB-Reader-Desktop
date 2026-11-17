@@ -1,11 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react'
-import { Plus, Search, FolderPlus, LayoutGrid, List, BookOpen } from 'lucide-react'
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { Search, LayoutGrid, List, CheckCircle2, Plus, FolderPlus } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Book, type Category } from '../../db'
 import { Sidebar } from './Sidebar'
 import { BookCard } from './BookCard'
+import { AddBookCard } from './AddBookCard'
 import { ResumeBar } from './ResumeBar'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
+import { ImportBooksModal } from '../modals/ImportBooksModal'
 import {
   extractEpubCover,
   extractPdfCover,
@@ -30,14 +32,59 @@ export const LibraryView: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const toastTimerRef = useRef<number | null>(null)
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message)
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current)
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null)
+      toastTimerRef.current = null
+    }, 3200)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
+  const [sortBy, setSortBy] = useState<'title' | 'author' | 'date' | 'notes' | 'progress'>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  const handleSortClick = (field: 'title' | 'author' | 'date' | 'notes' | 'progress') => {
+    if (sortBy === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortBy(field)
+      setSortDir(field === 'title' || field === 'author' ? 'asc' : 'desc')
+    }
+  }
 
   const loadData = async () => {
-    const allBooks = await db.books.toArray()
-    const allCats = await db.categories.toArray()
+    const [allBooks, allCats, allAnnotations] = await Promise.all([
+      db.books.toArray(),
+      db.categories.toArray(),
+      db.annotations.toArray()
+    ])
+
+    const notesCountMap: Record<number, number> = {}
+    for (const ann of allAnnotations) {
+      notesCountMap[ann.bookId] = (notesCountMap[ann.bookId] || 0) + 1
+    }
 
     // Auto-cleanse any books with raw scrape prefixes, unknown authors, or accidental 3% unread progress
     for (const b of allBooks) {
       let needsUpdate = false
+      const liveNotesCount = b.id ? notesCountMap[b.id] || 0 : 0
+      if (b.notesCount !== liveNotesCount) {
+        b.notesCount = liveNotesCount
+      }
       const updates: Partial<Book> = {}
 
       if ((b.title && /^(d-pdf\.com|oceanofpdf\.com|\[z-lib\.org\])/i.test(b.title)) || b.author === 'Unknown Author') {
@@ -97,9 +144,9 @@ export const LibraryView: React.FC = () => {
     }
   }, [books])
 
-  // Filter books
+  // Filter and sort books
   const filteredBooks = useMemo(() => {
-    return books.filter((b) => {
+    const filtered = books.filter((b) => {
       if (selectedCategory === 'deleted') {
         if (!b.isDeleted) return false
       } else {
@@ -127,7 +174,18 @@ export const LibraryView: React.FC = () => {
 
       return true
     })
-  }, [books, selectedCategory, formatFilter, searchQuery])
+
+    const dir = sortDir === 'asc' ? 1 : -1
+    filtered.sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title) * dir
+      if (sortBy === 'author') return (a.author || '').localeCompare(b.author || '') * dir
+      if (sortBy === 'notes') return ((a.notesCount || 0) - (b.notesCount || 0)) * dir
+      if (sortBy === 'progress') return ((a.progressPercent || 0) - (b.progressPercent || 0)) * dir
+      return ((a.addedAt || 0) - (b.addedAt || 0)) * dir
+    })
+
+    return filtered
+  }, [books, selectedCategory, formatFilter, searchQuery, sortBy, sortDir])
 
   // Active book for Quick-Resume bar
   const resumeBook = useMemo(() => {
@@ -352,11 +410,41 @@ export const LibraryView: React.FC = () => {
 
         {/* Table sorting column headers (1:1 Icecream Reader) */}
         <div className="h-7 px-5 border-b border-[#232732] flex items-center text-[11px] text-[#6e7681] select-none bg-[#171a21]/50 shrink-0">
-          <div className="w-[38%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Title</div>
-          <div className="w-[24%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Author</div>
-          <div className="w-[14%] flex items-center gap-1 cursor-pointer text-[#c8d1dc]">Date ▼</div>
-          <div className="w-[12%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3]">Notes</div>
-          <div className="w-[12%] flex items-center gap-1 cursor-pointer hover:text-[#9da7b3] text-right pr-4">Progress</div>
+          <button
+            type="button"
+            onClick={() => handleSortClick('title')}
+            className={`w-[38%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'title' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+          >
+            <span>Title{sortBy === 'title' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortClick('author')}
+            className={`w-[24%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'author' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+          >
+            <span>Author{sortBy === 'author' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortClick('date')}
+            className={`w-[14%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'date' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+          >
+            <span>Date{sortBy === 'date' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortClick('notes')}
+            className={`w-[12%] flex items-center gap-1 cursor-pointer text-left ${sortBy === 'notes' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+          >
+            <span>Notes{sortBy === 'notes' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSortClick('progress')}
+            className={`w-[12%] flex items-center justify-end gap-1 cursor-pointer pr-4 ${sortBy === 'progress' ? 'text-[#c8d1dc]' : 'hover:text-[#9da7b3]'}`}
+          >
+            <span>Progress{sortBy === 'progress' ? (sortDir === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+          </button>
         </div>
 
         {/* Catalog Body */}

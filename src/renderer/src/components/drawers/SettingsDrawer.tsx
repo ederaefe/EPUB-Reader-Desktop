@@ -17,7 +17,10 @@ import {
   Timer,
   RotateCcw,
   Pilcrow,
-  Power
+  Power,
+  FileCode2,
+  FileText,
+  Download
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -38,11 +41,76 @@ export const SettingsDrawer: React.FC = () => {
     isAutoscrollActive,
     setAutoscrollActive,
     toggleRSVP,
+    pdfViewMode,
+    setPdfViewMode,
+    reflowEpubBuffer,
+    setReflowEpubBuffer,
+    isConvertingPdf,
+    pdfConvertProgress,
+    setPdfConversionState,
     settings,
     updateSettings
   } = useAppStore()
 
   if (!isSettingsDrawerOpen) return null
+
+  const handleSwitchPdfMode = async (targetMode: 'original' | 'reflow') => {
+    if (!activeBook || activeBook.format !== 'pdf') return
+    if (targetMode === 'original') {
+      setPdfViewMode('original')
+      return
+    }
+    if (reflowEpubBuffer) {
+      setPdfViewMode('reflow')
+      return
+    }
+    if (!window.desktopAPI?.convertToEpub || !window.desktopAPI?.readFileBuffer) return
+
+    setPdfConversionState(true, { percent: 5, stage: 'Starting MuPDF reflow engine...' })
+    try {
+      const res = await window.desktopAPI.convertToEpub({
+        pdfPath: activeBook.filePath,
+        mode: 'reflow-cache'
+      })
+      if (res.success && res.epubPath) {
+        const epubBuf = await window.desktopAPI.readFileBuffer(res.epubPath)
+        setReflowEpubBuffer(epubBuf)
+        setPdfViewMode('reflow')
+      } else {
+        alert(res.error || 'Could not reflow PDF.')
+      }
+    } catch (err: any) {
+      alert(err?.message || 'PDF reflow failed.')
+    } finally {
+      setPdfConversionState(false, null)
+    }
+  }
+
+  const handleExportPdfAsEpub = async () => {
+    if (!activeBook || activeBook.format !== 'pdf') return
+    if (!window.desktopAPI?.showSaveDialog || !window.desktopAPI?.convertToEpub) return
+    const safeName = activeBook.title.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Converted_Book'
+    const chosenPath = await window.desktopAPI.showSaveDialog({
+      title: 'Export PDF as Offline EPUB',
+      defaultPath: `${safeName}.epub`,
+      filters: [{ name: 'EPUB eBook', extensions: ['epub'] }]
+    })
+    if (!chosenPath) return
+
+    setPdfConversionState(true, { percent: 5, stage: 'Converting PDF to EPUB...' })
+    try {
+      const res = await window.desktopAPI.convertToEpub({
+        pdfPath: activeBook.filePath,
+        outputPath: chosenPath,
+        mode: 'export'
+      })
+      if (!res.success) {
+        alert(res.error || 'EPUB export failed.')
+      }
+    } finally {
+      setPdfConversionState(false, null)
+    }
+  }
 
   const handleLineSpacingChange = (delta: number) => {
     const next = Math.max(1.0, Math.min(2.5, Number((settings.lineHeight + delta).toFixed(1))))
@@ -114,6 +182,70 @@ export const SettingsDrawer: React.FC = () => {
 
         {/* Settings Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs text-[#c9d1d9]">
+          {/* PDF Reflow Mode & Offline EPUB Export (effective one-click switch in Settings) */}
+          {activeBook?.format === 'pdf' && (
+            <div className="p-2.5 bg-[#12141a] border border-[#2d323f] rounded-[2px] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-white">PDF Reflow Mode</span>
+                <span className="text-[10px] font-mono text-[#2a69df]">
+                  {pdfViewMode === 'reflow' ? 'Reflow EPUB' : 'Original PDF'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  disabled={isConvertingPdf}
+                  onClick={() => handleSwitchPdfMode('original')}
+                  className={`h-8 rounded-[2px] flex items-center justify-center gap-1.5 border text-[11px] font-medium transition-colors ${
+                    pdfViewMode === 'original'
+                      ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                      : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Original PDF</span>
+                </button>
+                <button
+                  disabled={isConvertingPdf}
+                  onClick={() => handleSwitchPdfMode('reflow')}
+                  className={`h-8 rounded-[2px] flex items-center justify-center gap-1.5 border text-[11px] font-medium transition-colors ${
+                    pdfViewMode === 'reflow'
+                      ? 'bg-[#2a69df] border-[#2a69df] text-white'
+                      : 'bg-[#282c37] border-[#3c404d] text-[#c9d1d9] hover:bg-[#323745]'
+                  }`}
+                  title="Reflow PDF into clean customizable EPUB text with images preserved"
+                >
+                  <FileCode2 className="w-3.5 h-3.5" />
+                  <span>{isConvertingPdf ? 'Reflowing...' : 'Reflow EPUB'}</span>
+                </button>
+              </div>
+
+              {isConvertingPdf && pdfConvertProgress && (
+                <div className="space-y-1">
+                  <div className="w-full h-1 bg-[#232732] rounded overflow-hidden">
+                    <div
+                      className="h-full bg-[#2a69df] transition-all duration-150"
+                      style={{ width: `${pdfConvertProgress.percent}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-[#8b949e]">
+                    <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
+                    <span className="font-mono shrink-0">{pdfConvertProgress.percent}%</span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                disabled={isConvertingPdf}
+                onClick={handleExportPdfAsEpub}
+                className="ice-btn-dark w-full h-7 flex items-center justify-center gap-1.5 text-[11px] rounded-[2px] disabled:opacity-50"
+              >
+                <Download className="w-3 h-3 text-[#4cd964]" />
+                <span>Convert &amp; Export as EPUB (Offline)</span>
+              </button>
+            </div>
+          )}
+
           {/* 1. Theme (2x2 grid with authentic icons, 1:1 rec_12.jpg) */}
           <div>
             <label className="text-[11px] font-medium text-[#8b949e] block mb-2">

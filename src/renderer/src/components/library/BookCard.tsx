@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { BookOpen, Star, Trash2, Folder, CheckCircle } from 'lucide-react'
+import { BookOpen, Star, Trash2, Folder, CheckCircle, FileCode2 } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
+import { extractEpubCover, generateCoverCanvas } from '../../services/coverService'
 
 interface BookCardProps {
   book: Book
@@ -54,6 +55,46 @@ export const BookCard: React.FC<BookCardProps> = ({
     onUpdate()
   }
 
+  const handleConvertPdfToEpub = async () => {
+    if (book.format !== 'pdf' || !window.desktopAPI?.convertToEpub || !window.desktopAPI?.readFileBuffer) return
+    try {
+      const res = await window.desktopAPI.convertToEpub({
+        pdfPath: book.filePath,
+        mode: 'library'
+      })
+      if (!res.success || !res.epubPath) {
+        alert(res.error || 'PDF to EPUB conversion failed.')
+        return
+      }
+      const existing = await db.books.where('filePath').equals(res.epubPath).first()
+      if (!existing) {
+        const epubBuf = await window.desktopAPI.readFileBuffer(res.epubPath)
+        const cover = (await extractEpubCover(epubBuf)) || book.coverDataUrl || generateCoverCanvas(res.title || book.title, res.author || book.author)
+        await db.books.add({
+          filePath: res.epubPath,
+          title: res.title || `${book.title}`,
+          author: res.author || book.author || 'Unknown Author',
+          coverDataUrl: cover,
+          format: 'epub',
+          fileSize: epubBuf.byteLength,
+          addedAt: Date.now(),
+          lastOpenedAt: null,
+          progressCfi: null,
+          progressPercent: 0,
+          currentPage: 1,
+          totalPages: res.pageCount || book.totalPages || 1,
+          categoryId: book.categoryId,
+          isFavorite: false,
+          isRead: false,
+          isDeleted: false
+        })
+      }
+      onUpdate()
+    } catch (err: any) {
+      alert(err?.message || 'PDF to EPUB conversion failed.')
+    }
+  }
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -68,6 +109,16 @@ export const BookCard: React.FC<BookCardProps> = ({
         icon: <BookOpen className="w-3.5 h-3.5 text-[#2a69df]" />,
         onClick: () => onOpen(book)
       },
+      ...(book.format === 'pdf'
+        ? [
+            {
+              id: 'convert-epub',
+              label: 'Convert to EPUB (Offline)',
+              icon: <FileCode2 className="w-3.5 h-3.5 text-[#4cd964]" />,
+              onClick: handleConvertPdfToEpub
+            }
+          ]
+        : []),
       { id: 'div-1', divider: true },
       {
         id: 'favorite',
@@ -151,6 +202,9 @@ export const BookCard: React.FC<BookCardProps> = ({
         <div className="flex items-center gap-6 shrink-0 text-[11px] text-[#8b949e]">
           <span className="uppercase text-[10px] px-1.5 py-0.5 bg-[#171a21] border border-[#2d323f] rounded font-mono">
             {book.format}
+          </span>
+          <span className="w-16 text-right" title="Saved highlights and notes">
+            {book.notesCount ? `${book.notesCount} ${book.notesCount === 1 ? 'note' : 'notes'}` : '0 notes'}
           </span>
           <span className="w-20 text-right">
             p.{book.currentPage || 1} / {book.totalPages || 1}
