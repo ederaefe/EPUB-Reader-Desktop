@@ -1234,3 +1234,9 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - Restored missing `Pin`, `PinOff`, and `ImageIcon` imports from `lucide-react`, ensuring zero compiler diagnostics in `tsc --noEmit`.
 
 
+
+## Theming
+Themes are applied app-wide by setting a `data-theme` attribute on `document.documentElement` in `applyDocumentTheme` within [useAppStore.ts](file:///c:/Users/USER/Documents/Projects/EPUB READER DESKTOP/src/renderer/src/stores/useAppStore.ts). This allows CSS variables to adjust the entire UI appearance based on the theme.
+
+## Font Library
+The font library is defined in [fontCatalog.ts](file:///c:/Users/USER/Documents/Projects/EPUB READER DESKTOP/src/shared/fontCatalog.ts). To expand the library, add a new `FontEntry` object to the `FONT_CATALOG` array, following the existing structure. Ensure offline fonts have no `googleFamily` and include the CSS `fallback`.

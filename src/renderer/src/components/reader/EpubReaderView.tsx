@@ -1791,8 +1791,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       {!isImmersiveFullscreen && (
         <FluidClimaxProgressBar
           progressPercent={progressPercent || 0}
-          currentPage={currentPage}
-          totalPages={totalPages}
           book={book}
           theme={settings.theme}
           isImmersiveFullscreen={isImmersiveFullscreen}

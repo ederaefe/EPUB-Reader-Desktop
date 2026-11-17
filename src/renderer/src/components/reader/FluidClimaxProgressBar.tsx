@@ -4,8 +4,6 @@ import type { ReaderTheme } from '../ui/ThemePickerGrid'
 
 interface FluidClimaxProgressBarProps {
   progressPercent: number
-  currentPage?: number
-  totalPages?: number
   book?: Book | null
   onSeek: (targetPercent: number) => void
   theme?: ReaderTheme
@@ -57,8 +55,6 @@ function interpolateHue(from: number, to: number, t: number): number {
 
 export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
   progressPercent,
-  currentPage,
-  totalPages,
   book,
   onSeek,
   theme = 'night',
@@ -188,91 +184,77 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
         isImmersiveFullscreen ? 'h-6 pb-1' : 'h-8 pb-2'
       } px-6`}
     >
-      {/* Row containing Glass Capillary Tube and Muted Page Progress Counter */}
-      <div className="w-full flex items-center gap-3">
-        {/* Delicate Glass Capillary Tube Container */}
+      {/* Delicate Glass Capillary Tube Container */}
+      <div
+        ref={trackRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleTrackMouseMove}
+        className="w-full relative cursor-pointer py-1.5 flex items-center group"
+      >
+        {/* Outer Capillary Glass Tube */}
         <div
-          ref={trackRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleTrackMouseMove}
-          className="flex-1 relative cursor-pointer py-1.5 flex items-center group"
+          className={`w-full rounded-full relative overflow-hidden transition-all duration-200 ${
+            isHovered || isDragging ? 'h-2' : 'h-[4px]'
+          }`}
+          style={{
+            backgroundColor: tubeTrackBg,
+            boxShadow: isLightMode
+              ? 'inset 0 1px 1px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.08)'
+              : 'inset 0 1px 1px rgba(255,255,255,0.12), inset 0 -1px 1px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(255,255,255,0.08)',
+            border: `0.5px solid ${tubeBorderColor}`
+          }}
         >
-          {/* Outer Capillary Glass Tube */}
+          {/* Inner Fluid Column */}
           <div
-            className={`w-full rounded-full relative overflow-hidden transition-all duration-200 ${
-              isHovered || isDragging ? 'h-2' : 'h-[4px]'
-            }`}
+            className="h-full rounded-full relative transition-[width] duration-150 ease-out"
             style={{
-              backgroundColor: tubeTrackBg,
-              boxShadow: isLightMode
-                ? 'inset 0 1px 1px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.08)'
-                : 'inset 0 1px 1px rgba(255,255,255,0.12), inset 0 -1px 1px rgba(0,0,0,0.35), 0 0 0 0.5px rgba(255,255,255,0.08)',
-              border: `0.5px solid ${tubeBorderColor}`
+              width: `${currentPct}%`,
+              backgroundColor: fluidColor,
+              boxShadow: `0 0 ${Math.round(4 + climaxIntensity * 8)}px ${glowColor}`
             }}
           >
-            {/* Inner Fluid Column */}
+            {/* Top Cylindrical Liquid Specular Sheen (simulates water in a glass tube) */}
             <div
-              className="h-full rounded-full relative transition-[width] duration-150 ease-out"
+              className="absolute inset-x-0 top-0 h-[45%] rounded-t-full pointer-events-none opacity-60"
               style={{
-                width: `${currentPct}%`,
-                backgroundColor: fluidColor,
-                boxShadow: `0 0 ${Math.round(4 + climaxIntensity * 8)}px ${glowColor}`
+                background: 'linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.1) 100%)'
               }}
-            >
-              {/* Top Cylindrical Liquid Specular Sheen (simulates water in a glass tube) */}
+            />
+
+            {/* Leading Liquid Meniscus Surface Tension Bulb */}
+            {currentPct > 0 && (
               <div
-                className="absolute inset-x-0 top-0 h-[45%] rounded-t-full pointer-events-none opacity-60"
+                className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-200"
                 style={{
-                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.1) 100%)'
+                  width: isHovered || isDragging ? '6px' : '4px',
+                  height: isHovered || isDragging ? '6px' : '4px',
+                  backgroundColor: '#ffffff',
+                  boxShadow: `0 0 6px ${glowColor}, 0 0 2px #ffffff`,
+                  opacity: 0.9
                 }}
-              />
-
-              {/* Leading Liquid Meniscus Surface Tension Bulb */}
-              {currentPct > 0 && (
-                <div
-                  className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-200"
-                  style={{
-                    width: isHovered || isDragging ? '6px' : '4px',
-                    height: isHovered || isDragging ? '6px' : '4px',
-                    backgroundColor: '#ffffff',
-                    boxShadow: `0 0 6px ${glowColor}, 0 0 2px #ffffff`,
-                    opacity: 0.9
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Ghost Scrubber on Hover */}
-            {(isHovered || isDragging) && hoverPercent !== null && (
-              <div
-                className="absolute top-0 bottom-0 pointer-events-none w-0.5 bg-white/40 z-10"
-                style={{ left: `${hoverPercent}%` }}
               />
             )}
           </div>
 
-          {/* Minimal percentage indicator on hover/drag (subtle, text-free) */}
+          {/* Ghost Scrubber on Hover */}
           {(isHovered || isDragging) && hoverPercent !== null && (
             <div
-              className="absolute -top-7 -translate-x-1/2 pointer-events-none z-40 bg-[#16181f]/95 border border-white/10 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-              style={{
-                left: `${displayPct}%`
-              }}
-            >
-              {displayPct}%
-            </div>
+              className="absolute top-0 bottom-0 pointer-events-none w-0.5 bg-white/40 z-10"
+              style={{ left: `${hoverPercent}%` }}
+            />
           )}
         </div>
 
-        {/* Muted Page Progress Counter at the end (e.g. 56/100 or 45/234) */}
-        {totalPages != null && totalPages > 0 && (
-          <span
-            className={`shrink-0 text-[11px] font-mono tabular-nums select-none tracking-tight transition-opacity duration-200 ${
-              isLightMode ? 'text-black/45' : 'text-white/40'
-            }`}
+        {/* Minimal percentage indicator on hover/drag (subtle, text-free) */}
+        {(isHovered || isDragging) && hoverPercent !== null && (
+          <div
+            className="absolute -top-7 -translate-x-1/2 pointer-events-none z-40 bg-[#16181f]/95 border border-white/10 text-white text-[11px] font-mono px-2 py-0.5 rounded shadow-lg backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            style={{
+              left: `${displayPct}%`
+            }}
           >
-            {currentPage || 1}/{totalPages}
-          </span>
+            {displayPct}%
+          </div>
         )}
       </div>
     </footer>
