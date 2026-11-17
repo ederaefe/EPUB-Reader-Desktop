@@ -9,7 +9,10 @@ import {
   Circle,
   FileCode2,
   Check,
-  CheckSquare
+  CheckSquare,
+  Pin,
+  PinOff,
+  ImageIcon
 } from 'lucide-react'
 import type { Book, Category } from '../../db'
 import { db } from '../../db'
@@ -195,7 +198,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       items.push(
         {
           id: 'open',
-          label: book.progressPercent && book.progressPercent > 0 ? 'Continue Reading' : 'Open Book',
+          label: 'Open',
           icon: <BookOpen className="w-3.5 h-3.5 text-[#2a69df]" />,
           onClick: () => onOpen(book)
         },
@@ -203,45 +206,10 @@ export const BookCard: React.FC<BookCardProps> = ({
       )
     }
 
-    items.push(
-      {
-        id: 'pin',
-        label: book.isPinned ? `Unpin${batchSuffix}` : `Pin to Top${batchSuffix}`,
-        icon: book.isPinned ? (
-          <PinOff className="w-3.5 h-3.5 text-[#58a6ff]" />
-        ) : (
-          <Pin className="w-3.5 h-3.5 text-[#58a6ff]" />
-        ),
-        onClick: () => {
-          if (onPinAction) {
-            onPinAction(book, !book.isPinned)
-          } else if (book.id) {
-            db.books
-              .update(book.id, {
-                isPinned: !book.isPinned,
-                pinnedAt: !book.isPinned ? Date.now() : null
-              })
-              .then(onUpdate)
-          }
-        }
-      },
-      {
-        id: 'favorite',
-        label: book.isFavorite
-          ? `Remove from Favorites${batchSuffix}`
-          : `Add to Favorites${batchSuffix}`,
-        icon: <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'text-[#e3b341] fill-current' : ''}`} />,
-        onClick: () => {
-          if (onFavoriteAction) {
-            onFavoriteAction(book, !book.isFavorite)
-          } else if (book.id) {
-            db.books.update(book.id, { isFavorite: !book.isFavorite }).then(onUpdate)
-          }
-        }
-      },
+    const markAsChildren: ContextMenuItem[] = [
       {
         id: 'mark-read',
-        label: `Mark as Read${batchSuffix}`,
+        label: 'Read',
         icon: <CheckCircle2 className="w-3.5 h-3.5 text-[#4cd964]" />,
         disabled: isAlreadyFullyRead,
         onClick: () => {
@@ -260,7 +228,7 @@ export const BookCard: React.FC<BookCardProps> = ({
       },
       {
         id: 'mark-unread',
-        label: `Mark as Unread${batchSuffix}`,
+        label: 'Unread',
         icon: <Circle className="w-3.5 h-3.5 text-[#8b949e]" />,
         disabled: isAlreadyCompletelyUnread,
         onClick: () => {
@@ -277,6 +245,29 @@ export const BookCard: React.FC<BookCardProps> = ({
               .then(onUpdate)
           }
         }
+      }
+    ]
+
+    items.push(
+      {
+        id: 'favorite',
+        label: book.isFavorite
+          ? `Remove from Favorites${batchSuffix}`
+          : `Add to Favorites${batchSuffix}`,
+        icon: <Star className={`w-3.5 h-3.5 ${book.isFavorite ? 'text-[#e3b341] fill-current' : ''}`} />,
+        onClick: () => {
+          if (onFavoriteAction) {
+            onFavoriteAction(book, !book.isFavorite)
+          } else if (book.id) {
+            db.books.update(book.id, { isFavorite: !book.isFavorite }).then(onUpdate)
+          }
+        }
+      },
+      {
+        id: 'mark-as',
+        label: `Mark as${batchSuffix}`,
+        icon: <CheckCircle2 className="w-3.5 h-3.5 text-[#4cd964]" />,
+        children: markAsChildren
       }
     )
 
@@ -304,10 +295,10 @@ export const BookCard: React.FC<BookCardProps> = ({
       items.push(
         { id: 'div-tools', divider: true },
         {
-          id: 'refresh-cover',
-          label: 'Refresh Cover / First Page',
-          icon: <ImageIcon className="w-3.5 h-3.5 text-[#79c0ff]" />,
-          onClick: handleRefreshCover
+          id: 'select-this',
+          label: 'Select this',
+          icon: <CheckSquare className="w-3.5 h-3.5 text-[#79c0ff]" />,
+          onClick: () => onSelectThis?.(book)
         },
         ...(book.format === 'pdf'
           ? [
@@ -384,12 +375,6 @@ export const BookCard: React.FC<BookCardProps> = ({
                 <BookOpen className="w-3 h-3 text-[#6e7681]" />
               )}
             </div>
-
-            {book.isPinned && (
-              <span title="Pinned" className="text-[#58a6ff] shrink-0">
-                <Pin className="w-3 h-3 fill-current" />
-              </span>
-            )}
 
             <span className="font-medium text-white truncate">{book.title}</span>
             <span className="text-[#8b949e] truncate">({book.author || 'Unknown'})</span>
@@ -560,22 +545,6 @@ export const BookCard: React.FC<BookCardProps> = ({
             }`}
             data-preserve-theme="true"
           >
-            {book.isPinned && (
-              <span
-                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#58a6ff]"
-                title="Pinned to top"
-              >
-                <Pin className="w-3 h-3 fill-current" />
-              </span>
-            )}
-            {book.isFavorite && (
-              <span
-                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#e3b341]"
-                title="Favorite"
-              >
-                <Star className="w-3 h-3 fill-current" />
-              </span>
-            )}
             {book.isRead && (
               <span
                 className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#4cd964]"
