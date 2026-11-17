@@ -20,7 +20,6 @@ import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
-import { getWarmFilterOverlay } from '../../services/colorTempService'
 import { syncBookNotesCount } from '../../services/annotationService'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
@@ -55,13 +54,19 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     pdfConvertProgress,
     bookmarksVersion,
     bumpAnnotationsVersion,
-    bumpBookmarksVersion
+    bumpBookmarksVersion,
+    pdfZoom: zoom,
+    setPdfZoom
   } = useAppStore()
+
+  const setZoom = (updater: number | ((z: number) => number)) => {
+    const next = typeof updater === 'function' ? updater(useAppStore.getState().pdfZoom) : updater
+    setPdfZoom(next)
+  }
 
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState<number>(Math.max(1, book.currentPage || 1))
   const [totalPages, setTotalPages] = useState<number>(Math.max(1, book.totalPages || 1))
-  const [zoom, setZoom] = useState<number>(1.2)
   const [pdfBookmarks, setPdfBookmarks] = useState<BookmarkItem[]>([])
 
   useEffect(() => {
@@ -112,12 +117,6 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     'dark-sepia': { bg: '#241e18', pageFilter: 'invert(0.86) sepia(0.35) hue-rotate(180deg) contrast(0.92)' }
   }
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
-
-  const warmFilter = getWarmFilterOverlay(
-    settings.warmFilterEnabled || false,
-    settings.warmFilterTemp || 3200,
-    settings.warmFilterIntensity || 40
-  )
 
   // Load PDF document
   useEffect(() => {
@@ -294,11 +293,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     // Persist reading progress
     if (book.id && totalPages > 0) {
       const pct = Math.min(100, Math.round((currentPage / totalPages) * 100))
+      const isFinished = totalPages > 1 && currentPage >= totalPages
       db.books.update(book.id, {
         currentPage,
         totalPages,
         progressPercent: pct,
-        lastOpenedAt: Date.now()
+        lastOpenedAt: Date.now(),
+        ...(isFinished ? { isRead: true } : {})
       })
     }
 
@@ -544,20 +545,6 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           </>
         )}
       </div>
-
-      {/* Dimming & Warm Night Light Overlays */}
-      {settings.dimming > 0 && (
-        <div
-          style={{ opacity: settings.dimming / 100 }}
-          className="fixed inset-0 bg-black pointer-events-none z-30"
-        />
-      )}
-      {warmFilter && (
-        <div
-          style={{ backgroundColor: warmFilter.backgroundColor, opacity: warmFilter.opacity }}
-          className="fixed inset-0 pointer-events-none z-30 mix-blend-multiply"
-        />
-      )}
 
       {/* Bottom Progress Scrubber (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (

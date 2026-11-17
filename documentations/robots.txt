@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# AI Assistant Discovery (llmstxt.org)
+# Index: /llms.txt
+# Complete Markdown Manual: /llms-full.txt
+Sitemap: ./sitemap.xml

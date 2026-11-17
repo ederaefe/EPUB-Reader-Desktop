@@ -1,0 +1,28 @@
+# Semply Ebook Reader
+
+> Official user-facing documentation for Semply Ebook Reader — a free, offline-first, distraction-free desktop reader for EPUB, PDF (with offline MuPDF Reflow Mode), MOBI, and TXT books on Windows, macOS, and Linux.
+
+Semply Ebook Reader requires no account, no subscription, and no internet connection for core reading, cover extraction, full-book search, annotations, PDF reflow, or library backups.
+
+## Start Here
+- [Complete User Documentation (HTML)](./index.html): Full browser-ready and crawler-readable user guide with interactive theme preview and Auto-Scroll pace calculator.
+- [Complete User Documentation (Markdown)](./llms-full.txt): Single-file plain Markdown manual containing the entire user documentation for single-fetch AI ingestion.
+- [Getting Started](./index.html#getting-started): Supported formats (EPUB, PDF, MOBI, TXT), platforms, and first steps.
+- [Library & Importing Books](./index.html#library-and-import): Grid/List views, folder scanning, drag-and-drop, automatic cover/first-page extraction, custom color categories, and 5-column sorting.
+
+## Core Reading Features
+- [Reading, Themes & Immersive Fullscreen](./index.html#reading-experience): 4 themes (Light, Paper, Dusk, Obsidian), 3-tab Settings panel, F11 fullscreen, and content-only zoom.
+- [Native PDF & Offline MuPDF Reflow](./index.html#pdf-and-reflow): HiDPI PDF viewer, one-click offline Reflow Mode, scanned-page preservation, and EPUB export.
+- [Highlights, Notes & Bookmarks](./index.html#notes-highlights-bookmarks): 6 theme-aware highlight styles, on-page popover editing, auto-excerpt bookmarks, and HTML/Markdown/Text export.
+- [Full-Book Search (Ctrl+F)](./index.html#search-in-book): Spine-wide EPUB search with chapter labels, amber excerpts, and Enter/Shift+Enter match stepping.
+- [Dual-Mode Auto-Scroll](./index.html#auto-scroll): Fixed Timer and Smart Pace (visible word-density scaling), wheel nudges, 300ms break micro-pauses, and automatic away suspension.
+
+## Reading Tools & Reference
+- [Read Aloud, Dictionary & Footnotes](./index.html#read-aloud-and-lookup): Smart pronunciation-normalized TTS, inline Dictionary/Wikipedia cards, 9 dictionary providers, and non-destructive footnote popovers.
+- [Warm Night Filter & Dimming](./index.html#eye-comfort): Hardware-independent 2000K–4500K warm amber overlay and viewport dimming.
+- [Backup & Additive Sync](./index.html#backup-and-sync): Non-destructive JSON and ZIP export/import with automatic deduplication and cover recovery.
+- [Keyboard Shortcuts](./index.html#keyboard-shortcuts): Complete table of global, library, EPUB, PDF, and search shortcuts.
+- [Troubleshooting & FAQ](./index.html#faq): Answers to common offline, cover, PDF reflow, and shortcut questions.
+
+## Optional
+- [GitHub Repository](https://github.com/ederaefe/EPUB-Reader-Desktop): Source code, releases, and internal developer documentation (`dev-documentations.md`).

@@ -1,13 +1,108 @@
 import { create } from 'zustand'
-import type { Book, NoteColor, UserSettings } from '../db'
+import { db, type Book, type NoteColor, type UserSettings } from '../db'
+
+const SETTINGS_STORAGE_KEY = 'semply_user_settings_v1'
+
+export const THEME_WINDOW_BG: Record<UserSettings['theme'], string> = {
+  night: '#0a0a0a',
+  day: '#f6f7f9',
+  'light-sepia': '#f5ebd6',
+  'dark-sepia': '#1f1a14'
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  id: 1,
+  theme: 'night',
+  fontFamily: 'original',
+  fontSize: 21,
+  lineHeight: 1.5,
+  marginWidth: 40,
+  dimming: 0,
+  pageSpread: 'double',
+  ttsSpeed: 1.0,
+  ttsPitch: 1.0,
+  ttsVoice: null,
+  autoscrollSpeed: 40,
+  autoscrollMode: 'adaptive',
+  autoscrollCountdownSec: 20,
+  autoscrollAdaptiveSec: 25,
+  autoscrollMicroPause: true,
+  autoscrollAdaptive: true,
+  targetWpm: 250,
+  observedWpm: 250,
+  warmFilterEnabled: false,
+  warmFilterTemp: 3200,
+  warmFilterIntensity: 40,
+  rsvpWpm: 350,
+  language: 'en',
+  copyExternal: false,
+  autoUpdate: true,
+  sendStats: false,
+  viewMode: 'grid',
+  lastNoteColor: 'yellow',
+  pdfZoom: 1.2
+}
+
+export function applyDocumentTheme(theme: UserSettings['theme']): void {
+  if (typeof document !== 'undefined') {
+    document.documentElement.dataset.theme = theme
+    document.documentElement.style.colorScheme =
+      theme === 'day' || theme === 'light-sepia' ? 'light' : 'dark'
+  }
+  try {
+    if (typeof window !== 'undefined' && (window as any).desktopAPI?.setBackgroundColor) {
+      ;(window as any).desktopAPI.setBackgroundColor(THEME_WINDOW_BG[theme] || '#0a0a0a')
+    }
+  } catch {
+    // Ignore if preload bridge isn't available (e.g. web preview)
+  }
+}
+
+function loadSyncSettings(): UserSettings {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<UserSettings>
+        const merged: UserSettings = { ...DEFAULT_SETTINGS, ...parsed, id: 1 }
+        applyDocumentTheme(merged.theme)
+        return merged
+      }
+    }
+  } catch {
+    // Ignore malformed localStorage
+  }
+  applyDocumentTheme(DEFAULT_SETTINGS.theme)
+  return { ...DEFAULT_SETTINGS }
+}
+
+function persistSettings(merged: UserSettings): void {
+  const payload: UserSettings = { ...merged, id: 1 }
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(payload))
+    }
+  } catch {
+    // Ignore storage quota errors
+  }
+  // Mirror durably into Dexie IndexedDB for full backup/restore persistence
+  db.settings.put(payload).catch(() => {})
+}
+
+const initialSettings = loadSyncSettings()
 
 interface AppState {
   // Navigation & views
   currentView: 'library' | 'reader'
-  selectedCategory: string // 'all', 'recent', 'favorites', 'read', 'deleted', or category id
+  selectedCategory: string // 'all', 'recent', 'favorites', 'read', or category id
   searchQuery: string
   formatFilter: string | null
   viewMode: 'grid' | 'list'
+
+  // Font library download & offline connectivity state
+  downloadedFontIds: string[]
+  downloadingFontId: string | null
+  isOnline: boolean
 
   // Active book
   activeBook: Book | null
@@ -39,7 +134,20 @@ interface AppState {
   // Live reactive sync counters for Notes & Bookmarks
   annotationsVersion: number
   bookmarksVersion: number
+  libraryVersion: number
   lastNoteColor: NoteColor
+  pdfZoom: number
+
+  // Native in-app feedback (replaces window.alert / window.confirm)
+  toast: { message: string; variant?: 'info' | 'success' | 'error' } | null
+  confirmDialog: {
+    title: string
+    message: string
+    confirmLabel?: string
+    cancelLabel?: string
+    danger?: boolean
+    onConfirm: () => void | Promise<void>
+  } | null
 
   // User Settings (aligned with Semply Reader defaults)
   settings: UserSettings
@@ -74,8 +182,26 @@ interface AppState {
   setImmersiveFullscreen: (active: boolean) => void
   bumpAnnotationsVersion: () => void
   bumpBookmarksVersion: () => void
+  bumpLibraryVersion: () => void
   setLastNoteColor: (color: NoteColor) => void
+  setPdfZoom: (zoom: number) => void
+  showToast: (message: string, variant?: 'info' | 'success' | 'error') => void
+  clearToast: () => void
+  openConfirmDialog: (dialog: {
+    title: string
+    message: string
+    confirmLabel?: string
+    cancelLabel?: string
+    danger?: boolean
+    onConfirm: () => void | Promise<void>
+  }) => void
+  closeConfirmDialog: () => void
   updateSettings: (newSettings: Partial<UserSettings>) => void
+  hydrateSettingsFromDb: () => Promise<void>
+  setDownloadedFontIds: (ids: string[]) => void
+  addDownloadedFontId: (id: string) => void
+  setDownloadingFontId: (id: string | null) => void
+  setIsOnline: (online: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -83,7 +209,11 @@ export const useAppStore = create<AppState>((set) => ({
   selectedCategory: 'all',
   searchQuery: '',
   formatFilter: null,
-  viewMode: 'grid',
+  viewMode: initialSettings.viewMode || 'grid',
+
+  downloadedFontIds: [],
+  downloadingFontId: null,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
 
   activeBook: null,
   activeBookBuffer: null,
@@ -106,41 +236,28 @@ export const useAppStore = create<AppState>((set) => ({
   isTTSMuted: false,
   isAutoscrollActive: false,
   activeTTSWord: null,
-  adaptiveWpm: 250,
+  adaptiveWpm: initialSettings.observedWpm || initialSettings.targetWpm || 250,
   isImmersiveFullscreen: false,
   annotationsVersion: 0,
   bookmarksVersion: 0,
-  lastNoteColor: 'yellow',
+  libraryVersion: 0,
+  lastNoteColor: initialSettings.lastNoteColor || 'yellow',
+  pdfZoom: initialSettings.pdfZoom || 1.2,
+  toast: null,
+  confirmDialog: null,
 
-  settings: {
-    theme: 'night',
-    fontFamily: 'original',
-    fontSize: 21,
-    lineHeight: 1.5,
-    marginWidth: 40,
-    dimming: 0,
-    pageSpread: 'double',
-    ttsSpeed: 1.0,
-    ttsPitch: 1.0,
-    ttsVoice: null,
-    autoscrollSpeed: 40,
-    autoscrollMode: 'adaptive',
-    autoscrollCountdownSec: 20,
-    autoscrollAdaptiveSec: 25,
-    autoscrollMicroPause: true,
-    autoscrollAdaptive: true,
-    targetWpm: 250,
-    observedWpm: 250,
-    warmFilterEnabled: false,
-    warmFilterTemp: 3200,
-    warmFilterIntensity: 40
-  },
+  settings: initialSettings,
 
   setView: (view) => set({ currentView: view }),
-  setSelectedCategory: (cat) => set({ selectedCategory: cat }),
+  setSelectedCategory: (cat) => set({ selectedCategory: cat === 'deleted' ? 'all' : cat }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setFormatFilter: (fmt) => set({ formatFilter: fmt }),
-  setViewMode: (mode) => set({ viewMode: mode }),
+  setViewMode: (mode) =>
+    set((s) => {
+      const merged: UserSettings = { ...s.settings, viewMode: mode }
+      persistSettings(merged)
+      return { viewMode: mode, settings: merged }
+    }),
   setActiveBook: (book, buffer = null) =>
     set({
       activeBook: book,
@@ -224,16 +341,88 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   bumpAnnotationsVersion: () => set((s) => ({ annotationsVersion: s.annotationsVersion + 1 })),
   bumpBookmarksVersion: () => set((s) => ({ bookmarksVersion: s.bookmarksVersion + 1 })),
-  setLastNoteColor: (color) => set({ lastNoteColor: color }),
+  bumpLibraryVersion: () => set((s) => ({ libraryVersion: s.libraryVersion + 1 })),
+  setPdfZoom: (zoom) =>
+    set((s) => {
+      const clamped = Math.max(0.5, Math.min(3.0, Number(zoom.toFixed(2))))
+      const merged: UserSettings = { ...s.settings, pdfZoom: clamped }
+      persistSettings(merged)
+      return { pdfZoom: clamped, settings: merged }
+    }),
+  showToast: (message, variant = 'info') => {
+    set({ toast: { message, variant } })
+    const w = window as any
+    if (w.__semplyToastTimer) clearTimeout(w.__semplyToastTimer)
+    w.__semplyToastTimer = setTimeout(() => {
+      set((s) => (s.toast?.message === message ? { toast: null } : s))
+    }, 3200)
+  },
+  clearToast: () => set({ toast: null }),
+  openConfirmDialog: (dialog) => set({ confirmDialog: dialog }),
+  closeConfirmDialog: () => set({ confirmDialog: null }),
+  setLastNoteColor: (color) =>
+    set((s) => {
+      const merged: UserSettings = { ...s.settings, lastNoteColor: color }
+      persistSettings(merged)
+      return { lastNoteColor: color, settings: merged }
+    }),
   updateSettings: (newSettings) =>
     set((s) => {
-      const merged: UserSettings = { ...s.settings, ...newSettings }
+      const merged: UserSettings = { ...s.settings, ...newSettings, id: 1 }
       // Keep legacy autoscrollAdaptive flag synchronized with autoscrollMode
       if (newSettings.autoscrollMode !== undefined) {
         merged.autoscrollAdaptive = newSettings.autoscrollMode === 'adaptive'
       } else if (newSettings.autoscrollAdaptive !== undefined) {
         merged.autoscrollMode = newSettings.autoscrollAdaptive ? 'adaptive' : 'countdown'
       }
-      return { settings: merged }
-    })
+      if (newSettings.theme !== undefined) {
+        applyDocumentTheme(merged.theme)
+      }
+      persistSettings(merged)
+      return {
+        settings: merged,
+        ...(newSettings.viewMode ? { viewMode: newSettings.viewMode } : {}),
+        ...(newSettings.lastNoteColor ? { lastNoteColor: newSettings.lastNoteColor } : {}),
+        ...(newSettings.pdfZoom ? { pdfZoom: newSettings.pdfZoom } : {})
+      }
+    }),
+  hydrateSettingsFromDb: async () => {
+    try {
+      const saved = await db.settings.get(1)
+      if (saved) {
+        const hasLocal = Boolean(
+          typeof window !== 'undefined' && window.localStorage?.getItem(SETTINGS_STORAGE_KEY)
+        )
+        // Prefer localStorage if present (always newest sync write), otherwise restore from Dexie DB
+        if (!hasLocal) {
+          const merged: UserSettings = { ...DEFAULT_SETTINGS, ...saved, id: 1 }
+          applyDocumentTheme(merged.theme)
+          persistSettings(merged)
+          set({
+            settings: merged,
+            viewMode: merged.viewMode || 'grid',
+            lastNoteColor: merged.lastNoteColor || 'yellow',
+            pdfZoom: merged.pdfZoom || 1.2,
+            adaptiveWpm: merged.observedWpm || merged.targetWpm || 250
+          })
+          return
+        }
+      }
+      // Ensure Dexie always mirrors the current active settings row (id = 1)
+      const current = useAppStore.getState().settings
+      applyDocumentTheme(current.theme)
+      await db.settings.put({ ...current, id: 1 })
+    } catch {
+      // Ignore DB init race
+    }
+  },
+  setDownloadedFontIds: (ids) => set({ downloadedFontIds: Array.from(new Set(ids)) }),
+  addDownloadedFontId: (id) =>
+    set((s) => ({
+      downloadedFontIds: s.downloadedFontIds.includes(id)
+        ? s.downloadedFontIds
+        : [id, ...s.downloadedFontIds]
+    })),
+  setDownloadingFontId: (id) => set({ downloadingFontId: id }),
+  setIsOnline: (online) => set({ isOnline: online })
 }))

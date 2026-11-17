@@ -17,7 +17,10 @@ export interface Book {
   categoryId: number | null
   isFavorite: boolean
   isRead: boolean
-  isDeleted: boolean
+  isPinned?: boolean
+  pinnedAt?: number | null
+  /** @deprecated Soft-delete was removed in v3; retained optional for legacy backup compatibility. */
+  isDeleted?: boolean
   notesCount?: number
 }
 
@@ -72,7 +75,7 @@ export type AutoscrollMode = 'countdown' | 'adaptive'
 export interface UserSettings {
   id?: number
   theme: 'night' | 'day' | 'light-sepia' | 'dark-sepia'
-  fontFamily: 'original' | 'serif' | 'sans-serif' | 'monospace'
+  fontFamily: string
   fontSize: number
   lineHeight: number
   marginWidth: number
@@ -92,6 +95,14 @@ export interface UserSettings {
   warmFilterEnabled?: boolean
   warmFilterTemp?: number
   warmFilterIntensity?: number
+  rsvpWpm?: number
+  language?: string
+  copyExternal?: boolean
+  autoUpdate?: boolean
+  sendStats?: boolean
+  viewMode?: 'grid' | 'list'
+  lastNoteColor?: NoteColor
+  pdfZoom?: number
 }
 
 class ReaderDatabase extends Dexie {
@@ -117,7 +128,54 @@ class ReaderDatabase extends Dexie {
       bookmarks: '++id, bookId, cfi, pageNumber, createdAt',
       settings: '++id'
     })
+    this.version(3)
+      .stores({
+        books: '++id, filePath, format, categoryId, isFavorite, isRead, isPinned, pinnedAt, lastOpenedAt',
+        categories: '++id, name',
+        annotations: '++id, bookId, cfiRange, color, pageNumber, createdAt',
+        bookmarks: '++id, bookId, cfi, pageNumber, createdAt',
+        settings: '++id'
+      })
+      .upgrade(async (tx) => {
+        const booksTable = tx.table('books')
+        const annotationsTable = tx.table('annotations')
+        const bookmarksTable = tx.table('bookmarks')
+        const all = await booksTable.toArray()
+        const legacyDeletedIds: number[] = []
+
+        for (const b of all) {
+          if (b.isDeleted && b.id !== undefined) {
+            legacyDeletedIds.push(b.id)
+          } else if (b.id !== undefined) {
+            await booksTable.update(b.id, {
+              isPinned: Boolean(b.isPinned),
+              pinnedAt: b.pinnedAt ?? null,
+              isDeleted: undefined
+            })
+          }
+        }
+
+        if (legacyDeletedIds.length > 0) {
+          await annotationsTable.where('bookId').anyOf(legacyDeletedIds).delete()
+          await bookmarksTable.where('bookId').anyOf(legacyDeletedIds).delete()
+          await booksTable.bulkDelete(legacyDeletedIds)
+        }
+      })
   }
 }
 
 export const db = new ReaderDatabase()
+
+/**
+ * Permanently deletes one or more books along with all associated annotations and bookmarks
+ * inside a single atomic IndexedDB transaction.
+ */
+export async function permanentlyDeleteBooks(bookIds: number[]): Promise<void> {
+  const uniqueIds = Array.from(new Set(bookIds.filter((id) => typeof id === 'number')))
+  if (uniqueIds.length === 0) return
+  await db.transaction('rw', [db.books, db.annotations, db.bookmarks], async () => {
+    await db.annotations.where('bookId').anyOf(uniqueIds).delete()
+    await db.bookmarks.where('bookId').anyOf(uniqueIds).delete()
+    await db.books.bulkDelete(uniqueIds)
+  })
+}

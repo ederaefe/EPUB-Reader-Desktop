@@ -23,6 +23,7 @@ import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { db, type AutoscrollMode } from '../../db'
 import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
+import { FontPicker } from '../ui/FontPicker'
 
 export const FullSettingsModal: React.FC = () => {
   const {
@@ -31,16 +32,16 @@ export const FullSettingsModal: React.FC = () => {
     isAutoscrollActive,
     setAutoscrollActive,
     settings,
-    updateSettings
+    updateSettings,
+    openConfirmDialog,
+    showToast,
+    bumpLibraryVersion
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<
     'system' | 'reading' | 'tts' | 'hotkeys' | 'backup' | 'about'
   >('system')
 
-  const [autoUpdate, setAutoUpdate] = useState(true)
-  const [copyExternal, setCopyExternal] = useState(false)
-  const [sendStats, setSendStats] = useState(false)
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -80,13 +81,21 @@ export const FullSettingsModal: React.FC = () => {
     setBackupStatus(res.message)
   }
 
-  const handleEmptyLibrary = async () => {
-    if (window.confirm('Are you sure you want to empty the library? All imported books will be cleared.')) {
-      await db.books.clear()
-      await db.annotations.clear()
-      await db.bookmarks.clear()
-      setBackupStatus('Library emptied.')
-    }
+  const handleEmptyLibrary = () => {
+    openConfirmDialog({
+      title: 'Empty Library?',
+      message: 'All imported books, highlights, and bookmarks will be removed from Semply. Your original files on disk will not be deleted.',
+      confirmLabel: 'Empty Library',
+      danger: true,
+      onConfirm: async () => {
+        await db.books.clear()
+        await db.annotations.clear()
+        await db.bookmarks.clear()
+        bumpLibraryVersion()
+        setBackupStatus('Library emptied.')
+        showToast('Library cleared', 'info')
+      }
+    })
   }
 
   return (
@@ -193,7 +202,11 @@ export const FullSettingsModal: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-[11px] text-[#8b949e] block mb-1.5">Language</label>
-                  <select className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px]">
+                  <select
+                    value={settings.language || 'en'}
+                    onChange={(e) => updateSettings({ language: e.target.value })}
+                    className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px]"
+                  >
                     <option value="en">English</option>
                     <option value="es">Español</option>
                     <option value="fr">Français</option>
@@ -229,8 +242,8 @@ export const FullSettingsModal: React.FC = () => {
                   <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={copyExternal}
-                      onChange={(e) => setCopyExternal(e.target.checked)}
+                      checked={Boolean(settings.copyExternal)}
+                      onChange={(e) => updateSettings({ copyExternal: e.target.checked })}
                       className="ice-checkbox"
                     />
                     <span className="group-hover:text-white transition-colors">Copy eBooks from external devices</span>
@@ -238,8 +251,8 @@ export const FullSettingsModal: React.FC = () => {
                   <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={autoUpdate}
-                      onChange={(e) => setAutoUpdate(e.target.checked)}
+                      checked={settings.autoUpdate ?? true}
+                      onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
                       className="ice-checkbox"
                     />
                     <span className="group-hover:text-white transition-colors">Check for the updates automatically</span>
@@ -247,8 +260,8 @@ export const FullSettingsModal: React.FC = () => {
                   <label className="flex items-center gap-2.5 text-xs text-[#c9d1d9] cursor-pointer group">
                     <input
                       type="checkbox"
-                      checked={sendStats}
-                      onChange={(e) => setSendStats(e.target.checked)}
+                      checked={Boolean(settings.sendStats)}
+                      onChange={(e) => updateSettings({ sendStats: e.target.checked })}
                       className="ice-checkbox"
                     />
                     <span className="group-hover:text-white transition-colors">Send anonymous usage stats</span>
@@ -293,19 +306,7 @@ export const FullSettingsModal: React.FC = () => {
           {/* 2. READING SETTINGS TAB */}
           {activeTab === 'reading' && (
             <div className="space-y-5 max-w-lg">
-              <div>
-                <label className="text-[11px] text-[#8b949e] block mb-1.5">Default Font</label>
-                <select
-                  value={settings.fontFamily}
-                  onChange={(e) => updateSettings({ fontFamily: e.target.value as any })}
-                  className="ice-input w-full h-8 px-2.5 text-xs bg-[#12141a] border-[#2d323f] text-white rounded-[2px]"
-                >
-                  <option value="original">Original font</option>
-                  <option value="sans-serif">Segoe UI</option>
-                  <option value="serif">Georgia</option>
-                  <option value="monospace">Consolas</option>
-                </select>
-              </div>
+              <FontPicker />
 
               <div>
                 <div className="flex items-center justify-between text-[11px] text-[#8b949e] mb-1.5">

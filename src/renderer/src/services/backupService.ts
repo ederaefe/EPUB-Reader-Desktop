@@ -3,6 +3,7 @@
 
 import JSZip from 'jszip'
 import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings } from '../db'
+import { useAppStore } from '../stores/useAppStore'
 
 export interface LibraryBackupData {
   version: number
@@ -256,6 +257,12 @@ export class BackupService {
         bookmarkKeySet.add(key)
         addedBookmarks++
       }
+    }
+
+    // 5. Restore persisted user settings if included in the backup
+    if (backup.settings) {
+      const { id: _ignoredId, ...restoredSettings } = backup.settings
+      useAppStore.getState().updateSettings(restoredSettings)
     }
 
     return { addedBooks, addedAnnotations, addedBookmarks, addedCategories }

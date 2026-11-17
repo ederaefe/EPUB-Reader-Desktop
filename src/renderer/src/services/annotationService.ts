@@ -472,7 +472,28 @@ export function exportNotesToPlainText(book: Book, annotations: Annotation[]): s
   return header + body
 }
 
-export function downloadTextFile(filename: string, content: string, mimeType: string): void {
+export async function downloadTextFile(filename: string, content: string, mimeType: string): Promise<boolean> {
+  try {
+    if (window.desktopAPI?.showSaveDialog && window.desktopAPI?.writeFileText) {
+      const ext = filename.split('.').pop()?.toLowerCase() || 'txt'
+      const filterName =
+        ext === 'md' ? 'Markdown Document' : ext === 'html' ? 'HTML Document' : 'Plain Text'
+      const chosenPath = await window.desktopAPI.showSaveDialog({
+        title: 'Export Notes & Highlights',
+        defaultPath: filename,
+        filters: [
+          { name: filterName, extensions: [ext] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      })
+      if (!chosenPath) return false
+      await window.desktopAPI.writeFileText(chosenPath, content)
+      return true
+    }
+  } catch {
+    // Fall back to browser download when outside Electron
+  }
+
   const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -482,4 +503,5 @@ export function downloadTextFile(filename: string, content: string, mimeType: st
   a.click()
   document.body.removeChild(a)
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return true
 }

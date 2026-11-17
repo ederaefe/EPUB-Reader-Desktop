@@ -28,8 +28,9 @@ import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
-import { getWarmFilterOverlay } from '../../services/colorTempService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
+import { injectFontIntoDocument } from '../../services/fontManager'
+import { getFontCssFamily } from '../../../../shared/fontCatalog'
 import {
   applyAnnotationToRendition,
   captureIceRange,
@@ -177,17 +178,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
   const currentTheme = themeStyles[settings.theme] || themeStyles.night
 
-  // Feature 5: Warm Blue Light Night Filter style
-  const warmFilter = getWarmFilterOverlay(
-    settings.warmFilterEnabled || false,
-    settings.warmFilterTemp || 3200,
-    settings.warmFilterIntensity || 40
-  )
-
-  // Attach smart footnote click interception and cadence wheel listener to iframe
+  // Attach smart footnote click interception, custom downloaded font CSS, and cadence wheel listener to iframe
   const attachIframeHooks = useCallback((contents: any) => {
     const doc = contents.document
     if (!doc) return
+
+    // Inject active downloaded font stylesheet into the isolated EPUB iframe
+    const activeFontId = useAppStore.getState().settings.fontFamily
+    if (activeFontId) {
+      injectFontIntoDocument(doc, activeFontId).catch(() => {})
+    }
 
     // Feature 4: Smart footnote interception
     const noteLinks = doc.querySelectorAll(
@@ -442,14 +442,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       // Register themes with exact CSS injection
       const registerThemes = () => {
-        const fontFam =
-          settings.fontFamily === 'serif'
-            ? 'Georgia, serif'
-            : settings.fontFamily === 'sans-serif'
-            ? '"Segoe UI", sans-serif'
-            : settings.fontFamily === 'monospace'
-            ? 'Consolas, monospace'
-            : 'inherit'
+        const fontFam = getFontCssFamily(useAppStore.getState().settings.fontFamily)
 
         const baseRules = {
           'html, body': {
@@ -662,11 +655,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
 
         if (book.id) {
+          const isFinished = pct >= 99 || Boolean(location.atEnd)
           db.books.update(book.id, {
             progressCfi: cfi,
-            progressPercent: pct,
+            progressPercent: isFinished ? 100 : pct,
             currentPage: page,
-            lastOpenedAt: Date.now()
+            lastOpenedAt: Date.now(),
+            ...(isFinished ? { isRead: true } : {})
           })
         }
       })
@@ -737,26 +732,37 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       .catch(() => {})
   }, [settings.theme, book.id, annotationsVersion])
 
-  // Synchronize dynamic settings
+  // Synchronize dynamic settings (theme, font size, line height, and downloaded/local font family)
   useEffect(() => {
     if (!renditionRef.current) return
-    renditionRef.current.themes.select(settings.theme)
-    renditionRef.current.themes.fontSize(`${settings.fontSize}px`)
-    renditionRef.current.themes.default({
-      'html, body': {
-        'font-family':
-          settings.fontFamily === 'serif'
-            ? 'Georgia, serif !important'
-            : settings.fontFamily === 'sans-serif'
-            ? '"Segoe UI", sans-serif !important'
-            : settings.fontFamily === 'monospace'
-            ? 'Consolas, monospace !important'
-            : 'inherit'
-      },
-      p: {
-        'line-height': `${Math.round(settings.lineHeight * 100)}% !important`
+    const fontFam = getFontCssFamily(settings.fontFamily)
+
+    // Inject @font-face CSS into any currently mounted EPUB iframes before applying font-family
+    const applyFontAndTheme = async () => {
+      try {
+        const contentsList = (renditionRef.current?.getContents() as unknown as any[]) || []
+        for (const c of contentsList) {
+          if (c?.document) {
+            await injectFontIntoDocument(c.document, settings.fontFamily)
+          }
+        }
+      } catch {
+        // Ignore iframe injection races during chapter unload
       }
-    })
+      if (!renditionRef.current) return
+      renditionRef.current.themes.select(settings.theme)
+      renditionRef.current.themes.fontSize(`${settings.fontSize}px`)
+      renditionRef.current.themes.default({
+        'html, body': {
+          'font-family': fontFam === 'inherit' ? 'inherit' : `${fontFam} !important`
+        },
+        p: {
+          'line-height': `${Math.round(settings.lineHeight * 100)}% !important`
+        }
+      })
+    }
+
+    applyFontAndTheme()
   }, [settings.theme, settings.fontSize, settings.lineHeight, settings.fontFamily])
 
   const handleNext = useCallback(() => renditionRef.current?.next(), [])
@@ -1716,25 +1722,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           </button>
         )}
       </div>
-
-      {/* Dimming Overlay */}
-      {settings.dimming > 0 && (
-        <div
-          style={{ opacity: settings.dimming / 100 }}
-          className="fixed inset-0 bg-black pointer-events-none z-30 transition-opacity"
-        />
-      )}
-
-      {/* Feature 5: Warm Blue Light Night Filter Overlay (isEnableBlueFilterNight) */}
-      {warmFilter && (
-        <div
-          style={{
-            backgroundColor: warmFilter.backgroundColor,
-            opacity: warmFilter.opacity
-          }}
-          className="fixed inset-0 pointer-events-none z-30 transition-opacity duration-300 mix-blend-multiply"
-        />
-      )}
 
       {/* Feature 1: Minimalist Bottom-Right Auto-Scroll Countdown (persists even in Fullscreen) */}
       <AdaptiveScrollOverlay

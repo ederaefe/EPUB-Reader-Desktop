@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="obsidian">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semply Ebook Reader — User Documentation</title>
+  <meta
+    name="description"
+    content="Official user guide for Semply Ebook Reader — the free, distraction-free desktop reader for EPUB, PDF (with offline MuPDF reflow), MOBI, and TXT books."
+  />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta property="og:title" content="Semply Ebook Reader — User Documentation" />
+  <meta
+    property="og:description"
+    content="Learn how to organize your library, reflow PDFs offline, highlight and export notes, search across books, use Smart Auto-Scroll, and back up your collection."
+  />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="./assets/favicon.ico" />
+  <link rel="alternate" type="text/markdown" title="Complete User Guide for AI Assistants (llms-full.txt)" href="./llms-full.txt" />
+  <link rel="alternate" type="text/plain" title="AI Documentation Index (llms.txt)" href="./llms.txt" />
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- Structured Data for Search Engines and AI Agents -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "Semply Ebook Reader",
+          "applicationCategory": "ReferenceApplication",
+          "operatingSystem": "Windows, macOS, Linux",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "A fast, distraction-free, zero-paywall desktop ebook and document reader supporting EPUB, native PDF with offline MuPDF reflow, MOBI, and TXT.",
+          "featureList": [
+            "EPUB 2 and EPUB 3 single and dual-page spread reading",
+            "Native HiDPI PDF viewer with offline MuPDF Reflow Mode and EPUB export",
+            "6 theme-aware highlight and underline styles with HTML, Markdown, and Plain Text export",
+            "Full-book search across chapters with Ctrl+F",
+            "Dual-mode Auto-Scroll with Fixed Timer and Smart Pace word-density scaling",
+            "Read Aloud text-to-speech with smart pronunciation rules",
+            "Non-destructive inline footnote previews and warm blue light night filter",
+            "Non-destructive additive JSON and ZIP library backup and sync"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Does Semply Ebook Reader require an internet connection or account?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Semply works 100% offline with no account, subscription, or paywall. Reading, cover extraction, full-book search, annotations, PDF Reflow, and backups all run locally on your machine. Internet access is only used when you explicitly look up a word in the inline Dictionary, Wikipedia, or external translation tools."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does PDF Reflow Mode work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Open any PDF, click Settings, switch to the PDF tab, and choose Reflow. Semply runs Artifex MuPDF offline to extract headings, paragraphs, code blocks, and images into a cached EPUB so you can resize fonts, change themes, highlight, search, and use Auto-Scroll or Read Aloud."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Will importing a backup overwrite my current books or notes?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Semply uses a non-destructive additive merge. Importing a JSON or ZIP backup adds missing books, shelves, highlights, and bookmarks without deleting local data, and advances reading progress only when the backup is further ahead."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  </script>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to documentation</a>
+
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button
+        type="button"
+        id="mobile-menu-btn"
+        class="icon-btn menu-btn"
+        aria-label="Toggle navigation menu"
+        aria-expanded="false"
+        aria-controls="docs-sidebar"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
+      <a href="#overview" class="brand-link">
+        <img src="./assets/semply-logo.png" alt="Semply Ebook Reader logo" class="brand-logo" />
+        <span>Semply</span>
+        <span class="brand-tag">Docs</span>
+      </a>
+    </div>
+
+    <div class="topbar-actions">
+      <button type="button" id="open-search-btn" class="search-trigger" aria-label="Search documentation">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <span class="search-trigger-label">Search docs</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
+      <div class="theme-strip" role="group" aria-label="Switch documentation reading theme">
+        <button type="button" class="theme-dot-btn" data-set-theme="obsidian" aria-pressed="true" title="Obsidian theme">
+          <span class="theme-swatch-chip" style="background: #0d0d0e;"></span>
+        </button>
+        <button type="button" class="theme-dot-btn" data-set-theme="light" aria-pressed="false" title="Light theme">
+          <span class="theme-swatch-chip" style="background: #ffffff;"></span>
+        </button>
+        <button type="button" class="theme-dot-btn" data-set-theme="paper" aria-pressed="false" title="Paper (Light Sepia) theme">
+          <span class="theme-swatch-chip" style="background: #f6ebd4;"></span>
+        </button>
+        <button type="button" class="theme-dot-btn" data-set-theme="dusk" aria-pressed="false" title="Dusk (Dark Sepia) theme">
+          <span class="theme-swatch-chip" style="background: #221c16;"></span>
+        </button>
+      </div>
+
+      <a href="./llms.txt" class="ai-link" title="AI-readable documentation index (llmstxt.org)">llms.txt</a>
+    </div>
+  </header>
+
+  <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+
+  <!-- Three-Column Documentation Layout -->
+  <div class="shell">
+    <!-- Left Navigation Sidebar -->
+    <nav id="docs-sidebar" class="sidebar" aria-label="Documentation chapters">
+      <div class="nav-group">
+        <p class="nav-group-title">Start Here</p>
+        <ul class="nav-list">
+          <li><a class="nav-link active" href="#getting-started">Getting Started</a></li>
+          <li><a class="nav-link" href="#library-and-import">Library &amp; Importing Books</a></li>
+          <li><a class="nav-link" href="#reading-experience">Reading, Themes &amp; Fullscreen</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <p class="nav-group-title">Core Features</p>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#pdf-and-reflow">Native PDF &amp; Offline Reflow</a></li>
+          <li><a class="nav-link" href="#notes-highlights-bookmarks">Highlights, Notes &amp; Bookmarks</a></li>
+          <li><a class="nav-link" href="#search-in-book">Full-Book Search (Ctrl+F)</a></li>
+          <li><a class="nav-link" href="#auto-scroll">Auto-Scroll (Fixed &amp; Smart)</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <p class="nav-group-title">Reading Tools</p>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#read-aloud-and-lookup">Read Aloud, Dictionary &amp; Footnotes</a></li>
+          <li><a class="nav-link" href="#eye-comfort">Warm Night Filter &amp; Dimming</a></li>
+          <li><a class="nav-link" href="#backup-and-sync">Backup &amp; Additive Sync</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-group">
+        <p class="nav-group-title">Reference</p>
+        <ul class="nav-list">
+          <li><a class="nav-link" href="#keyboard-shortcuts">Keyboard Shortcuts</a></li>
+          <li><a class="nav-link" href="#faq">Troubleshooting &amp; FAQ</a></li>
+          <li><a class="nav-link" href="#ai-and-hosting">AI Access &amp; Hosting</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <a class="sidebar-meta-link" href="./llms.txt">AI Index (llms.txt)</a>
+        <a class="sidebar-meta-link" href="./llms-full.txt">Full Markdown Guide (llms-full.txt)</a>
+        <a class="sidebar-meta-link" href="https://github.com/ederaefe/EPUB-Reader-Desktop" target="_blank" rel="noopener">GitHub Repository</a>
+      </div>
+    </nav>
+
+    <!-- Main Documentation Column -->
+    <main id="main-content" class="content">
+      <header id="overview" class="hero">
+        <div class="hero-eyebrow">
+          <span class="hero-eyebrow-dot" aria-hidden="true"></span>
+          <span>SEMPLY EBOOK READER · USER MANUAL · FREE &amp; OFFLINE</span>
+        </div>
+        <h1>Read deeply, without clutter or paywalls.</h1>
+        <p class="hero-lead">
+          Semply Ebook Reader is a calm, native desktop reader for Windows, macOS, and Linux. Open EPUB, PDF, MOBI, and TXT books locally, reflow dense PDFs offline, annotate in six theme-aware styles, and keep your entire library under your own control.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#getting-started" class="btn-primary">Start reading in 2 minutes</a>
+          <a href="#keyboard-shortcuts" class="btn-secondary">Keyboard shortcuts</a>
+          <a href="./llms-full.txt" class="btn-secondary">Read as Markdown</a>
+        </div>
+
+        <!-- Signature Interactive Reading Surface Preview -->
+        <div class="theme-specimen">
+          <div class="theme-specimen-bar">
+            <span>Try Semply's 4 reading themes live across this entire guide</span>
+            <div class="theme-specimen-pills" role="group" aria-label="Preview reading themes">
+              <button type="button" class="specimen-theme-btn" data-set-theme="obsidian" aria-pressed="true">Obsidian</button>
+              <button type="button" class="specimen-theme-btn" data-set-theme="light" aria-pressed="false">Light</button>
+              <button type="button" class="specimen-theme-btn" data-set-theme="paper" aria-pressed="false">Paper</button>
+              <button type="button" class="specimen-theme-btn" data-set-theme="dusk" aria-pressed="false">Dusk</button>
+            </div>
+          </div>
+          <div class="theme-specimen-page">
+            <p>
+              Every surface in Semply is tuned for long-form focus. Switch between single-page and two-page spreads, <span class="specimen-highlight">highlight passages that stay crisp on both dark and light paper</span>, and press <kbd>F11</kbd> whenever you want every bar to disappear.
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <!-- 1. Getting Started -->
+      <section id="getting-started" class="doc-section">
+        <div class="section-header">
+          <h2>Getting Started</h2>
+          <button type="button" class="copy-anchor" data-copy-id="getting-started" aria-label="Copy link to Getting Started"># link</button>
+        </div>
+        <p>
+          Semply Ebook Reader runs completely locally on your computer with zero accounts, zero tracking nags, and zero PRO paywalls. Every book, highlight, bookmark, and shelf is saved directly on your device.
+        </p>
+
+        <div class="card-grid">
+          <article class="card">
+            <h3>Supported Formats</h3>
+            <p>
+              <strong>EPUB</strong> (EPUB 2 &amp; 3), <strong>PDF</strong> (native HiDPI view plus offline Reflow Mode), <strong>MOBI</strong>, and plain <strong>TXT</strong> documents.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Supported Platforms</h3>
+            <p>
+              Installers are packaged for <strong>Windows</strong> (NSIS x64), <strong>macOS</strong> (DMG &amp; ZIP), and <strong>Linux</strong> (AppImage &amp; DEB).
+            </p>
+          </article>
+        </div>
+
+        <h3>Your First Three Actions</h3>
+        <ol>
+          <li><strong>Add books to your shelf:</strong> Click the dashed <strong>+ Add book</strong> card in the first library slot, press <kbd>Ctrl</kbd> + <kbd>O</kbd>, or drag and drop files directly anywhere onto the Semply window.</li>
+          <li><strong>Open a book from your OS:</strong> Double-click an <code>.epub</code> or <code>.pdf</code> file associated with Semply to import and open it in the existing window immediately.</li>
+          <li><strong>Pick up where you left off:</strong> Use the bottom <strong>Continue reading</strong> bar in the Library to jump straight back to your last page.</li>
+        </ol>
+
+        <div class="callout">
+          <span class="callout-title">Offline by default</span>
+          Reading, cover extraction, full-book search, notes, bookmarks, PDF Reflow, Read Aloud, and JSON/ZIP backups all work with no internet connection. Network requests happen only when you click online Dictionary, Wikipedia, or Translate actions.
+        </div>
+      </section>
+
+      <!-- 2. Library & Import -->
+      <section id="library-and-import" class="doc-section">
+        <div class="section-header">
+          <h2>Library &amp; Importing Books</h2>
+          <button type="button" class="copy-anchor" data-copy-id="library-and-import" aria-label="Copy link to Library and Importing Books"># link</button>
+        </div>
+        <p>
+          Your Library gives you a clean, fast catalog with both <strong>Grid View</strong> (book cover tiles with progress overlays) and <strong>List View</strong> (compact rows showing title, author, date added, note count, and reading progress).
+        </p>
+
+        <h3>Ways to Import Books</h3>
+        <ul>
+          <li><strong>Single or Multiple Files:</strong> Click the <strong>+ Add book</strong> card (or press <kbd>Ctrl</kbd> + <kbd>O</kbd>) and pick <strong>Add Book</strong> to select one or more files.</li>
+          <li><strong>Entire Folder Scan:</strong> Choose <strong>Add Folder</strong> to recursively scan nested folders and import every supported <code>.epub</code>, <code>.pdf</code>, <code>.mobi</code>, and <code>.txt</code> book automatically.</li>
+          <li><strong>Full-Window Drag &amp; Drop:</strong> Drag files from File Explorer or Finder straight onto Semply.</li>
+          <li><strong>Bulk Add to a Custom Category:</strong> Open any custom category in the left sidebar and click the <strong>+</strong> card to pick existing books from your main library in bulk.</li>
+        </ul>
+
+        <h3>Automatic Covers &amp; Metadata Cleanup</h3>
+        <p>
+          When you import a book, Semply automatically reads embedded cover art and metadata, strips noisy download prefixes from filenames, and renders a crisp miniature first-page preview when a book has no cover image. Right-click any book card and select <strong>Refresh Cover / First Page</strong> if you ever want to regenerate its thumbnail.
+        </p>
+
+        <h3>Shelves, Sorting &amp; Right-Click Actions</h3>
+        <ul>
+          <li><strong>Built-in Shelves:</strong> Filter quickly by <strong>All</strong>, <strong>Recently Read</strong>, <strong>Favorites</strong>, <strong>Formats</strong> (EPUB or PDF), <strong>Read</strong>, and <strong>Deleted</strong> (soft-delete trash with one-click Restore).</li>
+          <li><strong>Custom Color Categories:</strong> Click <strong>+ Add new category</strong> in the sidebar, enter a name, and pick from 9 preset swatches or any custom hex color.</li>
+          <li><strong>5-Column Sorting:</strong> Click <strong>Title</strong>, <strong>Author</strong>, <strong>Date</strong>, <strong>Notes</strong>, or <strong>Progress</strong> to toggle ascending or descending order.</li>
+          <li><strong>Book Context Menu:</strong> Right-click any book to Open, Favorite, Mark Read/Unread, assign a category, Refresh Cover, <strong>Convert PDF to EPUB (Offline)</strong>, <strong>Reveal in Explorer</strong>, or Move to Trash.</li>
+        </ul>
+      </section>
+
+      <!-- 3. Reading Experience -->
+      <section id="reading-experience" class="doc-section">
+        <div class="section-header">
+          <h2>Reading, Themes &amp; Fullscreen</h2>
+          <button type="button" class="copy-anchor" data-copy-id="reading-experience" aria-label="Copy link to Reading, Themes and Fullscreen"># link</button>
+        </div>
+        <p>
+          The reader toolbar stays intentionally quiet: navigation panels (<strong>Library</strong>, <strong>Contents</strong>, <strong>Notes</strong>, <strong>Bookmarks</strong>, and <strong>Find</strong>) sit on the left, while <strong>Immersive Fullscreen</strong> and <strong>Settings</strong> sit on the right.
+        </p>
+
+        <h3>3-Tab Reader Settings Panel</h3>
+        <p>Click the gear button on the top right to open the floating settings panel, organized into three zero-scroll tabs:</p>
+        <ul>
+          <li><strong>Display:</strong> Switch themes (<strong>Light</strong>, <strong>Paper</strong>, <strong>Dusk</strong>, <strong>Obsidian</strong>), pick a typeface (<strong>Publisher</strong>, <strong>Sans</strong>, <strong>Serif</strong>, <strong>Mono</strong>), adjust font size, pick <strong>Tight / Normal / Relaxed</strong> line spacing, toggle <strong>Single / Double</strong> page spread, and tune screen dimming or the Warm Night Filter.</li>
+          <li><strong>Flow:</strong> Control <strong>Auto-Scroll</strong> (Fixed Timer or Smart Pace) and <strong>Read Aloud</strong> playback speed and pause/mute.</li>
+          <li><strong>PDF / More:</strong> Switch between <strong>Original PDF</strong> and <strong>Reflow EPUB</strong> (when viewing a PDF), export a PDF as an offline EPUB, or jump to <strong>All Preferences</strong> and <strong>Keyboard Shortcuts</strong>.</li>
+        </ul>
+
+        <h3>Distraction-Free Fullscreen &amp; Quiet Progress</h3>
+        <ul>
+          <li><strong>True Immersive Fullscreen (<kbd>F11</kbd>):</strong> Hides the titlebar, top toolbar, footer, side arrows, and drawers so only your book text fills the screen. Hover the top-right corner or press <kbd>Esc</kbd> or <kbd>F11</kbd> to exit.</li>
+          <li><strong>Dual-State Progress Bar:</strong> At rest, the bottom edge displays five subtle dots. Move your cursor over the bottom strip to reveal the exact page counter and a full-width page scrubber.</li>
+          <li><strong>Content-Only Zoom:</strong> Press <kbd>Ctrl</kbd> + <kbd>+</kbd>, <kbd>Ctrl</kbd> + <kbd>-</kbd>, or <kbd>Ctrl</kbd> + <kbd>0</kbd> to scale your book text size (or PDF page zoom) cleanly without distorting window buttons or toolbars.</li>
+        </ul>
+      </section>
+
+      <!-- 4. Native PDF & Offline Reflow -->
+      <section id="pdf-and-reflow" class="doc-section">
+        <div class="section-header">
+          <h2>Native PDF &amp; Offline Reflow</h2>
+          <button type="button" class="copy-anchor" data-copy-id="pdf-and-reflow" aria-label="Copy link to Native PDF and Offline Reflow"># link</button>
+        </div>
+        <p>
+          PDFs open natively in a crisp, HiDPI canvas viewer with selectable text, single or dual-page spreads, 50%–300% zoom, native PDF outlines in the Contents drawer, bookmarks, and automatic Night and Sepia color adaptation.
+        </p>
+
+        <h3>One-Click Offline PDF Reflow Mode</h3>
+        <p>
+          Reading a fixed-layout PDF on a laptop or in dark mode can feel cramped. Open <strong>Settings &rarr; PDF</strong> and select <strong>Reflow</strong> to transform the PDF into a responsive EPUB completely offline using Artifex MuPDF:
+        </p>
+        <ul>
+          <li>Automatically removes repeating running headers, footers, and page numbers.</li>
+          <li>Preserves headings, bold/italic emphasis, monospace code blocks, chapter bookmarks, and embedded illustrations.</li>
+          <li>Safely preserves scanned pages or full-page diagrams as crisp responsive images so nothing is lost.</li>
+          <li>Caches the reflowed EPUB locally so reopening Reflow Mode later is instantaneous.</li>
+          <li>Unlocks every EPUB tool on your PDF: custom fonts, sizing, highlights, notes, full-book Find, Read Aloud, and Auto-Scroll.</li>
+        </ul>
+        <p>
+          Want a permanent copy? Click <strong>Export as EPUB (Offline)</strong> inside Settings, or right-click any PDF in your Library and select <strong>Convert to EPUB (Offline)</strong> to add the converted EPUB directly to your shelf.
+        </p>
+      </section>
+
+      <!-- 5. Notes, Highlights & Bookmarks -->
+      <section id="notes-highlights-bookmarks" class="doc-section">
+        <div class="section-header">
+          <h2>Highlights, Notes &amp; Bookmarks</h2>
+          <button type="button" class="copy-anchor" data-copy-id="notes-highlights-bookmarks" aria-label="Copy link to Highlights, Notes and Bookmarks"># link</button>
+        </div>
+        <p>
+          Select any passage in an EPUB to open the floating action bar. Choose from six distinct styles that automatically adjust their blend mode so highlights stay vivid and readable on both Light and Obsidian themes.
+        </p>
+
+        <div class="swatch-grid" aria-label="Six available highlight styles">
+          <div class="swatch-item"><span class="swatch-dot" style="background: #f5d76e;"></span><span><strong>Yellow</strong> — Key ideas</span></div>
+          <div class="swatch-item"><span class="swatch-dot" style="background: #6cbcf0;"></span><span><strong>Blue</strong> — Definitions</span></div>
+          <div class="swatch-item"><span class="swatch-dot" style="background: #6ee787;"></span><span><strong>Green</strong> — Examples</span></div>
+          <div class="swatch-item"><span class="swatch-dot" style="background: #b894f6;"></span><span><strong>Purple</strong> — Quotes</span></div>
+          <div class="swatch-item"><span class="swatch-dot" style="background: #f47c7c;"></span><span><strong>Red</strong> — Questions</span></div>
+          <div class="swatch-item"><span class="swatch-underline">U</span><span><strong>Underline</strong> — Subtle mark</span></div>
+        </div>
+
+        <h3>Editing, Organizing &amp; Exporting Notes</h3>
+        <ul>
+          <li><strong>Click any highlight on the page:</strong> Switch its color live, add or edit a comment (<kbd>Ctrl</kbd> + <kbd>Enter</kbd> to save), copy the quote and note together, read it aloud, or delete it with an instant Undo toast.</li>
+          <li><strong>Notes Drawer:</strong> Filter by color or commented-only notes, search across your annotations, sort by Page Order / Newest / Oldest / Color, or toggle <strong>Group by Chapter</strong>.</li>
+          <li><strong>Multi-Format Export:</strong> Export a book's highlights and notes via the native Save dialog as a styled standalone <strong>HTML</strong> report, <strong>Markdown (.md)</strong>, or <strong>Plain Text</strong>.</li>
+        </ul>
+
+        <h3>Smart Bookmarks (<kbd>Ctrl</kbd> + <kbd>B</kbd>)</h3>
+        <p>
+          Press <kbd>Ctrl</kbd> + <kbd>B</kbd> (or click the top-right bookmark ribbon) to bookmark the current spread. Semply automatically captures the opening sentence of that page as an excerpt so you can recognize each bookmark inside the <strong>Bookmarks</strong> drawer, where you can rename, search, sort, or jump straight back.
+        </p>
+      </section>
+
+      <!-- 6. Full-Book Search -->
+      <section id="search-in-book" class="doc-section">
+        <div class="section-header">
+          <h2>Full-Book Search (Ctrl+F)</h2>
+          <button type="button" class="copy-anchor" data-copy-id="search-in-book" aria-label="Copy link to Full-Book Search"># link</button>
+        </div>
+        <p>
+          Press <kbd>Ctrl</kbd> + <kbd>F</kbd> (or click the magnifying glass in the reader toolbar) from anywhere — whether focus is on the window or inside the book text — to open the left-docked <strong>Find in Book</strong> panel.
+        </p>
+        <ul>
+          <li>Searches every chapter across the entire EPUB automatically as you type (2+ characters).</li>
+          <li>Displays each result with its chapter name and an inline amber-highlighted excerpt.</li>
+          <li>Press <kbd>Enter</kbd> to step to the next match or <kbd>Shift</kbd> + <kbd>Enter</kbd> for the previous match; each active match is temporarily highlighted on the page and cleaned up automatically when you close Find.</li>
+          <li>Active Auto-Scroll pauses automatically while the Find panel is open and resumes when you dismiss it with <kbd>Esc</kbd>.</li>
+        </ul>
+      </section>
+
+      <!-- 7. Auto-Scroll -->
+      <section id="auto-scroll" class="doc-section">
+        <div class="section-header">
+          <h2>Auto-Scroll (Fixed &amp; Smart)</h2>
+          <button type="button" class="copy-anchor" data-copy-id="auto-scroll" aria-label="Copy link to Auto-Scroll"># link</button>
+        </div>
+        <p>
+          Enable hands-free page turning from <strong>Settings &rarr; Flow</strong> (or <strong>All Preferences &rarr; Reading settings</strong>). Both modes accept an exact manual duration from <code>3</code> to <code>600</code> seconds.
+        </p>
+
+        <div class="card-grid">
+          <article class="card">
+            <h3>Fixed Timer</h3>
+            <p>
+              Turns the page on a strict, predictable countdown (default <strong>20s</strong>). Ideal for steady skimming or timed reading drills.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Smart Pace</h3>
+            <p>
+              Scales your manual base time (default <strong>25s</strong> for a typical 180-word spread) to the actual number of words currently visible on screen, with optional <strong>300ms micro-pauses</strong> at chapter dividers and blockquotes.
+            </p>
+          </article>
+        </div>
+
+        <!-- Interactive Smart Pace / Fixed Timer Lab -->
+        <div class="pace-lab" aria-label="Interactive Auto-Scroll pace preview">
+          <div class="pace-lab-top">
+            <span class="pace-lab-title">Interactive Auto-Scroll Pace Preview</span>
+            <div class="segmented" role="group" aria-label="Auto-Scroll mode">
+              <button type="button" id="pace-mode-fixed" aria-pressed="false">Fixed Timer</button>
+              <button type="button" id="pace-mode-smart" aria-pressed="true">Smart Pace</button>
+            </div>
+          </div>
+
+          <div class="pace-controls">
+            <div class="pace-control">
+              <label for="pace-base-slider">
+                <span>Your seconds setting</span>
+                <output id="pace-base-out" for="pace-base-slider">25s</output>
+              </label>
+              <input type="range" id="pace-base-slider" min="5" max="90" step="1" value="25" />
+            </div>
+
+            <div class="pace-control" id="pace-words-wrap">
+              <label for="pace-words-slider">
+                <span>Visible words on spread</span>
+                <output id="pace-words-out" for="pace-words-slider">180 words</output>
+              </label>
+              <input type="range" id="pace-words-slider" min="30" max="420" step="10" value="180" />
+            </div>
+          </div>
+
+          <div class="pace-result">
+            <span id="pace-result-out" class="pace-readout">25s on this spread</span>
+            <span id="pace-result-caption" class="pace-caption">Smart Pace scales 25s (~432 WPM baseline) to 180 visible words.</span>
+          </div>
+        </div>
+
+        <h3>Hands-Free Safeguards</h3>
+        <ul>
+          <li><strong>Quiet Bottom-Right Countdown:</strong> Shows remaining seconds unobtrusively even in Immersive Fullscreen. Click the number anytime to pause, change modes, or adjust seconds.</li>
+          <li><strong>Wheel Nudges (Smart Mode):</strong> Scroll up slightly to slow your pace by 15%, or scroll down to speed it up by 10%.</li>
+          <li><strong>Automatic Suspension:</strong> Pauses cleanly whenever you open a drawer, hover or read a footnote, select text, or switch away from Semply — and automatically locks into a safe pause if you leave the app for 5+ minutes.</li>
+        </ul>
+      </section>
+
+      <!-- 8. Read Aloud, Dictionary & Footnotes -->
+      <section id="read-aloud-and-lookup" class="doc-section">
+        <div class="section-header">
+          <h2>Read Aloud, Dictionary &amp; Footnotes</h2>
+          <button type="button" class="copy-anchor" data-copy-id="read-aloud-and-lookup" aria-label="Copy link to Read Aloud, Dictionary and Footnotes"># link</button>
+        </div>
+
+        <h3>Read Aloud (Text-to-Speech)</h3>
+        <p>
+          Start <strong>Read Aloud</strong> from <strong>Settings &rarr; Flow</strong>, or highlight any passage and click <strong>Speak</strong>. Semply normalizes common book text before speaking — expanding abbreviations (<code>Dr.</code>, <code>e.g.</code>, <code>etc.</code>), decimals (<code>3.14</code> &rarr; "3 point 14"), dotted acronyms, and Roman numeral headings (<code>Chapter IV</code> &rarr; "Chapter 4"). Adjust speed (<code>0.8x–2.0x</code>), pitch, and system voice in <strong>All Preferences &rarr; Text to speech</strong>.
+        </p>
+
+        <h3>Inline Dictionary, Wikipedia &amp; Translation</h3>
+        <p>
+          Select any word or phrase to see instant phonetics and definitions (via Free Dictionary API) or concise encyclopedic summaries (via Wikipedia) inside a floating card, or launch deep lookups in <strong>Merriam-Webster</strong>, <strong>Oxford Learners</strong>, <strong>Cambridge</strong>, <strong>Collins</strong>, <strong>Vocabulary.com</strong>, <strong>Wiktionary</strong>, <strong>Google Translate</strong>, or <strong>DeepL</strong>.
+        </p>
+
+        <h3>Non-Destructive Footnotes</h3>
+        <p>
+          Clicking superscript footnote links or endnote references opens a compact bottom preview card — even when the footnote lives in a separate endnotes chapter — so you never lose your page. Click <strong>Jump to note</strong> if you want to navigate there directly.
+        </p>
+      </section>
+
+      <!-- 9. Eye Comfort -->
+      <section id="eye-comfort" class="doc-section">
+        <div class="section-header">
+          <h2>Warm Night Filter &amp; Dimming</h2>
+          <button type="button" class="copy-anchor" data-copy-id="eye-comfort" aria-label="Copy link to Warm Night Filter and Dimming"># link</button>
+        </div>
+        <p>
+          For late-night reading, open <strong>Settings &rarr; Display</strong> (or <strong>All Preferences &rarr; Reading settings</strong>) to combine two hardware-independent eye-comfort layers:
+        </p>
+        <ul>
+          <li><strong>Screen Dimming:</strong> Smoothly lowers viewport brightness without changing your operating system display settings.</li>
+          <li><strong>Warm Blue Light Night Filter:</strong> Applies a calibrated warm amber tint from candlelight <code>2000K</code> to warm neutral <code>4500K</code> with adjustable intensity across both EPUB and PDF views.</li>
+        </ul>
+      </section>
+
+      <!-- 10. Backup & Sync -->
+      <section id="backup-and-sync" class="doc-section">
+        <div class="section-header">
+          <h2>Backup &amp; Additive Sync</h2>
+          <button type="button" class="copy-anchor" data-copy-id="backup-and-sync" aria-label="Copy link to Backup and Additive Sync"># link</button>
+        </div>
+        <p>
+          Open <strong>All Preferences &rarr; Backup &amp; Sync</strong> (via the Sidebar Settings icon or Reader Settings &rarr; More) to export or merge your library safely across computers.
+        </p>
+        <ul>
+          <li><strong>Export JSON:</strong> Lightweight snapshot of all book metadata, reading progress, custom shelves, highlights, notes, bookmarks, and preferences.</li>
+          <li><strong>Export ZIP Archive:</strong> Full portable bundle including <code>library_metadata.json</code> plus every book's extracted cover art.</li>
+          <li><strong>Non-Destructive Additive Import:</strong> Importing a backup never wipes your local data. Semply unions your custom categories, deduplicates books by path or title/author, restores missing covers from ZIP archives, advances reading progress only when the backup is further along, and appends new highlights and bookmarks without duplicates.</li>
+        </ul>
+      </section>
+
+      <!-- 11. Keyboard Shortcuts -->
+      <section id="keyboard-shortcuts" class="doc-section">
+        <div class="section-header">
+          <h2>Keyboard Shortcuts</h2>
+          <button type="button" class="copy-anchor" data-copy-id="keyboard-shortcuts" aria-label="Copy link to Keyboard Shortcuts"># link</button>
+        </div>
+        <p>Press <kbd>F1</kbd> inside Semply at any time to view the built-in Hotkeys reference.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Shortcut</th>
+                <th>Where</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>Ctrl</kbd> + <kbd>O</kbd></td>
+                <td>Library / Global</td>
+                <td>Open Import Books / Add Folder modal</td>
+              </tr>
+              <tr>
+                <td><kbd>Right</kbd> / <kbd>Down</kbd> / <kbd>PgDn</kbd> / <kbd>Space</kbd></td>
+                <td>Reader</td>
+                <td>Next page (or smooth scroll down in PDF &amp; Library)</td>
+              </tr>
+              <tr>
+                <td><kbd>Left</kbd> / <kbd>Up</kbd> / <kbd>PgUp</kbd> / <kbd>Backspace</kbd></td>
+                <td>Reader</td>
+                <td>Previous page (or smooth scroll up in PDF &amp; Library)</td>
+              </tr>
+              <tr>
+                <td><kbd>Home</kbd> / <kbd>End</kbd></td>
+                <td>Reader</td>
+                <td>Jump to start (or end in PDF) of the book</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd> + <kbd>F</kbd></td>
+                <td>EPUB Reader</td>
+                <td>Open Find in Book drawer / re-focus search input</td>
+              </tr>
+              <tr>
+                <td><kbd>Enter</kbd> / <kbd>Shift</kbd> + <kbd>Enter</kbd></td>
+                <td>Find Drawer</td>
+                <td>Step to next / previous match across the book</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd> + <kbd>B</kbd></td>
+                <td>Reader</td>
+                <td>Toggle bookmark on current page (with auto-excerpt)</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd></td>
+                <td>Reader</td>
+                <td>Content-only zoom (EPUB font size or PDF zoom; UI chrome stays 100%)</td>
+              </tr>
+              <tr>
+                <td><kbd>F9</kbd></td>
+                <td>Reader</td>
+                <td>Cycle reading theme (Light / Obsidian / Paper / Dusk)</td>
+              </tr>
+              <tr>
+                <td><kbd>F10</kbd></td>
+                <td>Reader</td>
+                <td>Toggle Single / Double page spread</td>
+              </tr>
+              <tr>
+                <td><kbd>F11</kbd></td>
+                <td>Global</td>
+                <td>Toggle True Immersive Fullscreen</td>
+              </tr>
+              <tr>
+                <td><kbd>F1</kbd></td>
+                <td>Global</td>
+                <td>Open Hotkeys &amp; Navigation cheat sheet</td>
+              </tr>
+              <tr>
+                <td><kbd>Esc</kbd></td>
+                <td>Reader / Global</td>
+                <td>Close popovers, drawers, footnotes, Auto-Scroll, fullscreen, or return to Library</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 12. FAQ -->
+      <section id="faq" class="doc-section">
+        <div class="section-header">
+          <h2>Troubleshooting &amp; FAQ</h2>
+          <button type="button" class="copy-anchor" data-copy-id="faq" aria-label="Copy link to Troubleshooting and FAQ"># link</button>
+        </div>
+
+        <div class="faq-list">
+          <details class="faq-item" open>
+            <summary>Does Semply Ebook Reader require an internet connection or account?</summary>
+            <p>
+              No. Semply works 100% offline with no login, telemetry lock-in, or paywall. Everything stays in your local IndexedDB database and disk folders. Internet access is used only when you click online Dictionary, Wikipedia, or Translate lookups.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why does a book show a miniature first page instead of cover art?</summary>
+            <p>
+              Some EPUBs and plain TXT files do not bundle an embedded cover image. Rather than displaying a blank placeholder, Semply typesets the book's real opening page onto a warm-paper miniature thumbnail. For PDFs, Semply renders Page 1 automatically.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Why didn't Ctrl+R reload or reset my reading position?</summary>
+            <p>
+              By design. Semply blocks accidental browser shortcuts like <code>Ctrl+R</code>, <code>F5</code>, <code>Ctrl+W</code>, and <code>Alt+Left/Right</code> so you never accidentally lose your place or drop back to the Library while reading.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>How do I open a book's original file location on disk?</summary>
+            <p>
+              Right-click any book card in your Library and choose <strong>Reveal in Explorer</strong> (or Finder on macOS) to highlight the source file directly in your operating system's file manager.
+            </p>
+          </details>
+
+          <details class="faq-item">
+            <summary>Can I read a scanned PDF in Reflow Mode?</summary>
+            <p>
+              Yes. When Semply's offline MuPDF engine detects a scanned or diagram-heavy page with fewer than 25 extractable text characters, it preserves that page as a crisp responsive image inside the reflowed EPUB so no visual information is lost.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <!-- 13. AI Access & Hosting -->
+      <section id="ai-and-hosting" class="doc-section">
+        <div class="section-header">
+          <h2>AI Access &amp; Hosting</h2>
+          <button type="button" class="copy-anchor" data-copy-id="ai-and-hosting" aria-label="Copy link to AI Access and Hosting"># link</button>
+        </div>
+        <p>
+          This documentation site is intentionally built as zero-dependency static HTML5 alongside machine-readable Markdown endpoints so both browsers and AI assistants can inspect every word instantly without executing JavaScript.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Resource</th>
+                <th>Audience</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><a href="./index.html"><code>index.html</code></a></td>
+                <td>Browsers, Search Engines, AI Crawlers</td>
+                <td>Full semantic HTML5 user manual with JSON-LD structured data and interactive previews</td>
+              </tr>
+              <tr>
+                <td><a href="./llms.txt"><code>llms.txt</code></a></td>
+                <td>AI Agents &amp; LLMs</td>
+                <td>Concise <code>llmstxt.org</code>-compliant discovery map of Semply user documentation</td>
+              </tr>
+              <tr>
+                <td><a href="./llms-full.txt"><code>llms-full.txt</code></a></td>
+                <td>AI Agents &amp; Coding Assistants</td>
+                <td>Complete single-file Markdown edition of the user manual for single-fetch context ingestion</td>
+              </tr>
+              <tr>
+                <td><a href="./robots.txt"><code>robots.txt</code></a> &amp; <a href="./sitemap.xml"><code>sitemap.xml</code></a></td>
+                <td>Search Engines &amp; Crawlers</td>
+                <td>Open crawl configuration and XML sitemap</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong>Ready to host anywhere:</strong> Point GitHub Pages, Cloudflare Pages, Netlify, or Vercel directly at the <code>documentations/</code> directory with no build command required. For internal contributor architecture and Electron IPC internals, see <code>dev-documentations.md</code> in the repository root.
+        </p>
+      </section>
+
+      <footer class="site-footer">
+        <div>Semply Ebook Reader — Open, distraction-free desktop reading.</div>
+        <div class="footer-links">
+          <a href="./llms.txt">llms.txt</a>
+          <a href="./llms-full.txt">llms-full.txt</a>
+          <a href="./sitemap.xml">sitemap.xml</a>
+          <a href="https://github.com/ederaefe/EPUB-Reader-Desktop" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </footer>
+    </main>
+
+    <!-- Right "On This Page" Jump Rail -->
+    <aside class="toc-rail" aria-label="On this page">
+      <p class="toc-rail-title">On this page</p>
+      <ul>
+        <li><a href="#getting-started">Getting Started</a></li>
+        <li><a href="#library-and-import">Library &amp; Import</a></li>
+        <li><a href="#reading-experience">Reading &amp; Fullscreen</a></li>
+        <li><a href="#pdf-and-reflow">PDF &amp; Offline Reflow</a></li>
+        <li><a href="#notes-highlights-bookmarks">Notes &amp; Bookmarks</a></li>
+        <li><a href="#search-in-book">Full-Book Search</a></li>
+        <li><a href="#auto-scroll">Auto-Scroll</a></li>
+        <li><a href="#read-aloud-and-lookup">TTS &amp; Footnotes</a></li>
+        <li><a href="#eye-comfort">Warm Night Filter</a></li>
+        <li><a href="#backup-and-sync">Backup &amp; Sync</a></li>
+        <li><a href="#keyboard-shortcuts">Shortcuts</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#ai-and-hosting">AI &amp; Hosting</a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <!-- Instant Search Modal (Ctrl+K) -->
+  <div id="search-modal-backdrop" class="search-modal-backdrop" aria-hidden="true">
+    <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search documentation">
+      <div class="search-input-row">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="text"
+          id="docs-search-input"
+          placeholder="Search features, shortcuts, PDF reflow, Auto-Scroll..."
+          autocomplete="off"
+        />
+        <kbd>Esc</kbd>
+      </div>
+      <div id="docs-search-results" class="search-results"></div>
+    </div>
+  </div>
+
+  <!-- Custom Contextual Toast -->
+  <div id="docs-toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

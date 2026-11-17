@@ -201,22 +201,22 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
     }
   }
 
-  const handleExportHtml = () => {
+  const handleExportHtml = async () => {
     if (!activeBook) return
     const html = exportNotesToHtml(activeBook, filteredAndSorted)
     const safeName = activeBook.title.replace(/[^a-z0-9-_]+/gi, '_')
-    downloadTextFile(`${safeName}_notes.html`, html, 'text/html;charset=utf-8')
     setShowExportMenu(false)
-    showNotice('Exported notes as HTML')
+    const saved = await downloadTextFile(`${safeName}_notes.html`, html, 'text/html;charset=utf-8')
+    if (saved) showNotice('Exported notes as HTML')
   }
 
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = async () => {
     if (!activeBook) return
     const md = exportNotesToMarkdown(activeBook, filteredAndSorted)
     const safeName = activeBook.title.replace(/[^a-z0-9-_]+/gi, '_')
-    downloadTextFile(`${safeName}_notes.md`, md, 'text/markdown;charset=utf-8')
     setShowExportMenu(false)
-    showNotice('Exported notes as Markdown')
+    const saved = await downloadTextFile(`${safeName}_notes.md`, md, 'text/markdown;charset=utf-8')
+    if (saved) showNotice('Exported notes as Markdown')
   }
 
   const handleCopyAll = () => {

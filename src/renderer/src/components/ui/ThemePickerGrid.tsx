@@ -77,7 +77,12 @@ export const ThemePickerGrid: React.FC<ThemePickerGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5" role="radiogroup" aria-label="Reading theme">
+    <div
+      data-preserve-theme="true"
+      className="grid grid-cols-2 gap-2.5"
+      role="radiogroup"
+      aria-label="Reading theme"
+    >
       {THEME_OPTIONS.map((t) => {
         const isActive = activeTheme === t.id
         return (
@@ -96,7 +101,7 @@ export const ThemePickerGrid: React.FC<ThemePickerGridProps> = ({
               compact ? 'p-2.5' : 'p-3'
             } ${
               isActive
-                ? 'ring-2 ring-[#2a69df]/80 ring-offset-1 ring-offset-[#171a21] shadow-md'
+                ? 'ring-2 ring-[#2a69df]/80 ring-offset-1 ring-offset-[var(--app-surface)] shadow-md'
                 : 'hover:brightness-[1.04] hover:shadow-sm'
             }`}
           >

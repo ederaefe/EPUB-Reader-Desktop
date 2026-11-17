@@ -11,11 +11,144 @@
   }
 }
 
-/* Base Vercel/Geist obsidian typography and background */
+/* ============================================================================
+   App-Wide Theme Design Tokens (Night, Day, Light Sepia, Dark Sepia)
+   ============================================================================ */
+:root,
+html[data-theme="night"] {
+  --app-bg: #0a0a0a;
+  --app-chrome: #0d0d0d;
+  --app-surface: #141414;
+  --app-surface-2: #1b1b1b;
+  --app-surface-hover: #242424;
+  --app-input-bg: #0f0f0f;
+  --app-border: rgba(255, 255, 255, 0.09);
+  --app-border-strong: rgba(255, 255, 255, 0.16);
+  --app-text: #ededed;
+  --app-text-strong: #ffffff;
+  --app-text-muted: #8a8a8a;
+  --app-text-subtle: #666666;
+  --app-accent: #2a69df;
+  --app-accent-soft: rgba(42, 105, 223, 0.18);
+  --app-accent-text: #79c0ff;
+  --app-btn-primary-bg: #ededed;
+  --app-btn-primary-hover: #ffffff;
+  --app-btn-primary-fg: #0a0a0a;
+  --app-slider-track: rgba(255, 255, 255, 0.14);
+  --app-slider-track-hover: rgba(255, 255, 255, 0.24);
+  --app-slider-thumb: #ffffff;
+  --app-checkbox-bg: #171a22;
+  --app-checkbox-border: #353b4c;
+  --app-scrollbar-track: #0d0d0d;
+  --app-scrollbar-thumb: #323744;
+  --app-scrollbar-thumb-hover: #464c5e;
+  --app-overlay-tint: rgba(255, 255, 255, 0.07);
+  --app-overlay-tint-strong: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="day"] {
+  --app-bg: #f6f7f9;
+  --app-chrome: #ffffff;
+  --app-surface: #ffffff;
+  --app-surface-2: #eef0f4;
+  --app-surface-hover: #e3e7ef;
+  --app-input-bg: #ffffff;
+  --app-border: rgba(15, 23, 42, 0.10);
+  --app-border-strong: rgba(15, 23, 42, 0.20);
+  --app-text: #1f2328;
+  --app-text-strong: #0d1117;
+  --app-text-muted: #57606a;
+  --app-text-subtle: #76808a;
+  --app-accent: #2a69df;
+  --app-accent-soft: rgba(42, 105, 223, 0.12);
+  --app-accent-text: #1d56c4;
+  --app-btn-primary-bg: #111827;
+  --app-btn-primary-hover: #1f2937;
+  --app-btn-primary-fg: #ffffff;
+  --app-slider-track: rgba(15, 23, 42, 0.16);
+  --app-slider-track-hover: rgba(15, 23, 42, 0.28);
+  --app-slider-thumb: #2a69df;
+  --app-checkbox-bg: #ffffff;
+  --app-checkbox-border: #b8c0cc;
+  --app-scrollbar-track: #f1f3f6;
+  --app-scrollbar-thumb: #c5ccd6;
+  --app-scrollbar-thumb-hover: #9aa3b2;
+  --app-overlay-tint: rgba(15, 23, 42, 0.05);
+  --app-overlay-tint-strong: rgba(15, 23, 42, 0.10);
+}
+
+html[data-theme="light-sepia"] {
+  --app-bg: #f5ebd6;
+  --app-chrome: #efe2c6;
+  --app-surface: #fbf3e2;
+  --app-surface-2: #eadbbd;
+  --app-surface-hover: #e1cea9;
+  --app-input-bg: #fdf7ea;
+  --app-border: rgba(95, 75, 50, 0.16);
+  --app-border-strong: rgba(95, 75, 50, 0.30);
+  --app-text: #4a3b28;
+  --app-text-strong: #2b2013;
+  --app-text-muted: #786348;
+  --app-text-subtle: #968065;
+  --app-accent: #8b5a2b;
+  --app-accent-soft: rgba(139, 90, 43, 0.14);
+  --app-accent-text: #7a4b1f;
+  --app-btn-primary-bg: #5f4b32;
+  --app-btn-primary-hover: #4c3b27;
+  --app-btn-primary-fg: #fbf3e2;
+  --app-slider-track: rgba(95, 75, 50, 0.22);
+  --app-slider-track-hover: rgba(95, 75, 50, 0.34);
+  --app-slider-thumb: #8b5a2b;
+  --app-checkbox-bg: #fdf7ea;
+  --app-checkbox-border: #bba583;
+  --app-scrollbar-track: #efe2c6;
+  --app-scrollbar-thumb: #cbb793;
+  --app-scrollbar-thumb-hover: #b39b73;
+  --app-overlay-tint: rgba(95, 75, 50, 0.08);
+  --app-overlay-tint-strong: rgba(95, 75, 50, 0.15);
+}
+
+html[data-theme="dark-sepia"] {
+  --app-bg: #1f1a14;
+  --app-chrome: #18140f;
+  --app-surface: #262019;
+  --app-surface-2: #30281f;
+  --app-surface-hover: #3b3126;
+  --app-input-bg: #1c1712;
+  --app-border: rgba(230, 200, 165, 0.12);
+  --app-border-strong: rgba(230, 200, 165, 0.24);
+  --app-text: #e2d5c3;
+  --app-text-strong: #f6ede0;
+  --app-text-muted: #a69580;
+  --app-text-subtle: #7f705e;
+  --app-accent: #c8965d;
+  --app-accent-soft: rgba(200, 150, 93, 0.18);
+  --app-accent-text: #e6c8a5;
+  --app-btn-primary-bg: #e6c8a5;
+  --app-btn-primary-hover: #f2dac0;
+  --app-btn-primary-fg: #1c1610;
+  --app-slider-track: rgba(230, 200, 165, 0.18);
+  --app-slider-track-hover: rgba(230, 200, 165, 0.30);
+  --app-slider-thumb: #e6c8a5;
+  --app-checkbox-bg: #1c1712;
+  --app-checkbox-border: #5a4c3d;
+  --app-scrollbar-track: #18140f;
+  --app-scrollbar-thumb: #463a2e;
+  --app-scrollbar-thumb-hover: #5c4d3d;
+  --app-overlay-tint: rgba(230, 200, 165, 0.08);
+  --app-overlay-tint-strong: rgba(230, 200, 165, 0.15);
+}
+
+/* Base typography, background, and native desktop ergonomics */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 body {
   font-family: "Geist", "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-  background-color: #0a0a0a;
-  color: #ededed;
+  background-color: var(--app-bg);
+  color: var(--app-text);
   user-select: none;
   overflow: hidden;
   margin: 0;
@@ -23,13 +156,59 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.01em;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
-/* Geist Desktop Button Classes */
+/* Native desktop cursor ergonomics (default arrow on app controls; pointer only on external links) */
+button,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="switch"],
+[role="radio"],
+select,
+summary,
+.cursor-pointer {
+  cursor: default !important;
+}
+
+a[href],
+.external-link {
+  cursor: pointer !important;
+}
+
+/* Prevent web-style ghost image/icon dragging */
+img,
+svg,
+a {
+  -webkit-user-drag: none;
+}
+
+/* Theme-aware text selection & keyboard-only focus rings */
+::selection {
+  background-color: var(--app-accent-soft);
+  color: var(--app-text-strong);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1.5px solid var(--app-accent);
+  outline-offset: 1px;
+}
+
+select option {
+  background-color: var(--app-surface);
+  color: var(--app-text);
+}
+
+/* Desktop Button Classes */
 .ice-btn-dark {
-  background-color: #161616;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #ededed;
+  background-color: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
@@ -43,21 +222,20 @@ body {
 }
 
 .ice-btn-dark:hover {
-  background-color: #1f1f1f;
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
+  background-color: var(--app-surface-hover);
+  border-color: var(--app-border-strong);
+  color: var(--app-text-strong);
 }
 
 .ice-btn-dark:active {
-  background-color: #121212;
   transform: scale(0.97);
 }
 
-/* High-contrast Geist primary button (clean monochrome white on obsidian) */
+/* Primary action button */
 .ice-btn-blue {
-  background-color: #ededed;
-  border: 1px solid #ededed;
-  color: #0a0a0a;
+  background-color: var(--app-btn-primary-bg);
+  border: 1px solid var(--app-btn-primary-bg);
+  color: var(--app-btn-primary-fg);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
@@ -70,20 +248,19 @@ body {
 }
 
 .ice-btn-blue:hover {
-  background-color: #ffffff;
-  border-color: #ffffff;
-  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.12);
+  background-color: var(--app-btn-primary-hover);
+  border-color: var(--app-btn-primary-hover);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
 }
 
 .ice-btn-blue:active {
-  background-color: #d4d4d4;
   transform: scale(0.97);
 }
 
 .ice-icon-btn {
   background-color: transparent;
   border: 1px solid transparent;
-  color: #888888;
+  color: var(--app-text-muted);
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
@@ -95,8 +272,8 @@ body {
 }
 
 .ice-icon-btn:hover {
-  background-color: rgba(255, 255, 255, 0.06);
-  color: #ededed;
+  background-color: var(--app-overlay-tint);
+  color: var(--app-text-strong);
 }
 
 .ice-icon-btn:active {
@@ -104,39 +281,39 @@ body {
 }
 
 .ice-icon-btn.active {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
+  background-color: var(--app-overlay-tint-strong);
+  border-color: var(--app-border-strong);
+  color: var(--app-text-strong);
 }
 
-/* Geist hairline input */
+/* Hairline input */
 .ice-input {
-  background-color: #0f0f0f;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: #ededed;
+  background-color: var(--app-input-bg);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
   border-radius: 6px;
   font-size: 12px;
   outline: none;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 180ms ease;
 }
 
 .ice-input:focus {
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px var(--app-accent-soft);
 }
 
 .ice-input::placeholder {
-  color: #555555;
+  color: var(--app-text-subtle);
 }
 
-/* Geist Precision Range Sliders */
+/* Precision Range Sliders */
 input[type="range"],
 .ice-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
   height: 3px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--app-slider-track);
   border-radius: 9999px;
   outline: none;
   margin: 6px 0;
@@ -147,7 +324,7 @@ input[type="range"],
 
 input[type="range"]:hover,
 .ice-slider:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--app-slider-track-hover);
 }
 
 input[type="range"]::-webkit-slider-runnable-track,
@@ -157,7 +334,6 @@ input[type="range"]::-webkit-slider-runnable-track,
   border-radius: 9999px;
 }
 
-/* WebKit Slider Thumb */
 input[type="range"]::-webkit-slider-thumb,
 .ice-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -165,9 +341,9 @@ input[type="range"]::-webkit-slider-thumb,
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
+  background: var(--app-slider-thumb);
+  border: 1.5px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   margin-top: -5px;
   transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 120ms ease;
@@ -176,23 +352,20 @@ input[type="range"]::-webkit-slider-thumb,
 input[type="range"]::-webkit-slider-thumb:hover,
 .ice-slider::-webkit-slider-thumb:hover {
   transform: scale(1.25);
-  background: #3c7bf0;
-  box-shadow: 0 2px 6px rgba(42, 105, 223, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.3);
+  background: var(--app-accent);
+  box-shadow: 0 2px 6px rgba(42, 105, 223, 0.45);
 }
 
 input[type="range"]::-webkit-slider-thumb:active,
 .ice-slider::-webkit-slider-thumb:active {
   transform: scale(1.1);
-  background: #1f56be;
 }
 
-/* Mozilla Range Track & Thumb */
 input[type="range"]::-moz-range-track,
 .ice-slider::-moz-range-track {
   height: 4px;
-  background: #252834;
+  background: var(--app-slider-track);
   border-radius: 9999px;
-  border: 1px solid #1f222d;
 }
 
 input[type="range"]::-moz-range-thumb,
@@ -200,27 +373,21 @@ input[type="range"]::-moz-range-thumb,
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #2a69df;
+  background: var(--app-accent);
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   cursor: pointer;
   transition: transform 120ms ease;
 }
 
-input[type="range"]::-moz-range-thumb:hover,
-.ice-slider::-moz-range-thumb:hover {
-  transform: scale(1.25);
-  background: #3c7bf0;
-}
-
 input[type="range"]::-moz-range-progress,
 .ice-slider::-moz-range-progress {
-  background-color: #2a69df;
+  background-color: var(--app-accent);
   height: 4px;
   border-radius: 9999px;
 }
 
-/* Sleek Modern Desktop Tick Boxes / Checkboxes */
+/* Custom Desktop Checkboxes */
 input[type="checkbox"],
 .ice-checkbox {
   -webkit-appearance: none;
@@ -228,8 +395,8 @@ input[type="checkbox"],
   width: 15px;
   height: 15px;
   border-radius: 3px;
-  background-color: #171a22;
-  border: 1.5px solid #353b4c;
+  background-color: var(--app-checkbox-bg);
+  border: 1.5px solid var(--app-checkbox-border);
   cursor: pointer;
   position: relative;
   display: inline-flex;
@@ -242,30 +409,23 @@ input[type="checkbox"],
 
 input[type="checkbox"]:hover,
 .ice-checkbox:hover {
-  border-color: #4f5870;
-  background-color: #1c202a;
+  border-color: var(--app-accent);
+  background-color: var(--app-surface-2);
 }
 
 input[type="checkbox"]:focus-visible,
 .ice-checkbox:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(42, 105, 223, 0.35);
-  border-color: #2a69df;
+  box-shadow: 0 0 0 2px var(--app-accent-soft);
+  border-color: var(--app-accent);
 }
 
 input[type="checkbox"]:checked,
 .ice-checkbox:checked {
-  background-color: #2a69df;
-  border-color: #2a69df;
+  background-color: var(--app-accent);
+  border-color: var(--app-accent);
 }
 
-input[type="checkbox"]:checked:hover,
-.ice-checkbox:checked:hover {
-  background-color: #3879f0;
-  border-color: #3879f0;
-}
-
-/* Crisp 45-degree White Checkmark */
 input[type="checkbox"]:checked::after,
 .ice-checkbox:checked::after {
   content: '';
@@ -279,23 +439,270 @@ input[type="checkbox"]:checked::after,
   transform: rotate(45deg);
 }
 
-/* Custom crisp rectangular desktop scrollbar */
+input[type="checkbox"]:indeterminate,
+.ice-checkbox:indeterminate {
+  background-color: var(--app-accent);
+  border-color: var(--app-accent);
+}
+
+input[type="checkbox"]:indeterminate::after,
+.ice-checkbox:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 50%;
+  height: 1.8px;
+  background-color: #ffffff;
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+
+/* Theme-Aware Desktop Scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #171a21;
+  background: var(--app-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #323744;
+  background: var(--app-scrollbar-thumb);
   border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #464c5e;
+  background: var(--app-scrollbar-thumb-hover);
+}
+
+/* ============================================================================
+   App-Wide Semantic Theme Remapping for Non-Night Themes
+   (Day, Light Sepia, Dark Sepia)
+   Exempts [data-preserve-theme="true"] (Theme preview cards & book covers)
+   and solid colored accent buttons so contrast stays crisp everywhere.
+   Uses standard CSS :is() + :where() selectors (no PostCSS nesting required).
+   ============================================================================ */
+
+/* Tier 0: Main Window & Catalog Canvas */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-\[\#0a0a0a\],
+    .bg-\[\#0d0f14\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-bg) !important;
+}
+
+/* Tier 1: Chrome (Titlebar, Sidebar, Topbars, Headers, Footers) */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-\[\#0d0d0d\],
+    .bg-\[\#0f0f0f\],
+    .bg-\[\#111111\],
+    .bg-\[\#111111\]\/95,
+    .bg-\[\#12141a\],
+    .bg-\[\#14161c\],
+    .bg-\[\#14161c\]\/80,
+    .bg-\[\#14161c\]\/90,
+    .bg-\[\#14171f\],
+    .bg-\[\#15181f\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-chrome) !important;
+}
+
+/* Tier 2: Elevated Surfaces (Drawers, Modals, Popovers, Cards) */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-\[\#151820\],
+    .bg-\[\#151820\]\/70,
+    .bg-\[\#161616\],
+    .bg-\[\#171a21\],
+    .bg-\[\#171a21\]\/75,
+    .bg-\[\#171a21\]\/95,
+    .bg-\[\#191d26\],
+    .bg-\[\#1a1a1a\],
+    .bg-\[\#1a1d25\],
+    .bg-\[\#121212\],
+    .bg-\[\#1c1c1c\],
+    .bg-\[\#1c1f26\],
+    .bg-\[\#1c202a\],
+    .bg-\[\#1c202b\],
+    .bg-\[\#1e1e1e\],
+    .bg-\[\#1f1f1f\],
+    .bg-\[\#1f232c\],
+    .bg-\[\#1f232d\],
+    .bg-\[\#1f2430\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-surface) !important;
+}
+
+/* Tier 3: Interactive Wells, Secondary Controls & Active Nav Pills */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-\[\#141822\],
+    .bg-\[\#151a24\],
+    .bg-\[\#1a2030\],
+    .bg-\[\#1a2233\],
+    .bg-\[\#1b202c\],
+    .bg-\[\#1c263b\],
+    .bg-\[\#222222\],
+    .bg-\[\#232732\],
+    .bg-\[\#232836\],
+    .bg-\[\#252a36\],
+    .bg-\[\#262626\],
+    .bg-\[\#282c37\],
+    .bg-\[\#2a2a2a\],
+    .bg-\[\#2d323f\],
+    .bg-\[\#2d3343\],
+    .bg-\[\#323744\],
+    .bg-\[\#333846\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-surface-2) !important;
+}
+
+/* Translucent white tints used on dark surfaces */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-white\/\[0\.06\],
+    .bg-white\/\[0\.07\],
+    .bg-white\/\[0\.08\],
+    .bg-white\/\[0\.1\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-overlay-tint) !important;
+}
+
+/* Hover surface remaps */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .hover\:bg-\[\#1f232c\]:hover,
+    .hover\:bg-\[\#1f232d\]:hover,
+    .hover\:bg-\[\#232732\]:hover,
+    .hover\:bg-\[\#232836\]:hover,
+    .hover\:bg-\[\#252a36\]:hover,
+    .hover\:bg-\[\#282c37\]:hover,
+    .hover\:bg-\[\#2d3343\]:hover,
+    .hover\:bg-\[\#333846\]:hover,
+    .hover\:bg-white\/\[0\.06\]:hover,
+    .hover\:bg-white\/\[0\.07\]:hover,
+    .hover\:bg-white\/\[0\.08\]:hover,
+    .hover\:bg-white\/\[0\.1\]:hover
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-surface-hover) !important;
+}
+
+/* Accent-tinted highlight cards (e.g. active bookmark / notice bar) */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-\[\#1b2b48\],
+    .bg-\[\#1d3156\],
+    .bg-\[\#222f4a\],
+    .bg-\[\#243d6b\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-accent-soft) !important;
+}
+
+/* Text Hierarchy: Primary / Strong */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .text-white,
+    .text-\[\#ededed\],
+    .text-\[\#e6edf3\],
+    .text-\[\#e2e8f0\],
+    .text-\[\#d8dee9\],
+    .text-\[\#d4d4d4\],
+    .text-\[\#d1d7e0\],
+    .text-\[\#c9d1d9\],
+    .text-\[\#c8d1dc\],
+    .text-\[\#cccccc\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *):not(.bg-\[\#2a69df\]):not(.bg-\[\#2a69df\] *):not(.bg-\[\#0070f3\]):not(.bg-\[\#0070f3\] *):not(.bg-\[\#c42b1c\]):not(.bg-\[\#c42b1c\] *):not(.bg-\[\#d93829\]):not(.bg-\[\#d93829\] *):not(.bg-\[\#e5484d\]):not(.bg-\[\#e5484d\] *):not(.ice-btn-blue):not(.ice-btn-blue *) {
+  color: var(--app-text-strong) !important;
+}
+
+/* Text Hierarchy: Muted & Secondary */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .text-\[\#b4bec8\],
+    .text-\[\#aaaaaa\],
+    .text-\[\#9da7b3\],
+    .text-\[\#999999\],
+    .text-\[\#8b949e\],
+    .text-\[\#888888\],
+    .text-\[\#777777\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  color: var(--app-text-muted) !important;
+}
+
+/* Text Hierarchy: Subtle */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .text-\[\#6e7681\],
+    .text-\[\#666666\],
+    .text-\[\#555555\],
+    .text-\[\#484f58\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  color: var(--app-text-subtle) !important;
+}
+
+/* Soft Blue Accent Text (readable on both light & dark sepia) */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .text-\[\#79c0ff\],
+    .text-\[\#58a6ff\],
+    .text-\[\#9bc2ff\],
+    .text-\[\#66b2ff\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  color: var(--app-accent-text) !important;
+}
+
+/* Hover Text Remaps */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .hover\:text-white:hover,
+    .hover\:text-\[\#ededed\]:hover,
+    .group:hover .group-hover\:text-white
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *):not(.hover\:bg-\[\#c42b1c\]:hover) {
+  color: var(--app-text-strong) !important;
+}
+
+/* Borders & Dividers */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .border-\[\#1e222c\],
+    .border-\[\#1f232d\],
+    .border-\[\#232732\],
+    .border-\[\#232b3b\],
+    .border-\[\#282c38\],
+    .border-\[\#2a2f3d\],
+    .border-\[\#2b2f3a\],
+    .border-\[\#2d323f\],
+    .border-\[\#30363d\],
+    .border-\[\#343a49\],
+    .border-\[\#3c404d\],
+    .border-\[\#3c4354\],
+    .border-white\/\[0\.06\],
+    .border-white\/\[0\.07\],
+    .border-white\/\[0\.08\],
+    .border-white\/\[0\.09\],
+    .border-white\/\[0\.1\],
+    .border-white\/\[0\.12\],
+    .border-white\/10,
+    .border-white\/20,
+    .divide-\[\#232732\] > :not([hidden]) ~ :not([hidden]),
+    .divide-\[\#2b2f3a\] > :not([hidden]) ~ :not([hidden])
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  border-color: var(--app-border) !important;
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .border-white
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  border-color: var(--app-accent) !important;
+}
+
+/* Inverted monochrome primary white chips (e.g., bg-white text-black / text-[#0a0a0a] in Geist segmented controls) */
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-white.text-black,
+    .bg-white.text-\[\#0a0a0a\],
+    .bg-\[\#ededed\].text-\[\#0a0a0a\]
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  background-color: var(--app-btn-primary-bg) !important;
+  color: var(--app-btn-primary-fg) !important;
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"], html[data-theme="dark-sepia"]) :where(
+    .bg-white.text-black *,
+    .bg-white.text-\[\#0a0a0a\] *,
+    .bg-\[\#ededed\].text-\[\#0a0a0a\] *
+  ):not([data-preserve-theme="true"]):not([data-preserve-theme="true"] *) {
+  color: var(--app-btn-primary-fg) !important;
 }
 
 /* Icecream Reader Highlighting Annotations */
@@ -387,7 +794,6 @@ span.speechActive {
   --ui-enter-y: 4px;
 }
 
-/* Subtle tactile feedback on interactive desktop buttons without disturbing positioned overlays */
 button:not(:disabled) {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }

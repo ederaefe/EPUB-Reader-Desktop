@@ -69,11 +69,11 @@ export const ImportBooksModal: React.FC<ImportBooksModalProps> = ({
     return map
   }, [categories])
 
-  // Eligible main-library books not deleted and not already in the active custom category
+  // Eligible main-library books not already in the active custom category
   const eligibleBooks = useMemo(() => {
     if (!targetCategory?.id) return []
     return allBooks
-      .filter((b) => !b.isDeleted && b.id !== undefined && b.categoryId !== targetCategory.id)
+      .filter((b) => b.id !== undefined && b.categoryId !== targetCategory.id)
       .sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0))
   }, [allBooks, targetCategory?.id])
 

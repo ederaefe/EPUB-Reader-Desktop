@@ -25,6 +25,7 @@ import { ttsService } from '../../services/ttsService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import type { AutoscrollMode } from '../../db'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
+import { FontPicker } from '../ui/FontPicker'
 
 type SettingsTab = 'display' | 'flow' | 'document'
 
@@ -39,17 +40,6 @@ const THEME_SWATCHES: Array<{
   { id: 'light-sepia', label: 'Paper', bg: '#f6ebd4', ink: '#4a3a26', border: 'rgba(95,75,50,0.2)' },
   { id: 'dark-sepia', label: 'Dusk', bg: '#26201a', ink: '#d8cbb8', border: 'rgba(255,255,255,0.1)' },
   { id: 'night', label: 'Obsidian', bg: '#0d0d0e', ink: '#ededed', border: 'rgba(255,255,255,0.12)' }
-]
-
-const FONT_OPTIONS: Array<{
-  id: 'original' | 'sans-serif' | 'serif' | 'monospace'
-  label: string
-  sampleStyle: React.CSSProperties
-}> = [
-  { id: 'original', label: 'Publisher', sampleStyle: { fontFamily: 'inherit' } },
-  { id: 'sans-serif', label: 'Sans', sampleStyle: { fontFamily: '"Geist", "Inter", "Segoe UI", sans-serif' } },
-  { id: 'serif', label: 'Serif', sampleStyle: { fontFamily: 'Georgia, serif' } },
-  { id: 'monospace', label: 'Mono', sampleStyle: { fontFamily: 'Consolas, monospace' } }
 ]
 
 const SPACING_PRESETS = [
@@ -82,6 +72,7 @@ export const SettingsDrawer: React.FC = () => {
     isConvertingPdf,
     pdfConvertProgress,
     setPdfConversionState,
+    showToast,
     settings,
     updateSettings
   } = useAppStore()
@@ -191,11 +182,12 @@ export const SettingsDrawer: React.FC = () => {
         const epubBuf = await window.desktopAPI.readFileBuffer(res.epubPath)
         setReflowEpubBuffer(epubBuf)
         setPdfViewMode('reflow')
+        showToast('Switched to Reflow mode', 'success')
       } else {
-        alert(res.error || 'Could not reflow PDF.')
+        showToast(res.error || 'Could not reflow PDF.', 'error')
       }
     } catch (err: any) {
-      alert(err?.message || 'PDF reflow failed.')
+      showToast(err?.message || 'PDF reflow failed.', 'error')
     } finally {
       setPdfConversionState(false, null)
     }
@@ -219,8 +211,10 @@ export const SettingsDrawer: React.FC = () => {
         outputPath: chosenPath,
         mode: 'export'
       })
-      if (!res.success) {
-        alert(res.error || 'EPUB export failed.')
+      if (res.success) {
+        showToast('Exported EPUB successfully', 'success')
+      } else {
+        showToast(res.error || 'EPUB export failed.', 'error')
       }
     } finally {
       setPdfConversionState(false, null)
@@ -315,14 +309,15 @@ export const SettingsDrawer: React.FC = () => {
                         className={`flex flex-col items-center gap-1.5 group cursor-pointer`}
                       >
                         <div
-                          style={{ backgroundColor: t.bg, color: t.ink, borderColor: active ? '#ffffff' : t.border }}
+                          data-preserve-theme="true"
+                          style={{ backgroundColor: t.bg, color: t.ink, borderColor: active ? 'var(--app-accent)' : t.border }}
                           className={`w-full h-11 rounded-md border flex items-center justify-center relative transition-all ${
-                            active ? 'ring-2 ring-white/25 scale-[1.02]' : 'opacity-85 group-hover:opacity-100'
+                            active ? 'ring-2 ring-[var(--app-accent)]/40 scale-[1.02]' : 'opacity-85 group-hover:opacity-100'
                           }`}
                         >
                           <span className="text-[14px] font-serif font-medium">Aa</span>
                           {active && (
-                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center shadow">
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#2a69df] text-white flex items-center justify-center shadow">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </span>
                           )}
@@ -336,34 +331,8 @@ export const SettingsDrawer: React.FC = () => {
                 </div>
               </div>
 
-              {/* Font Family Preview Grid */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-medium text-[#888888]">Typeface</span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {FONT_OPTIONS.map((f) => {
-                    const active = settings.fontFamily === f.id
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => updateSettings({ fontFamily: f.id })}
-                        className={`h-9 px-3 rounded-md border flex items-center justify-between transition-all cursor-pointer ${
-                          active
-                            ? 'bg-white text-black border-white font-medium'
-                            : 'bg-[#161616] border-white/[0.08] text-[#cccccc] hover:bg-[#1e1e1e] hover:text-white'
-                        }`}
-                      >
-                        <span className="text-[12px]" style={f.sampleStyle}>
-                          {f.label}
-                        </span>
-                        <span className={`text-[11px] ${active ? 'text-black/60' : 'text-[#666666]'}`} style={f.sampleStyle}>
-                          Aa
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+              {/* Expanded Downloadable Font Library Picker */}
+              <FontPicker compact />
 
               {/* Font Size Tactile Stepper + Slider */}
               <div className="p-3 bg-[#161616] border border-white/[0.07] rounded-lg space-y-2.5">

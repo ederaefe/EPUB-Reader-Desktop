@@ -21,7 +21,6 @@ interface SidebarProps {
     recent: number
     favorites: number
     read: number
-    deleted: number
     epub: number
     pdf: number
     other: number
@@ -349,28 +348,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
               <span>Read</span>
             </span>
             <span className="text-[11px] text-[#6e7681]">{counts.read}</span>
-          </button>
-
-          {/* Deleted */}
-          <button
-            onClick={() => {
-              setSelectedCategory('deleted')
-              setFormatFilter(null)
-            }}
-            className={`w-full h-8 flex items-center justify-between px-2.5 rounded transition-colors relative ${
-              isNavActive('deleted')
-                ? 'bg-[#232732] text-white font-medium'
-                : 'text-[#9da7b3] hover:bg-[#1f232c] hover:text-white'
-            }`}
-          >
-            {isNavActive('deleted') && (
-              <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#2a69df] rounded-r" />
-            )}
-            <span className="flex items-center gap-2">
-              <Trash2 className="w-4 h-4 text-[#8b949e]" />
-              <span>Deleted</span>
-            </span>
-            <span className="text-[11px] text-[#6e7681]">{counts.deleted}</span>
           </button>
         </nav>
       </div>

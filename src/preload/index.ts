@@ -7,7 +7,14 @@ export interface DesktopAPI {
   isMaximized: () => Promise<boolean>
   toggleFullscreen: () => Promise<boolean>
   setFullscreen: (active: boolean) => Promise<void>
+  setBackgroundColor: (color: string) => Promise<void>
+  setWindowTitle: (title: string) => Promise<void>
+  showItemInFolder: (filePath: string) => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
+  onWindowMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void
+  onWindowFocusChange: (callback: (isFocused: boolean) => void) => () => void
+  onContentZoom: (callback: (dir: 'in' | 'out' | 'reset') => void) => () => void
+  onOpenExternalFile: (callback: (filePath: string) => void) => () => void
   openFiles: () => Promise<string[]>
   openFolder: () => Promise<string | null>
   scanFolder: (folderPath: string) => Promise<string[]>
@@ -39,6 +46,15 @@ export interface DesktopAPI {
   ) => () => void
   setZoomFactor: (factor: number) => void
   getZoomFactor: () => number
+  listDownloadedFonts: () => Promise<string[]>
+  downloadFont: (fontId: string) => Promise<{
+    success: boolean
+    offline?: boolean
+    alreadyAvailable?: boolean
+    error?: string
+  }>
+  getFontCss: (fontId: string) => Promise<string | null>
+  isOnline: () => Promise<boolean>
 }
 
 const api: DesktopAPI = {
@@ -48,10 +64,33 @@ const api: DesktopAPI = {
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
   setFullscreen: (active: boolean) => ipcRenderer.invoke('window:setFullscreen', active),
+  setBackgroundColor: (color: string) => ipcRenderer.invoke('window:setBackgroundColor', color),
+  setWindowTitle: (title: string) => ipcRenderer.invoke('window:setTitle', title),
+  showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, isFullscreen: boolean) => callback(isFullscreen)
     ipcRenderer.on('window:fullscreenChanged', listener)
     return () => ipcRenderer.removeListener('window:fullscreenChanged', listener)
+  },
+  onWindowMaximizedChange: (callback: (isMaximized: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, isMax: boolean) => callback(isMax)
+    ipcRenderer.on('window:maximizedChanged', listener)
+    return () => ipcRenderer.removeListener('window:maximizedChanged', listener)
+  },
+  onWindowFocusChange: (callback: (isFocused: boolean) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, isFocused: boolean) => callback(isFocused)
+    ipcRenderer.on('window:focusChanged', listener)
+    return () => ipcRenderer.removeListener('window:focusChanged', listener)
+  },
+  onContentZoom: (callback: (dir: 'in' | 'out' | 'reset') => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, dir: 'in' | 'out' | 'reset') => callback(dir)
+    ipcRenderer.on('window:contentZoom', listener)
+    return () => ipcRenderer.removeListener('window:contentZoom', listener)
+  },
+  onOpenExternalFile: (callback: (filePath: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, filePath: string) => callback(filePath)
+    ipcRenderer.on('app:openExternalFile', listener)
+    return () => ipcRenderer.removeListener('app:openExternalFile', listener)
   },
   openFiles: () => ipcRenderer.invoke('dialog:openFiles'),
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
@@ -82,7 +121,11 @@ const api: DesktopAPI = {
     } catch {
       return 1.0
     }
-  }
+  },
+  listDownloadedFonts: () => ipcRenderer.invoke('fonts:listDownloaded'),
+  downloadFont: (fontId: string) => ipcRenderer.invoke('fonts:download', fontId),
+  getFontCss: (fontId: string) => ipcRenderer.invoke('fonts:getCss', fontId),
+  isOnline: () => ipcRenderer.invoke('fonts:isOnline')
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

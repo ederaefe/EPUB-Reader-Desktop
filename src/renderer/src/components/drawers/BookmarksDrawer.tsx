@@ -348,7 +348,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                     {/* Chapter + Date Metadata */}
                     <div className="flex items-center justify-between text-[10px] text-[#6e7681]">
                       <span className="truncate max-w-[190px]">
-                        {bm.chapterTitle || (bm.progressPercent != null ? `${bm.progressPercent}% read` : '')}
+                        {bm.chapterTitle || (bm.progressPercent != null && Math.round(bm.progressPercent) >= 1 ? `${Math.round(bm.progressPercent)}% read` : '')}
                       </span>
                       <span>{new Date(bm.createdAt).toLocaleDateString()}</span>
                     </div>
