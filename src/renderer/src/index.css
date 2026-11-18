@@ -55,14 +55,14 @@
    ============================================================================ */
 :root,
 html[data-theme="night"] {
-  --app-bg: #0a0a0a;
-  --app-chrome: #0d0d0d;
-  --app-surface: #141414;
-  --app-surface-2: #1b1b1b;
-  --app-surface-hover: #242424;
-  --app-input-bg: #0f0f0f;
-  --app-border: rgba(255, 255, 255, 0.11);
-  --app-border-strong: rgba(255, 255, 255, 0.20);
+  --app-bg: #171a21;
+  --app-chrome: #171a21;
+  --app-surface: #282c37;
+  --app-surface-2: #282c37;
+  --app-surface-hover: #3c404d;
+  --app-input-bg: #171a21;
+  --app-border: rgba(60, 64, 77, 0.5);
+  --app-border-strong: #3c404d;
   --app-text: #f7f9fc;
   --app-text-strong: #ffffff;
   --app-text-muted: #d4dbe6;
@@ -72,17 +72,17 @@ html[data-theme="night"] {
   --app-accent-text: #93c5fd;
   --app-btn-primary-bg: #ffffff;
   --app-btn-primary-hover: #ffffff;
-  --app-btn-primary-fg: #0a0a0a;
-  --app-slider-track: rgba(255, 255, 255, 0.14);
-  --app-slider-track-hover: rgba(255, 255, 255, 0.24);
+  --app-btn-primary-fg: #171a21;
+  --app-slider-track: #3c404d;
+  --app-slider-track-hover: #3c404d;
   --app-slider-thumb: #ffffff;
-  --app-checkbox-bg: #171a22;
-  --app-checkbox-border: #353b4c;
-  --app-scrollbar-track: #0d0d0d;
-  --app-scrollbar-thumb: #323744;
-  --app-scrollbar-thumb-hover: #464c5e;
-  --app-overlay-tint: rgba(255, 255, 255, 0.07);
-  --app-overlay-tint-strong: rgba(255, 255, 255, 0.12);
+  --app-checkbox-bg: #171a21;
+  --app-checkbox-border: #3c404d;
+  --app-scrollbar-track: #171a21;
+  --app-scrollbar-thumb: #282c37;
+  --app-scrollbar-thumb-hover: #3c404d;
+  --app-overlay-tint: rgba(60, 64, 77, 0.3);
+  --app-overlay-tint-strong: rgba(60, 64, 77, 0.5);
 }
 
 html[data-theme="day"] {

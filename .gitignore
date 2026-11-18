@@ -11,3 +11,5 @@ release/
 Thumbs.db
 
 scratch/
+.agents/
+release-Windows/

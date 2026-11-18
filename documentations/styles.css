@@ -5,25 +5,25 @@
 
 :root,
 [data-theme="obsidian"] {
-  --bg-canvas: #0a0a0a;
-  --bg-rail: #0d0d0d;
-  --bg-surface: #111111;
-  --bg-elevated: #161616;
-  --bg-hover: rgba(255, 255, 255, 0.055);
-  --bg-active: rgba(255, 255, 255, 0.09);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  --bg-canvas: #171a21;
+  --bg-rail: #171a21;
+  --bg-surface: #282c37;
+  --bg-elevated: #3c404d;
+  --bg-hover: rgba(60, 64, 77, 0.2);
+  --bg-active: #282c37;
+  --border-subtle: #3c404d;
+  --border-strong: #3c404d;
   --ink-primary: #ededed;
-  --ink-secondary: #a1a1aa;
-  --ink-muted: #71717a;
-  --accent: #3b82f6;
-  --accent-soft: rgba(59, 130, 246, 0.14);
-  --accent-text: #7cc0ff;
-  --cta-bg: #ededed;
-  --cta-ink: #0a0a0a;
-  --cta-hover: #ffffff;
-  --kbd-bg: #171717;
-  --kbd-border: rgba(255, 255, 255, 0.14);
+  --ink-secondary: #8b949e;
+  --ink-muted: #6e7681;
+  --accent: #2a69df;
+  --accent-soft: rgba(42, 105, 223, 0.14);
+  --accent-text: #3b79ef;
+  --cta-bg: #282c37;
+  --cta-ink: #ededed;
+  --cta-hover: #3c404d;
+  --kbd-bg: #282c37;
+  --kbd-border: #3c404d;
   --shadow-modal: 0 24px 72px rgba(0, 0, 0, 0.78);
   --shadow-toast: 0 12px 32px rgba(0, 0, 0, 0.65);
   color-scheme: dark;
