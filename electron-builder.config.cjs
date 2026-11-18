@@ -11,6 +11,7 @@ const hasAppleNotarizeCreds = Boolean(
   (process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER) ||
     (process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID)
 )
+const hasAppleSigning = Boolean(process.env.CSC_LINK)
 
 const config = {
   appId: 'com.ederaefe.semply-ebook-reader',
@@ -108,6 +109,7 @@ const config = {
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.inherit.plist',
+    identity: hasAppleSigning ? undefined : null,
     notarize: hasAppleNotarizeCreds,
     artifactName: 'Semply-Ebook-Reader-${version}-mac-${arch}.${ext}',
     target: [
