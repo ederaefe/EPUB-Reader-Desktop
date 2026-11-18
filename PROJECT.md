@@ -16,9 +16,9 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Reader Platform | Maintain existing platform | none | PLANNED |
-| 2 | Revert Theme | Revert to legacy theme | M1 | PLANNED |
-| 3 | Distribution | Verify multi-platform builds | M2 | PLANNED |
+| 1 | Reader Platform | Maintain existing platform | none | DONE |
+| 2 | Revert Theme | Revert to legacy theme | M1 | DONE |
+| 3 | Distribution | Verify multi-platform builds | M2 | DONE |
 
 ## Interface Contracts
 ### Website ↔ Backend

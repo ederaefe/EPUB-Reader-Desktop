@@ -9,7 +9,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        icecream: {
+        blueGray: {
           sidebar: '#171a21',
           canvas: '#171a21',
           topbar: '#282c37',
