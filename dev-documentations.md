@@ -1371,3 +1371,23 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - Added complete `UserSettings` schema sanitization (`sanitizeSettings`) and ZIP bomb entry/byte caps in `backupService.ts`, `coverService.ts`, and `metadataService.ts`.
    - Hardened `EpubReaderView.tsx` to scrub `<script>`, `<object>`, `<embed>`, `<iframe>`, `<base>`, `<meta http-equiv="refresh">`, inline `on*` handlers, `javascript:` URIs, and remote tracking pixels/stylesheets inside EPUB iframes.
    - Hardened `landing.js` to validate cached/API release download URLs strictly against official `https://github.com/ederaefe/EPUB-Reader-Desktop/releases/` hosts and tightened `vercel.json` CSP/HSTS headers (removing `script-src 'unsafe-inline'`).
+
+
+---
+
+## Increment 34: GitHub Actions CI Build Success (2026-11-18)
+
+### Architecture & Implementation
+1. **Build Success Verification**: Verified successful CI build on Windows Server 2025 (Run ID 44205000909). The build pipeline processed the `v1.0.2` tag, successfully installing dependencies, typechecking, bundling via `electron-vite`, packaging via `electron-builder`, and validating the MuPDF WASM artifacts.
+2. **Artifact Delivery**: The Windows-x64 installer (`Semply-Ebook-Reader-1.0.0-win-x64-setup.exe`) and portable executable (`Semply-Ebook-Reader-1.0.0-win-x64-portable.exe`) were produced and published to the GitHub Actions artifacts repository.
+3. **Artifact Repository Location**: [Artifact download URL](https://github.com/ederaefe/EPUB-Reader-Desktop/actions/runs/44205000909/artifacts/14382508202).
+
+## Increment 35: Workflow Hardening, RPM Dependency Fix, and PR Cleanup (2026-11-18)
+
+### Architecture & Implementation
+1. **Workflow Hardening**: Removed `workflow_dispatch` trigger from `.github/workflows/release.yml` to prevent spurious build failures triggered by branch pushes. The workflow now exclusively triggers on `v*` version tags, ensuring resource efficiency.
+2. **Linux Dependency Fix**: Removed non-existent `rpm-build` dependency from `apt-get` commands in the Linux build step of the workflow.
+3. **Version Synchronization**: Synced `package.json` version from `1.0.0` -> `1.0.3` (and verified `1.0.4` tag for CI).
+4. **WASM Verification Improvement**: Enhanced MuPDF WASM unpacking check by broadening the file glob pattern to `*.wasm` and adding diagnostic logs to output file lists upon failure, ensuring easier debugging for future packaging regressions.
+5. **PR Housekeeping**: Closed redundant PR #4, as workflow failures were addressed through configuration hardening rather than deleting functional features.
+6. **Developer Documentation**: Recorded these pipeline changes in `dev-documentations.md` for future maintenance reference.

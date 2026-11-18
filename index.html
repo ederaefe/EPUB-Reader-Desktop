@@ -179,12 +179,12 @@
         </a>
 
         <h1 class="hero-title" id="hero-heading">
-          Pure reading. Native speed. <br>
-          <span class="hero-title-highlight">Zero compromise.</span>
+          Pure reading, <br>
+          <span class="hero-title-highlight">focused on you.</span>
         </h1>
 
         <p class="hero-subtitle">
-          A high-performance desktop reader for EPUB, PDF, and digital documents. Built with Electron, MuPDF WASM, and React 19. 100% local-first, privacy-focused, and open source.
+          A high-performance desktop reader for EPUB and PDF. Completely local-first, privacy-focused, and open source.
         </p>
 
         <!-- Primary Download CTA -->
@@ -284,110 +284,34 @@
       </div>
     </section>
 
-    <!-- Security & Server Perimeter Section -->
+    <!-- Your Privacy Section -->
     <section class="section" id="security" aria-labelledby="security-heading">
       <div class="section-container">
         
         <div class="section-header">
-          <p class="section-eyebrow">Security & Network Architecture</p>
-          <h2 class="section-title" id="security-heading">Why and When Semply Communicates with Servers</h2>
+          <p class="section-eyebrow">Privacy First</p>
+          <h2 class="section-title" id="security-heading">Your Books and Data, Always Under Your Control</h2>
           <p class="section-description">
-            Semply is engineered with an uncompromising local-first security perimeter. We believe desktop software must be completely transparent about every outbound connection.
+            Semply is built for complete privacy. We believe your reading habits, notes, and library are yours alone, and our design reflects that.
           </p>
         </div>
 
         <div class="security-matrix-grid">
           
-          <!-- Card 1: Signed Updates -->
           <article class="security-card">
-            <span class="security-badge blue">Network Channel 01</span>
-            <h3 class="security-card-title">Cryptographic Update Verification</h3>
+            <span class="security-badge blue">Simplicity</span>
+            <h3 class="security-card-title">No Accounts Required</h3>
             <p class="security-card-desc">
-              To keep your reader secure, Semply queries the GitHub Releases API over TLS 1.3 to check for published patches. If a newer signed version exists, Semply presents a release notification. You maintain 100% discretion over when and how you update.
+              You don’t need an account or internet connection to use Semply. It’s ready to read the moment you open it, ensuring your experience stays private and distraction-free.
             </p>
-            <ul class="security-spec-list">
-              <li class="security-spec-item">
-                <span>Target:</span>
-                <span class="security-spec-code">api.github.com/repos/.../releases/latest</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Protocol:</span>
-                <span>HTTPS / TLS 1.3 Strict SNI</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Payload:</span>
-                <span>Zero telemetry, zero user identifiers</span>
-              </li>
-            </ul>
           </article>
 
-          <!-- Card 2: Google Fonts CDN -->
           <article class="security-card">
-            <span class="security-badge blue">Network Channel 02</span>
-            <h3 class="security-card-title">On-Demand Cloud Typography</h3>
+            <span class="security-badge emerald">Transparency</span>
+            <h3 class="security-card-title">Open Source</h3>
             <p class="security-card-desc">
-              Semply packages 12 system/publisher fonts offline out of the box. If you choose one of the 65 curated Google Fonts, Semply downloads the standard .woff2 font package directly to your local user storage. Once downloaded, the font stays completely offline forever.
+              We operate with full transparency. Because Semply is open source, anyone can inspect the code to verify that we stay true to our design.
             </p>
-            <ul class="security-spec-list">
-              <li class="security-spec-item">
-                <span>Target:</span>
-                <span class="security-spec-code">fonts.googleapis.com & fonts.gstatic.com</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Trigger:</span>
-                <span>Explicit user font selection only</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Persistence:</span>
-                <span>Local disk cache in userData/fonts/</span>
-              </li>
-            </ul>
-          </article>
-
-          <!-- Card 3: Zero Telemetry -->
-          <article class="security-card">
-            <span class="security-badge emerald">Zero Ingestion Guarantee</span>
-            <h3 class="security-card-title">100% Local-First Storage Perimeter</h3>
-            <p class="security-card-desc">
-              Your books, reading habits, annotations, bookmarks, and search queries never leave your device. Everything is stored in local IndexedDB (Dexie v3) inside your native user profile. No accounts, no analytics SDKs, and no tracking cookies.
-            </p>
-            <ul class="security-spec-list">
-              <li class="security-spec-item">
-                <span>Database:</span>
-                <span class="security-spec-code">IndexedDB (Dexie v3)</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Analytics:</span>
-                <span>Zero third-party trackers or telemetry</span>
-              </li>
-              <li class="security-spec-item">
-                <span>User Accounts:</span>
-                <span>None required. Full functionality offline.</span>
-              </li>
-            </ul>
-          </article>
-
-          <!-- Card 4: Binary Integrity -->
-          <article class="security-card">
-            <span class="security-badge emerald">Binary Provenance</span>
-            <h3 class="security-card-title">Open-Source Auditing & Hash Verification</h3>
-            <p class="security-card-desc">
-              Every installer binary (.exe, .dmg, .AppImage) is compiled directly from public GitHub source code through transparent GitHub Actions pipelines. Published releases provide cryptographic SHA-256 hashes so you can independently verify binary integrity.
-            </p>
-            <ul class="security-spec-list">
-              <li class="security-spec-item">
-                <span>License:</span>
-                <span>MIT License (Permissive & Open)</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Checksums:</span>
-                <span class="security-spec-code">SHA-256 published with every release</span>
-              </li>
-              <li class="security-spec-item">
-                <span>Auditing:</span>
-                <span>Publicly verifiable repository code</span>
-              </li>
-            </ul>
           </article>
 
         </div>
@@ -938,5 +862,28 @@
 
   <!-- Client Script -->
   <script src="landing.js"></script>
+<script>
+  (function() {
+    const platformLinks = {
+      'Windows': 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-win-x64-setup.exe',
+      'Mac': 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-mac-arm64.dmg',
+      'Linux': 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest/download/Semply-Ebook-Reader-linux-x64.AppImage'
+    };
+
+    const userAgent = navigator.userAgent;
+    let platform = 'Windows'; 
+    if (userAgent.indexOf("Win") !== -1) platform = 'Windows';
+    else if (userAgent.indexOf("Mac") !== -1) platform = 'Mac';
+    else if (userAgent.indexOf("Linux") !== -1) platform = 'Linux';
+
+    const btn = document.getElementById('primary-download-btn');
+    const label = document.getElementById('primary-download-label');
+    
+    if (btn && label) {
+      btn.href = platformLinks[platform];
+      label.textContent = `Download for ${platform}`;
+    }
+  })();
+</script>
 </body>
 </html>
