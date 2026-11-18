@@ -145,10 +145,6 @@ const config = {
       {
         target: 'deb',
         arch: ['x64']
-      },
-      {
-        target: 'rpm',
-        arch: ['x64']
       }
     ]
   }

@@ -37,12 +37,6 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Linux RPM packaging dependency
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends rpm rpm-build build-essential
-
       - name: Install dependencies
         run: npm ci
 
@@ -64,7 +58,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Package Linux images (.AppImage, .deb, .rpm)
+      - name: Package Linux images (.AppImage, .deb)
         if: runner.os == 'Linux'
         run: npm run package:linux
         env:
@@ -93,7 +87,6 @@ jobs:
             release/*.zip
             release/*.AppImage
             release/*.deb
-            release/*.rpm
             release/*.blockmap
             release/latest*.yml
 
@@ -114,7 +107,7 @@ jobs:
         working-directory: dist-release
         run: |
           shopt -s nullglob
-          FILES=(*.exe *.dmg *.zip *.AppImage *.deb *.rpm)
+          FILES=(*.exe *.dmg *.zip *.AppImage *.deb)
           if [ ${#FILES[@]} -eq 0 ]; then
             echo "No release binaries found!"
             exit 1
@@ -136,7 +129,7 @@ jobs:
           - **Windows (x64):** \`Semply-Ebook-Reader-*-win-x64-setup.exe\` (Installer) or \`*-win-x64-portable.exe\` (Portable)
           - **macOS (Apple Silicon M1–M4):** \`Semply-Ebook-Reader-*-mac-arm64.dmg\` (or \`.zip\`)
           - **macOS (Intel x64):** \`Semply-Ebook-Reader-*-mac-x64.dmg\` (or \`.zip\`)
-          - **Linux (x64):** \`.AppImage\` (Universal), \`.deb\` (Debian / Ubuntu), \`.rpm\` (Fedora / RHEL)
+          - **Linux (x64):** \`.AppImage\` (Universal), \`.deb\` (Debian / Ubuntu)
 
           ### Self-Hosted Docker Container (Browser-Streamed)
           \`\`\`bash
