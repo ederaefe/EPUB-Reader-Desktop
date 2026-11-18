@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, shell, Menu, screen, session, type IpcMainInvokeEvent } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join, extname, basename, resolve, normalize, dirname } from 'path'
 import { readFile, readdir, writeFile, mkdir, stat, rename, unlink } from 'fs/promises'
 import { existsSync, readFileSync, writeFileSync, realpathSync, renameSync, unlinkSync } from 'fs'
@@ -1298,6 +1299,7 @@ if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     configureSessionSecurity()
     createWindow()
+    autoUpdater.checkForUpdatesAndNotify()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

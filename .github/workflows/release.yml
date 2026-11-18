@@ -50,7 +50,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends rpm
+          sudo apt-get install -y --no-install-recommends rpm rpm-build
 
       - name: Install dependencies
         run: npm ci
@@ -62,13 +62,13 @@ jobs:
         run: npm run build
 
       - name: Prepare Apple notarization API key (if configured)
-        if: runner.os == 'macOS' && env.APPLE_API_KEY != ''
+        if: runner.os == 'macOS' && secrets.APPLE_API_KEY != ''
         shell: bash
         env:
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
         run: |
           KEY_PATH="${RUNNER_TEMP}/AuthKey.p8"
-          printf '%s\n' "$APPLE_API_KEY" > "$KEY_PATH"
+          printf '%s\n' "$APPLE_API_KEY_CONTENT" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
           echo "APPLE_API_KEY_PATH=${KEY_PATH}" >> "$GITHUB_ENV"
 
