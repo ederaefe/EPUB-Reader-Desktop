@@ -22,7 +22,9 @@
 
 ## Interface Contracts
 ### Website ↔ Backend
-- TBD
+- Communication: RESTful API for theme synchronization.
+- Authentication: Secure token-based auth for user settings.
+- Error Handling: Standardized JSON response format for API errors.
 
 ## Code Layout
 - Web: `.github/workflows/release.yml`, theme configs in `dev-documentations.md`
