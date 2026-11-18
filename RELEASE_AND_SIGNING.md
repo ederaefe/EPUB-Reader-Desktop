@@ -10,7 +10,7 @@ Every version tag matching `v*` triggers `.github/workflows/release.yml`, which:
 1. Typechecks, compiles, and packages:
    - **Windows (x64):** NSIS Setup `.exe` and Portable `.exe`
    - **macOS (Apple Silicon `arm64` + Intel `x64`):** `.dmg` and `.zip`
-   - **Linux (x64):** `.AppImage`, `.deb`, and `.rpm`
+   - **Linux (x64):** `.AppImage` and `.deb`
 2. Verifies `mupdf-wasm.wasm` is unpacked into `app.asar.unpacked` on every platform.
 3. Builds and pushes the self-hosted browser-streamed Docker container to `ghcr.io/ederaefe/semply-ebook-reader:<version>` and `:latest`.
 4. Generates `SHA256SUMS.txt` and signs SLSA Build Provenance Attestations via Sigstore (`actions/attest-build-provenance@v2`).
