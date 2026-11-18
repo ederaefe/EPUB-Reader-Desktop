@@ -61,9 +61,7 @@ const config = {
       signingHashAlgorithms: ['sha256'],
       rfc3161TimeStampServer: 'http://timestamp.digicert.com',
       timeStampServer: 'http://timestamp.digicert.com',
-      ...(process.env.WIN_PUBLISHER_NAME
-        ? { publisherName: process.env.WIN_PUBLISHER_NAME }
-        : {})
+      publisherName: 'Dera Tech Inc'
     },
     ...(hasAzureSigning
       ? {
@@ -106,6 +104,7 @@ const config = {
     category: 'public.app-category.productivity',
     hardenedRuntime: true,
     gatekeeperAssess: false,
+    identity: null,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.inherit.plist',
     notarize: hasAppleNotarizeCreds,
