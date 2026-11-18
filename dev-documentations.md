@@ -1391,3 +1391,8 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
 4. **WASM Verification Improvement**: Enhanced MuPDF WASM unpacking check by broadening the file glob pattern to `*.wasm` and adding diagnostic logs to output file lists upon failure, ensuring easier debugging for future packaging regressions.
 5. **PR Housekeeping**: Closed redundant PR #4, as workflow failures were addressed through configuration hardening rather than deleting functional features.
 6. **Developer Documentation**: Recorded these pipeline changes in `dev-documentations.md` for future maintenance reference.
+
+## Landing Page UX Refactor (2026-11-18)
+- Removed all technical security jargon (TLS 1.3, WASM, SHA-256, etc.) from the `index.html` file to prioritize a clean, user-focused experience.
+- Simplified the Hero section for better readability.
+- Consolidated the "Privacy First" section to highlight simplicity and open-source transparency, removing technical security-focused cards.
