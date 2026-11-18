@@ -9,40 +9,38 @@ export default {
   theme: {
     extend: {
       colors: {
-        blueGray: {
-          sidebar: '#171a21',
-          canvas: '#171a21',
-          topbar: '#282c37',
-          dock: '#282c37',
-          card: '#282c37',
-          cardHover: '#3c404d',
-          border: '#3c404d',
-          divider: '#3c404d',
-          btnDark: '#282c37',
-          btnBorder: '#3c404d',
-          btnHover: '#3c404d',
-          blue: '#2a69df',
-          blueHover: '#3b79ef',
-          activeNav: '#282c37',
-          textMuted: '#8b949e',
-          textSubtle: '#6e7681'
+        obsidian: {
+          root: '#0a0a0a',
+          sidebar: '#0d0d0d',
+          elevated: '#111111',
+          controls: '#161616',
+          controlsHover: '#1f1f1f',
+          controlsActive: '#121212',
+          inputWell: '#0f0f0f',
+          border: 'rgba(255, 255, 255, 0.10)',
+          textPrimary: '#ededed',
+          textSecondary: '#888888',
+          textMuted: '#6e7681',
+          accent: '#0070f3',
+          cta: '#ededed'
         },
         themeDay: {
           bg: '#ffffff',
-          text: '#202020'
+          text: '#121212'
         },
         themeNight: {
-          bg: '#1c1f26',
-          text: '#d8d8d8'
+          bg: '#0c0c0d',
+          text: '#f5f7fa'
         },
         themeLightSepia: {
-          bg: '#fbf0d9',
-          text: '#5f4b32'
+          bg: '#f5ecd8',
+          text: '#1f1810'
         },
         themeDarkSepia: {
-          bg: '#2d261e',
-          text: '#d5c7b3'
+          bg: '#1f1914',
+          text: '#f5ede0'
         }
+
       },
       fontFamily: {
         sans: ['"Libre Baskerville"', 'Baskerville', '"Baskerville Old Face"', 'Georgia', 'serif'],
