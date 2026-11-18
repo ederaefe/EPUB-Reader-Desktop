@@ -126,7 +126,7 @@ const config = {
   linux: {
     icon: 'build/icon.png',
     category: 'Office',
-    maintainer: 'ederaefe <https://github.com/ederaefe>',
+    maintainer: 'ederaefe',
     synopsis: 'Fast, local-first EPUB and PDF desktop reader with offline MuPDF reflow',
     artifactName: 'Semply-Ebook-Reader-${version}-linux-${arch}.${ext}',
     desktop: {
