@@ -19,8 +19,8 @@ All future updates appended to `documentation.md` must follow these rules:
 ---
 
 ## Recent Updates
-- **Refined Marketing Content**: Removed technical and security jargon from the landing page, replacing it with clear, benefit-driven messaging to better communicate Semply's value to users.
-- **Streamlined Marketing & Benefit-Focused Landing Page**: Reframed the website hero and feature cards to highlight user-centric benefits like privacy, focus, and library ownership over technical internals. Improved readability and clarity to ensure our value proposition is instantly clear to every reader.
+- **Refined Marketing Content**: Purged all technical and security jargon from the entire landing page and FAQ, replacing them with simple, benefit-focused language to better communicate Semply's value to readers.
+- **Streamlined Marketing & Benefit-Focused Landing Page**: Reframed the website hero, security section, feature cards, and comparison table to highlight user-centric benefits like privacy, focus, and library ownership over technical internals. Improved readability and clarity to ensure our value proposition is instantly clear to every reader.
 - **Modern Add-Book Card**: Updated the library "Add Book" card with a rounded squircle frame, subtle dashed border, and gentle hover highlight around the "+" icon.
 - **Streamlined Preferences & Tactile Controls**: Moved Read Aloud controls exclusively into the Reader Settings `Flow` tab and refreshed all global Settings tabs (`System`, `Reading settings`, `Hotkeys`, `Backup & Sync`, `About`) with crisp theme-aware buttons, switches, and keyboard shortcut badges across Day, Night, Light Sepia, and Dark Sepia themes.
 - **App-Wide Roman (Baskerville) Typography & Higher Legibility**: Updated the entire application interface to use **Libre Baskerville** for a classic book-first Roman aesthetic, bolded muted labels for clearer readability across all themes, and established a clear visual hierarchy in Settings with bolder, larger section titles alongside clean regular-weight helper descriptions.
