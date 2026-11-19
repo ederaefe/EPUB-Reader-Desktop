@@ -74,7 +74,11 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     bumpAnnotationsVersion,
     bumpBookmarksVersion,
     pdfZoom: zoom,
-    setPdfZoom
+    setPdfZoom,
+    isTTSActive,
+    isTTSMuted,
+    setTTSActive,
+    setTTSMuted
   } = useAppStore()
 
   const setZoom = (updater: number | ((z: number) => number)) => {
