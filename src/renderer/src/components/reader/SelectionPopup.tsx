@@ -185,8 +185,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
         className="fixed z-50 transform -translate-x-1/2 flex flex-col items-center select-none app-no-drag animate-in fade-in zoom-in-95 duration-100"
       >
-        {/* The Action Pill */}
-        <div className="h-8 px-2 bg-[var(--app-chrome)]/92 backdrop-blur-xl border border-[var(--app-border-strong)] rounded-full flex items-center gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.32)]">
+        {/* The Action Pill (Antigravity UI Translucent Dual-Hairline Floating Pill) */}
+        <div className="h-8 px-2 bg-[rgba(18,20,24,0.85)] dark:bg-[rgba(14,16,20,0.88)] backdrop-blur-2xl border border-white/[0.10] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.55)] rounded-full flex items-center gap-1.5">
           {/* Subtle Watercolor Color Palette */}
           <div className="flex items-center gap-1.5 px-0.5">
             {ICE_NOTE_COLOR_LIST.map((col) => (
@@ -194,12 +194,12 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                 key={col.id}
                 type="button"
                 onClick={() => onHighlight(col.id)}
-                className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-xs"
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-xs ring-1 ring-black/25"
                 style={
                   col.isUnderline
                     ? {
-                        backgroundColor: 'var(--app-surface-2)',
-                        border: '1px solid var(--app-border-strong)',
+                        backgroundColor: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.16)',
                         color: 'var(--app-accent-text)'
                       }
                     : {
@@ -214,37 +214,37 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
             ))}
           </div>
 
-          <div className="w-px h-3 bg-[var(--app-border)]" />
+          <div className="w-px h-3 bg-white/[0.10]" />
 
-          {/* Note Toggle */}
+          {/* Note Toggle Pill Button */}
           <button
             type="button"
             onClick={() => {
               setShowNoteComposer((prev) => !prev)
               setShowMoreMenu(false)
             }}
-            className={`h-6 px-2 rounded-full text-[11.5px] font-medium tracking-tight transition-all cursor-pointer ${
+            className={`h-[22px] px-2.5 rounded-full text-[11px] font-medium tracking-tight transition-all cursor-pointer ${
               showNoteComposer
-                ? 'bg-[var(--app-accent)] text-white'
-                : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)]'
+                ? 'bg-[var(--app-accent)] text-white shadow-xs'
+                : 'text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06]'
             }`}
             title="Attach Note"
           >
             Note
           </button>
 
-          {/* Copy Button */}
+          {/* Copy Pill Button */}
           <button
             type="button"
             onClick={handleCopy}
-            className="h-6 px-2 rounded-full text-[11.5px] font-medium tracking-tight text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] flex items-center gap-1 transition-all cursor-pointer"
+            className="h-[22px] px-2.5 rounded-full text-[11px] font-medium tracking-tight text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] flex items-center gap-1 transition-all cursor-pointer"
             title="Copy selection"
           >
             {copied ? <Check className="w-3 h-3 text-emerald-400" /> : null}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
 
-          <div className="w-px h-3 bg-[var(--app-border)]" />
+          <div className="w-px h-3 bg-white/[0.10]" />
 
           {/* Progressive Disclosure: Secondary Actions Overflow Menu (•••) */}
           <div className="relative">
@@ -253,45 +253,52 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
               onClick={() => setShowMoreMenu((prev) => !prev)}
               className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                 showMoreMenu
-                  ? 'bg-[var(--app-surface-hover)] text-[var(--app-text-strong)]'
-                  : 'text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)]'
+                  ? 'bg-white/[0.15] text-white shadow-xs'
+                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.08]'
               }`}
               title="More actions"
             >
               <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
 
-            {/* Subtle Dropdown Card for Secondary Actions */}
+            {/* Antigravity Translucent Dropdown Menu for Secondary Actions */}
             {showMoreMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-36 bg-[var(--app-chrome)] border border-[var(--app-border-strong)] rounded-lg py-1 shadow-2xl backdrop-blur-xl z-50 text-xs animate-in fade-in slide-in-from-top-1 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-36 bg-[rgba(18,20,24,0.95)] backdrop-blur-2xl border border-white/[0.10] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),0_16px_48px_rgba(0,0,0,0.6)] rounded-xl py-1 z-50 text-xs animate-in fade-in slide-in-from-top-1 duration-100">
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className="w-full px-3 py-1.5 text-left text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] flex items-center gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3 py-1.5 text-left text-neutral-200 hover:bg-white/[0.08] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
                 >
-                  <Volume2 className="w-3.5 h-3.5 text-[var(--app-text-subtle)]" />
+                  <Volume2 className="w-3.5 h-3.5 text-neutral-400" />
                   <span>Read aloud</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleLookupDefinition}
-                  className="w-full px-3 py-1.5 text-left text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] flex items-center gap-2 transition-colors cursor-pointer"
-                >
-                  <BookMarked className="w-3.5 h-3.5 text-[var(--app-accent-text)]" />
-                  <span>Dictionary</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLookupWikipedia}
-                  className="w-full px-3 py-1.5 text-left text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] flex items-center gap-2 transition-colors cursor-pointer"
-                >
-                  <Globe className="w-3.5 h-3.5 text-[var(--app-text-subtle)]" />
-                  <span>Wikipedia</span>
-                </button>
+
+                {/* Dictionary & Wikipedia only shown for single-word selections */}
+                {isSingleWord && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleLookupDefinition}
+                      className="w-full px-3 py-1.5 text-left text-neutral-200 hover:bg-white/[0.08] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <BookMarked className="w-3.5 h-3.5 text-[var(--app-accent-text)]" />
+                      <span>Dictionary</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLookupWikipedia}
+                      className="w-full px-3 py-1.5 text-left text-neutral-200 hover:bg-white/[0.08] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-neutral-400" />
+                      <span>Wikipedia</span>
+                    </button>
+                  </>
+                )}
+
                 <button
                   type="button"
                   onClick={() => handleOpenExternalProvider('Google Translate')}
-                  className="w-full px-3 py-1.5 text-left text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] flex items-center gap-2 transition-colors cursor-pointer"
+                  className="w-full px-3 py-1.5 text-left text-neutral-200 hover:bg-white/[0.08] hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
                 >
                   <Languages className="w-3.5 h-3.5 text-[var(--app-text-subtle)]" />
                   <span>Translate</span>
