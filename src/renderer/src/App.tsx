@@ -211,7 +211,6 @@ export const App: React.FC = () => {
             ? Math.min(3.0, Number((state.pdfZoom + 0.15).toFixed(2)))
             : Math.max(0.5, Number((state.pdfZoom - 0.15).toFixed(2)))
         setPdfZoom(nextZoom)
-        showToast(`Page zoom: ${Math.round(nextZoom * 100)}%`, 'info')
       } else {
         const nextSize =
           dir === 'reset'
@@ -220,7 +219,6 @@ export const App: React.FC = () => {
             ? Math.min(42, state.settings.fontSize + 2)
             : Math.max(12, state.settings.fontSize - 2)
         updateSettings({ fontSize: nextSize })
-        showToast(`Text size: ${nextSize}px`, 'info')
       }
     })
     return () => {
@@ -231,10 +229,14 @@ export const App: React.FC = () => {
     }
   }, [setImmersiveFullscreen, setPdfConversionState, openLocalBookPath, setPdfZoom, updateSettings, showToast])
 
-  // Global hotkeys & desktop ergonomics (block middle-click browser scroll circle + add Ctrl+O Open Book)
+  // Global hotkeys & desktop ergonomics (block middle-click browser scroll circle + add Ctrl+O Open Book + Alt+< Back to Library)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key.toLowerCase() === 'x' || e.code === 'KeyX')) {
+      const isBackToHome =
+        e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        )
+      if (isBackToHome) {
         const state = useAppStore.getState()
         if (state.currentView === 'reader' && state.activeBook) {
           e.preventDefault()

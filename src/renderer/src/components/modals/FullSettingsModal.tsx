@@ -167,13 +167,7 @@ export const FullSettingsModal: React.FC = () => {
       }
       if (res.canceled) return
       setSecurityStatus(res.status)
-      const added = await importBookPathsIntoLibrary(res.scannedFiles || [])
-      showToast(
-        added > 0
-          ? `Library Vault connected — synced ${added} new ${added === 1 ? 'book' : 'books'}`
-          : 'Library Vault connected',
-        'success'
-      )
+      await importBookPathsIntoLibrary(res.scannedFiles || [])
     } finally {
       setIsVaultBusy(false)
     }
@@ -184,13 +178,7 @@ export const FullSettingsModal: React.FC = () => {
     setIsVaultBusy(true)
     try {
       const files = await window.desktopAPI.scanVault()
-      const added = await importBookPathsIntoLibrary(files)
-      showToast(
-        added > 0
-          ? `Synced ${added} new ${added === 1 ? 'book' : 'books'} from Vault`
-          : 'Vault is already up to date',
-        'info'
-      )
+      await importBookPathsIntoLibrary(files)
     } finally {
       setIsVaultBusy(false)
     }
@@ -206,7 +194,6 @@ export const FullSettingsModal: React.FC = () => {
       onConfirm: async () => {
         const next = await window.desktopAPI.clearVaultFolder()
         setSecurityStatus(next)
-        showToast('Library Vault unlinked', 'info')
       }
     })
   }
@@ -216,12 +203,6 @@ export const FullSettingsModal: React.FC = () => {
     try {
       const next = await window.desktopAPI.setStrictVaultOnly(!securityStatus.strictVaultOnly)
       setSecurityStatus(next)
-      showToast(
-        next.strictVaultOnly
-          ? 'Strict Vault Lock enabled — access sealed to your Vault folder'
-          : 'Strict Vault Lock disabled',
-        'info'
-      )
     } catch (err: any) {
       showToast(err?.message || 'Could not update Strict Vault Lock', 'error')
     }
@@ -242,7 +223,6 @@ export const FullSettingsModal: React.FC = () => {
     }
     if (!res.canceled) {
       setSecurityStatus(res.status)
-      showToast('Folder authorized for Semply', 'success')
     }
   }
 
@@ -250,7 +230,6 @@ export const FullSettingsModal: React.FC = () => {
     if (!window.desktopAPI?.removeAuthorizedFolder) return
     const next = await window.desktopAPI.removeAuthorizedFolder(folder)
     setSecurityStatus(next)
-    showToast('Folder access revoked', 'info')
   }
 
   const handleToggleStrictOffline = async () => {
@@ -258,12 +237,6 @@ export const FullSettingsModal: React.FC = () => {
     const next = await window.desktopAPI.setStrictOfflineMode(!securityStatus.strictOfflineMode)
     setSecurityStatus(next)
     setIsOnline(!next.strictOfflineMode && navigator.onLine)
-    showToast(
-      next.strictOfflineMode
-        ? 'Strict Offline Mode enabled — all internet access sealed'
-        : 'Allowlisted lookups re-enabled (Fonts, Dictionary, Wikipedia)',
-      'info'
-    )
   }
 
   const handleExportJson = async () => {
