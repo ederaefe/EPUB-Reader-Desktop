@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Copy,
   FileText,
@@ -7,10 +7,10 @@ import {
   Globe,
   Check,
   Underline,
-  Search,
   ExternalLink,
   X,
-  Languages
+  Languages,
+  CornerDownLeft
 } from 'lucide-react'
 import {
   DICT_PROVIDERS,
@@ -44,11 +44,11 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   onAddNote
 }) => {
   const [copied, setCopied] = useState(false)
-  const [showNoteInput, setShowNoteInput] = useState(initialShowNoteInput)
+  const [showNoteComposer, setShowNoteComposer] = useState(initialShowNoteInput)
   const [noteText, setNoteText] = useState('')
   const [noteColor, setNoteColor] = useState<NoteColor>(defaultColor)
 
-  // Contextual floating modals
+  // Floating Contextual Modals
   const [showDictModal, setShowDictModal] = useState(false)
   const [dictLoading, setDictLoading] = useState(false)
   const [definition, setDefinition] = useState<InlineDefinition | null>(null)
@@ -57,14 +57,24 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const [wikiLoading, setWikiLoading] = useState(false)
   const [wikiSummary, setWikiSummary] = useState<WikipediaSummary | null>(null)
 
+  const popupRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
   useEffect(() => {
-    setShowNoteInput(initialShowNoteInput)
+    setShowNoteComposer(initialShowNoteInput)
   }, [initialShowNoteInput])
 
   useEffect(() => {
     setNoteColor(defaultColor)
   }, [defaultColor])
 
+  useEffect(() => {
+    if (showNoteComposer && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [showNoteComposer])
+
+  // Global keydown: Escape dismisses, Ctrl+Enter saves note
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -76,10 +86,16 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  // Clamp bar position strictly within the desktop window
-  const barHalfWidth = 265
-  const clampedX = Math.max(barHalfWidth + 12, Math.min(window.innerWidth - barHalfWidth - 12, position.x))
-  const clampedY = position.y < 96 ? Math.min(window.innerHeight - 60, position.y + 24) : Math.max(44, position.y - 46)
+  // Precision Viewport Clamping (Chrome PDF Floating Style)
+  const barWidth = 330
+  const barHalfWidth = barWidth / 2
+  const clampedX = Math.max(barHalfWidth + 16, Math.min(window.innerWidth - barHalfWidth - 16, position.x))
+
+  // Determine whether to show above or below selection based on available vertical clearance
+  const isNearTop = position.y < 180
+  const clampedY = isNearTop
+    ? Math.min(window.innerHeight - 80, position.y + 24)
+    : Math.max(48, position.y - 48)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(selectedText)
@@ -128,174 +144,156 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const handleSaveNote = (e?: React.FormEvent) => {
     e?.preventDefault()
     onAddNote(noteText.trim(), noteColor)
-    setShowNoteInput(false)
+    setShowNoteComposer(false)
     setNoteText('')
     onClose()
   }
 
   return (
     <>
-      {/* 36px Native Floating Action Bar */}
-      {!showNoteInput && (
-        <div
-          style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
-          className="fixed z-50 transform -translate-x-1/2 h-9 bg-[#171a21] border border-[#2d323f] rounded-md p-1 flex items-center gap-1 shadow-2xl select-none app-no-drag animate-in fade-in duration-100"
-        >
-          {/* Copy button */}
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-            title="Copy Text"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#8b949e]" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-
-          {/* Highlight Colors (1:1 Native Desktop rectangular markers) */}
-          <div className="flex items-center gap-1 px-1.5 border-x border-[#232732]">
+      {/* Chrome PDF-Inspired Sleek Floating Action Bar */}
+      <div
+        ref={popupRef}
+        style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
+        className="fixed z-50 transform -translate-x-1/2 flex flex-col items-center select-none app-no-drag animate-in fade-in zoom-in-95 duration-100"
+      >
+        {/* The Action Pill */}
+        <div className="h-9 px-1.5 bg-[#171a21]/95 backdrop-blur-md border border-[#2d323f] rounded-full flex items-center gap-1 shadow-2xl">
+          {/* 1-Click Highlight Color Palette */}
+          <div className="flex items-center gap-1.5 px-1.5">
             {ICE_NOTE_COLOR_LIST.map((col) => (
               <button
                 key={col.id}
                 type="button"
                 onClick={() => onHighlight(col.id)}
-                className="w-4 h-4 rounded-[2px] flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                className="w-4 h-4 rounded-full flex items-center justify-center hover:scale-125 transition-transform cursor-pointer shadow-sm"
                 style={
                   col.isUnderline
-                    ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
-                    : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.4)' }
+                    ? {
+                        backgroundColor: '#232732',
+                        border: '1px solid #444c5e',
+                        color: '#79c0ff'
+                      }
+                    : {
+                        backgroundColor: col.hex,
+                        border: '1px solid rgba(0,0,0,0.45)'
+                      }
                 }
-                title={`${col.label}${col.isUnderline ? '' : ' Highlight'}`}
+                title={`Highlight in ${col.label}`}
               >
                 {col.isUnderline && <Underline className="w-2.5 h-2.5 pointer-events-none" />}
               </button>
             ))}
           </div>
 
-          {/* Note */}
+          <div className="w-[1px] h-4 bg-[#2d323f]" />
+
+          {/* Copy Button */}
           <button
             type="button"
-            onClick={() => setShowNoteInput(true)}
-            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-            title="Add Note"
+            onClick={handleCopy}
+            className="h-7 px-2 rounded-full text-xs text-[#c9d1d9] hover:text-white hover:bg-[#282c37] flex items-center gap-1 transition-colors"
+            title="Copy selection"
           >
-            <FileText className="w-3.5 h-3.5 text-[#2a69df]" />
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#8b949e]" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+
+          {/* Note Button (Expands Inline Note Composer - No Blocking Modal) */}
+          <button
+            type="button"
+            onClick={() => setShowNoteComposer((prev) => !prev)}
+            className={`h-7 px-2 rounded-full text-xs flex items-center gap-1 transition-colors ${
+              showNoteComposer
+                ? 'bg-[#2a69df] text-white'
+                : 'text-[#c9d1d9] hover:text-white hover:bg-[#282c37]'
+            }`}
+            title="Attach Note"
+          >
+            <FileText className="w-3.5 h-3.5" />
             <span>Note</span>
           </button>
 
-          {/* Speak */}
+          {/* Speak / Read Aloud */}
           <button
             type="button"
             onClick={handleSpeak}
-            className="ice-btn-dark w-7 h-7 flex items-center justify-center rounded-[2px]"
-            title="Read Aloud"
+            className="w-7 h-7 rounded-full text-[#8b949e] hover:text-white hover:bg-[#282c37] flex items-center justify-center transition-colors"
+            title="Read selection aloud"
           >
-            <Volume2 className="w-3.5 h-3.5 text-[#8b949e]" />
+            <Volume2 className="w-3.5 h-3.5" />
           </button>
 
-          {/* Dictionary Lookup */}
+          {/* Define */}
           <button
             type="button"
             onClick={handleLookupDefinition}
-            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
+            className="w-7 h-7 rounded-full text-[#79c0ff] hover:text-white hover:bg-[#282c37] flex items-center justify-center transition-colors"
             title="Dictionary definition"
           >
-            <BookMarked className="w-3.5 h-3.5 text-[#79c0ff]" />
-            <span>Define</span>
+            <BookMarked className="w-3.5 h-3.5" />
           </button>
 
-          {/* Wikipedia Encyclopedic Summary */}
-          <button
-            type="button"
-            onClick={handleLookupWikipedia}
-            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-            title="Wikipedia summary"
-          >
-            <Globe className="w-3.5 h-3.5 text-[#f59e0b]" />
-            <span>Wiki</span>
-          </button>
-
-          {/* Translation (Google Translate & DeepL) */}
+          {/* Translate */}
           <button
             type="button"
             onClick={() => handleOpenExternalProvider('Google Translate')}
-            className="ice-btn-dark px-2 h-7 text-xs flex items-center gap-1 rounded-[2px]"
-            title="Translate selection (Google Translate / DeepL)"
+            className="w-7 h-7 rounded-full text-[#4cd964] hover:text-white hover:bg-[#282c37] flex items-center justify-center transition-colors"
+            title="Translate selection"
           >
-            <Languages className="w-3.5 h-3.5 text-[#4cd964]" />
-            <span>Translate</span>
+            <Languages className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Close */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-5 h-5 rounded-full text-[#6e7681] hover:text-white hover:bg-[#282c37] flex items-center justify-center transition-colors"
+            title="Dismiss"
+          >
+            <X className="w-3 h-3" />
           </button>
         </div>
-      )}
 
-      {/* Note Composer Modal */}
-      {showNoteInput && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 app-no-drag"
-          onClick={() => {
-            setShowNoteInput(false)
-            onClose()
-          }}
-        >
+        {/* Anchored Inline Note Composer (Attached Dropdown - Never covers whole screen) */}
+        {showNoteComposer && (
           <form
             onSubmit={handleSaveNote}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[420px] shadow-2xl space-y-3"
+            className={`mt-2 w-[340px] bg-[#171a21]/95 backdrop-blur-md border border-[#2d323f] rounded-lg p-3 shadow-2xl space-y-2.5 text-xs text-[#c9d1d9] animate-in fade-in slide-in-from-top-1 duration-150 ${
+              isNearTop ? 'mt-2' : 'mb-2 order-first'
+            }`}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#2a69df]" />
-                <span className="text-xs font-semibold text-white">Add Note &amp; Highlight</span>
+            {/* Header & Quote snippet */}
+            <div className="flex items-center justify-between pb-1 border-b border-[#232732]">
+              <div className="flex items-center gap-1.5 text-white font-medium">
+                <FileText className="w-3.5 h-3.5 text-[#2a69df]" />
+                <span>Attach Note</span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNoteInput(false)
-                  onClose()
-                }}
-                className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37]"
-              >
-                <X className="w-3.5 h-3.5 pointer-events-none" />
-              </button>
+              <div className="flex items-center gap-1">
+                {ICE_NOTE_COLOR_LIST.map((col) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => setNoteColor(col.id)}
+                    className={`w-3.5 h-3.5 rounded-full transition-transform ${
+                      noteColor === col.id ? 'ring-2 ring-white scale-110' : 'opacity-60 hover:opacity-100'
+                    }`}
+                    style={{ backgroundColor: col.hex }}
+                    title={col.label}
+                  />
+                ))}
+              </div>
             </div>
 
             <div
-              className="text-[11px] text-[#c9d1d9] font-serif italic line-clamp-3 bg-[#12141a] p-2.5 rounded-[2px] border border-[#232732] border-l-2"
+              className="text-[11px] text-[#8b949e] font-serif italic truncate bg-[#12141a] px-2 py-1 rounded border-l-2 border-[#2a69df]"
               style={{ borderLeftColor: (ICE_NOTE_COLORS[noteColor] || ICE_NOTE_COLORS.yellow).borderHex }}
             >
               &ldquo;{selectedText}&rdquo;
             </div>
 
-            {/* Highlight Color Selector */}
-            <div className="flex items-center justify-between bg-[#14161c] border border-[#232732] rounded-[2px] px-2.5 py-1.5">
-              <span className="text-[11px] text-[#8b949e]">Highlight Style</span>
-              <div className="flex items-center gap-1.5">
-                {ICE_NOTE_COLOR_LIST.map((col) => {
-                  const active = noteColor === col.id
-                  return (
-                    <button
-                      key={col.id}
-                      type="button"
-                      onClick={() => setNoteColor(col.id)}
-                      className={`w-5 h-5 rounded-[2px] flex items-center justify-center transition-transform cursor-pointer ${
-                        active ? 'ring-2 ring-[var(--app-text-strong)] scale-105' : 'opacity-75 hover:opacity-100'
-                      }`}
-                      style={
-                        col.isUnderline
-                          ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
-                          : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
-                      }
-                      title={col.label}
-                    >
-                      {col.isUnderline && <Underline className="w-3 h-3 pointer-events-none" />}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             <textarea
-              autoFocus
+              ref={textareaRef}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               onKeyDown={(e) => {
@@ -304,37 +302,38 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                   handleSaveNote()
                 }
               }}
-              placeholder="Write your note or comment here... (Ctrl+Enter to save)"
-              rows={4}
-              className="ice-input w-full p-2.5 text-xs rounded-[2px] resize-none"
+              placeholder="Write a note... (Ctrl+Enter to save)"
+              rows={3}
+              className="w-full bg-[#12141a] border border-[#2d323f] text-[#f2f2f2] placeholder-[#6e7681] p-2 text-xs rounded focus:outline-none focus:border-[#2a69df] resize-none"
             />
 
             <div className="flex items-center justify-between pt-1">
               <span className="text-[10px] text-[#6e7681]">Ctrl+Enter to save</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowNoteInput(false)
-                    onClose()
-                  }}
-                  className="ice-btn-dark px-3 h-7 text-xs rounded-[2px]"
+                  onClick={() => setShowNoteComposer(false)}
+                  className="px-2.5 py-1 rounded text-xs text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="ice-btn-blue px-3.5 h-7 text-xs rounded-[2px]">
-                  Save Note
+                <button
+                  type="submit"
+                  className="px-3 py-1 rounded bg-[#2a69df] hover:bg-[#3291ff] text-white text-xs font-medium flex items-center gap-1 transition-colors"
+                >
+                  <span>Save</span>
+                  <CornerDownLeft className="w-3 h-3" />
                 </button>
               </div>
             </div>
           </form>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Feature 2: Inline Contextual Dictionary Modal */}
+      {/* Contextual Dictionary Modal (Anchored & Non-Blocking) */}
       {showDictModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[460px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[460px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#232732] pb-2">
               <div className="flex items-center gap-2">
                 <BookMarked className="w-4 h-4 text-[#2a69df]" />
@@ -407,10 +406,10 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         </div>
       )}
 
-      {/* Feature 2: Encyclopedic Wikipedia Modal */}
+      {/* Encyclopedic Wikipedia Modal */}
       {showWikiModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[500px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#171a21] border border-[#2d323f] rounded-lg p-4 w-[500px] max-h-[80vh] shadow-2xl flex flex-col text-xs text-[#c9d1d9] space-y-3 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[#232732] pb-2">
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-[#f59e0b]" />

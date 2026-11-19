@@ -20,7 +20,9 @@ import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
-import { syncBookNotesCount } from '../../services/annotationService'
+import { SelectionPopup } from './SelectionPopup'
+import { AnnotationPopover } from './AnnotationPopover'
+import { syncBookNotesCount, ICE_NOTE_COLORS } from '../../services/annotationService'
 import { buildPdfToc, findActivePdfTocItem } from '../../services/tocService'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
@@ -66,6 +68,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     isConvertingPdf,
     pdfConvertProgress,
     bookmarksVersion,
+    annotationsVersion,
     bumpAnnotationsVersion,
     bumpBookmarksVersion,
     pdfZoom: zoom,
@@ -81,6 +84,15 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(Math.max(1, book.currentPage || 1))
   const [totalPages, setTotalPages] = useState<number>(Math.max(1, book.totalPages || 1))
   const [pdfBookmarks, setPdfBookmarks] = useState<BookmarkItem[]>([])
+
+  // Chrome PDF-Grade Floating Annotation & Note Selection States
+  const [selectedPdfText, setSelectedPdfText] = useState<string | null>(null)
+  const [selectionPos, setSelectionPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [selectedPageNum, setSelectedPageNum] = useState<number>(1)
+  const [activeAnnotation, setActiveAnnotation] = useState<{
+    annotation: Annotation
+    position: { x: number; y: number }
+  } | null>(null)
 
   const pdfProgressPercent =
     totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 100
@@ -292,6 +304,12 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         try {
           const textContent = await page.getTextContent()
           if (cancelled) return
+
+          // Query annotations for this page to paint visual highlights directly
+          const pageAnns = book.id
+            ? await db.annotations.where('bookId').equals(book.id).filter((a) => a.pageNumber === pageNum).toArray()
+            : []
+
           for (const item of textContent.items as any[]) {
             if (!item.str) continue
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform)
@@ -306,6 +324,28 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
             span.style.whiteSpace = 'pre'
             span.style.cursor = 'text'
             span.style.userSelect = 'text'
+
+            // Check if span matches any page highlight
+            const matchingAnn = pageAnns.find(
+              (a) => a.text && (a.text.includes(item.str) || item.str.includes(a.text))
+            )
+            if (matchingAnn) {
+              const hex = (ICE_NOTE_COLORS[matchingAnn.color] || ICE_NOTE_COLORS.yellow).hex
+              span.style.backgroundColor = hex
+              span.style.opacity = '0.42'
+              span.style.borderRadius = '2px'
+              span.style.cursor = 'pointer'
+              span.title = matchingAnn.note ? `Note: ${matchingAnn.note}` : 'Highlight'
+              span.addEventListener('click', (ev) => {
+                ev.stopPropagation()
+                const rect = span.getBoundingClientRect()
+                setActiveAnnotation({
+                  annotation: matchingAnn,
+                  position: { x: rect.left + rect.width / 2, y: rect.top }
+                })
+              })
+            }
+
             textLayerDiv.appendChild(span)
           }
         } catch {
@@ -346,7 +386,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     return () => {
       cancelled = true
     }
-  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageSpread, book.id, syncActiveBookProgress])
+  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageSpread, book.id, syncActiveBookProgress, annotationsVersion])
 
   const step = settings.pageSpread === 'double' ? 2 : 1
 
@@ -541,6 +581,80 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     }
   }
 
+  // Handle PDF text selection across the rendered text layer
+  const handlePdfTextSelection = useCallback(() => {
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed) return
+    const text = sel.toString().trim()
+    if (!text) {
+      setSelectedPdfText(null)
+      return
+    }
+    try {
+      const range = sel.getRangeAt(0)
+      const rect = range.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        setSelectedPdfText(text)
+        setSelectionPos({
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        })
+        setSelectedPageNum(currentPage)
+      }
+    } catch {
+      // Range calculation fallback
+    }
+  }, [currentPage])
+
+  const handleAddPdfHighlight = async (color: NoteColor) => {
+    if (!book.id || !selectedPdfText) return
+    const record: Annotation = {
+      bookId: book.id,
+      cfiRange: String(selectedPageNum),
+      text: selectedPdfText,
+      note: '',
+      color,
+      pageNumber: selectedPageNum,
+      createdAt: Date.now()
+    }
+    await db.annotations.add(record)
+    window.getSelection()?.removeAllRanges()
+    setSelectedPdfText(null)
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+  }
+
+  const handleAddPdfNote = async (color: NoteColor, noteText: string) => {
+    if (!book.id || !selectedPdfText) return
+    const record: Annotation = {
+      bookId: book.id,
+      cfiRange: String(selectedPageNum),
+      text: selectedPdfText,
+      note: noteText,
+      color,
+      pageNumber: selectedPageNum,
+      createdAt: Date.now()
+    }
+    await db.annotations.add(record)
+    window.getSelection()?.removeAllRanges()
+    setSelectedPdfText(null)
+    await syncBookNotesCount(book.id)
+    bumpAnnotationsVersion()
+  }
+
+  const handleUpdatePdfAnnotation = async (id: number, updates: { color?: NoteColor; note?: string }) => {
+    await db.annotations.update(id, { ...updates, updatedAt: Date.now() })
+    bumpAnnotationsVersion()
+  }
+
+  const handleDeletePdfAnnotation = async (ann: Annotation) => {
+    if (ann.id) {
+      await db.annotations.delete(ann.id)
+      if (book.id) await syncBookNotesCount(book.id)
+      bumpAnnotationsVersion()
+    }
+  }
+
   return (
     <div
       style={{ backgroundColor: currentTheme.bg }}
@@ -579,6 +693,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       <div
         ref={viewportRef}
         onContextMenu={handleContextMenu}
+        onMouseUp={handlePdfTextSelection}
         className="flex-1 relative overflow-auto flex items-start justify-center p-6 scroll-smooth"
       >
         {loadError ? (
@@ -730,6 +845,31 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
             </p>
           </div>
         </div>
+      )}
+
+      {/* Clicked Highlight Popover */}
+      {activeAnnotation && (
+        <AnnotationPopover
+          annotation={activeAnnotation.annotation}
+          position={activeAnnotation.position}
+          onClose={() => setActiveAnnotation(null)}
+          onUpdate={handleUpdatePdfAnnotation}
+          onDelete={handleDeletePdfAnnotation}
+        />
+      )}
+
+      {/* Chrome PDF-Grade Floating Selection & Annotation Pill */}
+      {selectedPdfText && (
+        <SelectionPopup
+          selectedText={selectedPdfText}
+          position={selectionPos}
+          onClose={() => {
+            setSelectedPdfText(null)
+            window.getSelection()?.removeAllRanges()
+          }}
+          onHighlight={handleAddPdfHighlight}
+          onAddNote={handleAddPdfNote}
+        />
       )}
 
       {/* Desktop Right-Click Context Menu */}

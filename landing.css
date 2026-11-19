@@ -582,6 +582,47 @@ img, svg {
   border-radius: 2px;
 }
 
+/* Floating Annotation Pill in Hero Mockup */
+.mockup-highlight-wrap {
+  position: relative;
+  display: block;
+}
+
+.mockup-annotation-pill {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  background-color: var(--mock-chrome-bg, #11141a);
+  border: 1px solid var(--mock-border, #2d323f);
+  border-radius: var(--radius-full);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  z-index: 5;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.mockup-color-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mockup-pill-btn {
+  color: var(--mock-text, #ffffff);
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.1);
+  font-size: 0.65rem;
+}
+
 /* In-Place Footnote Peek Demo in Mockup */
 .mockup-fn-ref {
   font-size: 0.75rem;

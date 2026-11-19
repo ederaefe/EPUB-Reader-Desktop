@@ -444,13 +444,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           state.settings.autoscrollMode ??
           (state.settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
 
-        if (state.isAutoscrollActive && mode === 'adaptive') {
-          if (e.deltaY < -25) {
-            // Back-scroll detected: User scrolled up -> decrease WPM (-15%)
-            adaptiveScrollEngine.onBackScrollDetected()
-          } else if (e.deltaY > 25) {
-            // Forward nudge detected: User scrolling forward -> increase WPM (+10%)
-            adaptiveScrollEngine.onForwardNudgeDetected()
+        if (state.isAutoscrollActive) {
+          if (mode === 'adaptive') {
+            if (e.deltaY < -25) {
+              // Back-scroll detected: User scrolled up -> decrease WPM (-15% slower)
+              adaptiveScrollEngine.onBackScrollDetected()
+            } else if (e.deltaY > 25) {
+              // Forward nudge detected: User scrolling forward -> increase WPM (+10% faster)
+              adaptiveScrollEngine.onForwardNudgeDetected()
+            }
+          } else {
+            // Countdown mode: wheel adjusts fixed seconds (+5s slower / -5s faster)
+            if (e.deltaY < -25) {
+              adaptiveScrollEngine.adjustCountdownSec(5)
+            } else if (e.deltaY > 25) {
+              adaptiveScrollEngine.adjustCountdownSec(-5)
+            }
           }
           return
         }
@@ -553,7 +562,20 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if (e.key === 'F8') {
         e.preventDefault()
         handleStopTTSRef.current()
-      } else if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ')) {
+      } else if (e.key === ' ') {
+        e.preventDefault()
+        if (useAppStore.getState().isAutoscrollActive) {
+          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
+        } else if (isVert && scrollContainer) {
+          const delta = Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        } else {
+          navigateStepRef.current('next')
+        }
+      } else if ((e.shiftKey && e.key.toLowerCase() === 'a') || (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault()
+        useAppStore.getState().setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
+      } else if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown')) {
         if (scrollContainer) {
           e.preventDefault()
           const delta = e.key === 'ArrowDown' ? 140 : Math.round(scrollContainer.clientHeight * 0.85)
@@ -565,7 +587,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
           scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
         }
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault()
         navigateStepRef.current('next')
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
@@ -1413,6 +1435,20 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     settings.autoscrollMicroPause
   ])
 
+  // Reverse sync: Persist live cadence (WPM) and wheel nudges from engine back to store
+  useEffect(() => {
+    return adaptiveScrollEngine.onSyncSettings((s) => {
+      const st = useAppStore.getState()
+      st.setAdaptiveWpm(s.targetWpm)
+      st.updateSettings({
+        autoscrollCountdownSec: s.fixedCountdownSec,
+        autoscrollAdaptiveSec: s.adaptiveBaseSec,
+        targetWpm: s.targetWpm,
+        observedWpm: s.observedWpm
+      })
+    })
+  }, [])
+
   // App-level abandonment (blur/hidden) suspension & user activity listeners
   useEffect(() => {
     let blurTimer: ReturnType<typeof setTimeout> | null = null
@@ -1513,10 +1549,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
 
     let cancelled = false
+    let isAdvancing = false
     let recoveryTimer: ReturnType<typeof setTimeout> | null = null
 
     const armPage = () => {
       if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+      isAdvancing = false
       const { visibleWords, hasBreak, atEnd } = analyzeVisiblePage()
       if (atEnd) {
         adaptiveScrollEngine.stop()
@@ -1526,11 +1564,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       const cfiBeforeTurn = currentCfiRef.current
       adaptiveScrollEngine.startPageCountdown(visibleWords, hasBreak, () => {
-        if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-        Promise.resolve(handleNext()).catch(() => {})
+        if (cancelled || !useAppStore.getState().isAutoscrollActive || isAdvancing) return
+        isAdvancing = true
+        Promise.resolve(handleNext())
+          .catch(() => {})
+          .finally(() => {
+            setTimeout(() => {
+              isAdvancing = false
+            }, 400)
+          })
 
         // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI,
-        // retry next() once and re-arm so Auto-Scroll never freezes at 0s.
+        // retry once after 1200ms so Auto-Scroll never freezes at 0s or skips multiple pages.
         if (recoveryTimer) clearTimeout(recoveryTimer)
         recoveryTimer = setTimeout(() => {
           if (cancelled || !useAppStore.getState().isAutoscrollActive) return
@@ -1545,10 +1590,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
                 if (!cancelled && useAppStore.getState().isAutoscrollActive && currentCfiRef.current === cfiBeforeTurn) {
                   armPage()
                 }
-              }, 800)
+              }, 1000)
             }
           }
-        }, 750)
+        }, 1200)
       })
     }
 
@@ -1736,7 +1781,20 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       const isVert = scrollModeRef.current === 'vertical'
       const scrollContainer = (renditionRef.current as any)?.manager?.container as HTMLElement | undefined
 
-      if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ')) {
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (useAppStore.getState().isAutoscrollActive) {
+          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
+        } else if (isVert && scrollContainer) {
+          const delta = Math.round(scrollContainer.clientHeight * 0.85)
+          scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
+        } else {
+          handleNext()
+        }
+      } else if ((e.shiftKey && e.key.toLowerCase() === 'a') || (e.key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault()
+        setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
+      } else if (isVert && (e.key === 'ArrowDown' || e.key === 'PageDown')) {
         if (scrollContainer) {
           e.preventDefault()
           const delta = e.key === 'ArrowDown' ? 140 : Math.round(scrollContainer.clientHeight * 0.85)
@@ -1748,7 +1806,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
           scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
         }
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault()
         handleNext()
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {

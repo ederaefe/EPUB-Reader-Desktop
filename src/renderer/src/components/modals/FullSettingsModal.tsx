@@ -791,8 +791,11 @@ export const FullSettingsModal: React.FC = () => {
                             {adaptiveSec !== 25 && (
                               <button
                                 type="button"
-                                onClick={() => handleAdaptiveSecChange(25)}
-                                title="Reset to 25s"
+                                onClick={() => {
+                                  handleAdaptiveSecChange(25)
+                                  updateSettings({ targetWpm: 250 })
+                                }}
+                                title="Reset to 25s (250 WPM)"
                                 className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
                               >
                                 <RotateCcw className="w-3 h-3" />

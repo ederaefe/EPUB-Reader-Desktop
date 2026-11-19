@@ -91,6 +91,15 @@ export const SettingsDrawer: React.FC = () => {
   const isPdf = activeBook?.format === 'pdf'
   const isOriginalPdf = isPdf && pdfViewMode === 'original'
 
+  const [autoscrollMetrics, setAutoscrollMetrics] = useState(adaptiveScrollEngine.getMetrics())
+  useEffect(() => {
+    return adaptiveScrollEngine.subscribe((m) => setAutoscrollMetrics(m))
+  }, [])
+
+  const handleToggleAutoScrollPause = () => {
+    adaptiveScrollEngine.setUserPaused(!autoscrollMetrics.isUserPaused)
+  }
+
   const handleModeChange = (mode: AutoscrollMode) => {
     if (effectiveMode === mode) return
     updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
@@ -531,27 +540,29 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleToggleAutoScroll}
-                      className={`h-6 px-2.5 rounded-md flex items-center gap-1 text-[11px] font-semibold transition-colors ${
-                        isAutoscrollActive
-                          ? 'bg-[#e5484d]/15 text-[#e5484d] hover:bg-[#e5484d]/25'
-                          : 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                      }`}
-                    >
-                      {isAutoscrollActive ? (
-                        <>
-                          <Pause className="w-3 h-3" />
-                          <span>Pause</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-3 h-3 fill-current" />
-                          <span>Play</span>
-                        </>
-                      )}
-                    </button>
+                    {isAutoscrollActive && (
+                      <button
+                        type="button"
+                        onClick={handleToggleAutoScrollPause}
+                        className={`h-6 px-2 rounded-md flex items-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                          autoscrollMetrics.isUserPaused
+                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                            : 'bg-[var(--app-surface-2)] text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)]'
+                        }`}
+                      >
+                        {autoscrollMetrics.isUserPaused ? (
+                          <>
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>Resume</span>
+                          </>
+                        ) : (
+                          <>
+                            <Pause className="w-3 h-3" />
+                            <span>Pause</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                     <button
                       type="button"
                       role="switch"
@@ -563,7 +574,7 @@ export const SettingsDrawer: React.FC = () => {
                           ? 'var(--app-accent)'
                           : 'var(--app-border-strong)'
                       }}
-                      className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0"
+                      className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 cursor-pointer"
                       title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
                     >
                       <span

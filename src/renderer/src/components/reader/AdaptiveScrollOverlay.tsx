@@ -7,7 +7,9 @@ import {
   RotateCcw,
   Power,
   X,
-  Clock
+  Clock,
+  Settings as SettingsIcon,
+  Gauge
 } from 'lucide-react'
 import { adaptiveScrollEngine, type PacingMetrics } from '../../services/adaptiveScrollService'
 import { useAppStore } from '../../stores/useAppStore'
@@ -61,7 +63,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   if (!isActive) return null
 
-  const effectiveMode: AutoscrollMode = settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
+  const effectiveMode: AutoscrollMode =
+    settings.autoscrollMode ?? (settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
   const countdownSec = settings.autoscrollCountdownSec ?? 20
   const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
   const microPauseEnabled = settings.autoscrollMicroPause ?? true
@@ -95,10 +98,11 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const handleReset = () => {
     adaptiveScrollEngine.recordUserActivity()
+    adaptiveScrollEngine.reset()
     if (effectiveMode === 'countdown') {
-      handleCountdownChange(20)
+      updateSettings({ autoscrollCountdownSec: 20 })
     } else {
-      handleAdaptiveSecChange(25)
+      updateSettings({ autoscrollAdaptiveSec: 25, targetWpm: 250 })
     }
   }
 
@@ -112,18 +116,23 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     onClose()
   }
 
+  // Circular progress calculations for the quiet hairline SVG ring
+  const circleRadius = 13
+  const circumference = 2 * Math.PI * circleRadius
+  const strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, metrics.progress)))
+
   const triggerTooltip =
     metrics.pauseReason === 'inactivity'
-      ? `Auto-Scroll paused while away (${metrics.remainingSec}s left) — Click to resume or configure`
+      ? `Auto-Scroll paused while away (${metrics.remainingSec}s left) - Click to resume`
       : metrics.isUserPaused
-      ? `Auto-Scroll paused (${metrics.remainingSec}s left) — Click to resume or configure`
+      ? `Auto-Scroll paused (${metrics.remainingSec}s left) - Click to resume`
       : effectiveMode === 'adaptive'
-      ? `Smart Auto-Scroll: ${metrics.remainingSec}s left (${adaptiveSec}s base) — Click to pause or configure`
-      : `Fixed Auto-Scroll: ${metrics.remainingSec}s left (${countdownSec}s interval) — Click to pause or configure`
+      ? `Smart Auto-Scroll: ${metrics.remainingSec}s left (${metrics.currentWpm} WPM) - Click to pause`
+      : `Fixed Auto-Scroll: ${metrics.remainingSec}s left - Click to pause`
 
   return (
     <>
-      {/* Click-outside dismissal backdrop when modal is open */}
+      {/* Click-outside dismissal backdrop when popover is open */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-40 bg-transparent"
@@ -131,17 +140,17 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
         />
       )}
 
-      {/* Tap-to-Open Compact Icon-Only Auto-Scroll Settings Modal */}
+      {/* Theme-Adaptive Compact Auto-Scroll Settings Popover */}
       {isModalOpen && (
         <div
           role="dialog"
           aria-label="Auto-Scroll Settings"
           className={`fixed ${
             isImmersiveFullscreen ? 'bottom-14' : 'bottom-20'
-          } right-5 z-50 w-60 bg-[#111111]/95 backdrop-blur-md border border-white/[0.1] rounded-lg shadow-[0_16px_48px_rgba(0,0,0,0.75)] p-3 space-y-2.5 select-none animate-in fade-in slide-in-from-bottom-2 duration-120`}
+          } right-5 z-50 w-64 bg-[var(--app-surface)] text-[var(--app-text-strong)] border border-[var(--app-border)] rounded-lg shadow-2xl p-3 space-y-2.5 select-none animate-in fade-in slide-in-from-bottom-2 duration-120`}
         >
           {/* Row 1: Playback & Lifecycle Controls */}
-          <div className="flex items-center justify-between pb-2 border-b border-white/[0.07]">
+          <div className="flex items-center justify-between pb-2 border-b border-[var(--app-border)]">
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -149,7 +158,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 aria-label={metrics.isUserPaused ? 'Resume Auto-Scroll' : 'Pause Auto-Scroll'}
                 className={`h-7 px-2.5 flex items-center justify-center gap-1.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                   metrics.isUserPaused
-                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] hover:bg-[var(--app-btn-primary-hover)]'
+                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] hover:opacity-90'
                     : 'bg-[var(--app-surface-2)] text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)]'
                 }`}
               >
@@ -168,7 +177,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
               {metrics.pauseReason === 'inactivity' && (
                 <span
-                  className="w-6 h-6 flex items-center justify-center text-[#f59e0b]"
+                  className="w-6 h-6 flex items-center justify-center text-amber-500"
                   title="Auto-paused after 5 minutes of reader inactivity"
                 >
                   <Clock className="w-3.5 h-3.5" />
@@ -184,9 +193,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 title={
                   effectiveMode === 'countdown'
                     ? 'Reset fixed timer to 20s'
-                    : 'Reset smart base timer to 25s'
+                    : 'Reset smart base timer to 25s (250 WPM)'
                 }
-                className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-2)] transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -196,7 +205,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 onClick={handleTurnOff}
                 aria-label="Turn off Auto-Scroll"
                 title="Turn off Auto-Scroll completely"
-                className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[var(--app-text-muted)] hover:text-[#e5484d] hover:bg-[#e5484d]/15 transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--app-text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
               >
                 <Power className="w-3.5 h-3.5" />
               </button>
@@ -206,22 +215,35 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close Auto-Scroll modal"
                 title="Close panel and resume reading"
-                className="w-7 h-7 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-2)] transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Row 2: Sleek Segmented Mode Selector (Fixed vs Smart) */}
-          <div className="grid grid-cols-2 p-0.5 bg-[#0d0f14] rounded-[3px] border border-[#1f232d]">
+          {/* Row 2: Live Cadence Stat (Smart Mode) */}
+          {effectiveMode === 'adaptive' && (
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-[var(--app-surface-2)] text-[11px]">
+              <div className="flex items-center gap-1.5 text-[var(--app-text-muted)]">
+                <Gauge className="w-3.5 h-3.5 text-[var(--app-accent)]" />
+                <span>Reading Pace</span>
+              </div>
+              <span className="font-mono font-semibold text-[var(--app-text-strong)]">
+                {metrics.currentWpm} WPM
+              </span>
+            </div>
+          )}
+
+          {/* Row 3: Segmented Mode Selector (Fixed vs Smart) */}
+          <div className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md border border-[var(--app-border)]">
             <button
               type="button"
               onClick={() => handleModeChange('countdown')}
-              className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+              className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                 effectiveMode === 'countdown'
-                  ? 'bg-[#2a69df] text-white shadow-sm'
-                  : 'text-[#8b949e] hover:text-white'
+                  ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
+                  : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
               }`}
             >
               <Timer className="w-3 h-3" />
@@ -231,10 +253,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             <button
               type="button"
               onClick={() => handleModeChange('adaptive')}
-              className={`h-7 rounded-[2px] flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+              className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
                 effectiveMode === 'adaptive'
-                  ? 'bg-[#2a69df] text-white shadow-sm'
-                  : 'text-[#8b949e] hover:text-white'
+                  ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
+                  : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
               }`}
             >
               <Zap className="w-3 h-3" />
@@ -242,12 +264,12 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </button>
           </div>
 
-          {/* Row 3: Mode-Specific Manual Seconds Controls */}
+          {/* Row 4: Mode-Specific Manual Seconds Controls */}
           {effectiveMode === 'countdown' ? (
             <div className="flex items-center justify-between gap-2 pt-0.5">
               <div className="min-w-0">
-                <span className="text-[11px] font-bold text-[#ededed] block">Seconds</span>
-                <span className="font-mono text-[#8b949e] text-[9.5px] font-normal">3–600s</span>
+                <span className="text-[11px] font-bold text-[var(--app-text-strong)] block">Seconds</span>
+                <span className="font-mono text-[var(--app-text-muted)] text-[9.5px] font-normal">3-600s</span>
               </div>
               <SecondsNumberInput
                 value={countdownSec}
@@ -263,8 +285,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             <div className="space-y-2 pt-0.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <span className="text-[11px] font-bold text-[#ededed] block">Base sec</span>
-                  <span className="font-mono text-[#8b949e] text-[9.5px] font-normal">Scales by words</span>
+                  <span className="text-[11px] font-bold text-[var(--app-text-strong)] block">Base sec</span>
+                  <span className="font-mono text-[var(--app-text-muted)] text-[9.5px] font-normal">Scales by words</span>
                 </div>
                 <SecondsNumberInput
                   value={adaptiveSec}
@@ -277,18 +299,18 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-1.5 border-t border-[#1e222c] px-0.5">
-                <span className="text-[11px] font-bold text-[#ededed]">Pause at breaks</span>
+              <div className="flex items-center justify-between pt-1.5 border-t border-[var(--app-border)] px-0.5">
+                <span className="text-[11px] font-bold text-[var(--app-text-strong)]">Pause at breaks</span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={microPauseEnabled}
                   onClick={handleToggleMicroPause}
-                  className={`w-7 h-4 rounded-[2px] transition-colors p-0.5 flex items-center cursor-pointer ${
-                    microPauseEnabled ? 'bg-[#2a69df] justify-end' : 'bg-[#282c37] justify-start'
+                  className={`w-7 h-4 rounded-full transition-colors p-0.5 flex items-center cursor-pointer ${
+                    microPauseEnabled ? 'bg-[var(--app-accent)] justify-end' : 'bg-[var(--app-surface-2)] justify-start'
                   }`}
                 >
-                  <span className="w-3 h-3 bg-white rounded-[1px] block" />
+                  <span className="w-3 h-3 bg-white rounded-full block shadow-sm" />
                 </button>
               </div>
             </div>
@@ -296,29 +318,77 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
         </div>
       )}
 
-      {/* Minimalist Muted Numeric Countdown Trigger — Bottom-Right (persists in Fullscreen) */}
-      <button
-        type="button"
-        onClick={() => setIsModalOpen((prev) => !prev)}
-        aria-label={triggerTooltip}
-        title={triggerTooltip}
+      {/* Ghost-Sync Quiet Floating Indicator: Hairline SVG Progress Ring + Center Seconds */}
+      <div
         className={`fixed ${
           isImmersiveFullscreen ? 'bottom-4' : 'bottom-11'
-        } right-5 z-40 h-7 min-w-[28px] px-1.5 flex items-center justify-center gap-1 rounded-[2px] font-mono tabular-nums text-[13px] tracking-tight transition-all duration-150 select-none cursor-pointer ${
-          isModalOpen
-            ? 'bg-[var(--app-surface)] border border-[var(--app-accent)] text-[var(--app-text-strong)] opacity-100 shadow-lg'
-            : metrics.isUserPaused
-            ? 'bg-transparent text-[var(--app-text-muted)] opacity-55 hover:opacity-100 hover:bg-[var(--app-surface)]/85'
-            : 'bg-transparent text-[var(--app-text-muted)] opacity-60 hover:opacity-100 hover:bg-[var(--app-surface)]/85 hover:text-[var(--app-text-strong)]'
-        }`}
+        } right-5 z-40 flex items-center gap-1 select-none`}
       >
-        {metrics.pauseReason === 'inactivity' ? (
-          <Clock className="w-3 h-3 text-[#f59e0b]" />
-        ) : metrics.isUserPaused ? (
-          <Pause className="w-2.5 h-2.5 fill-current" />
-        ) : null}
-        <span>{metrics.remainingSec}</span>
-      </button>
+        <button
+          type="button"
+          onClick={handleTogglePause}
+          aria-label={triggerTooltip}
+          title={triggerTooltip}
+          className={`relative group h-8 min-w-[34px] px-1.5 flex items-center justify-center gap-1 rounded-full font-mono tabular-nums text-[12px] tracking-tight transition-all duration-150 cursor-pointer ${
+            metrics.isUserPaused
+              ? 'bg-[var(--app-surface)] text-[var(--app-text-muted)] border border-[var(--app-border)] shadow-md opacity-75 hover:opacity-100'
+              : 'bg-[var(--app-surface)] text-[var(--app-text-strong)] border border-[var(--app-border)] shadow-md hover:border-[var(--app-accent)]'
+          }`}
+        >
+          {/* Hairline SVG Circular Progress Ring */}
+          <svg
+            className="w-7 h-7 -rotate-90 pointer-events-none"
+            viewBox="0 0 32 32"
+          >
+            {/* Background ring */}
+            <circle
+              cx="16"
+              cy="16"
+              r={circleRadius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="text-[var(--app-border)] opacity-60"
+            />
+            {/* Progress ring with smooth 100ms transitions */}
+            <circle
+              cx="16"
+              cy="16"
+              r={circleRadius}
+              fill="none"
+              stroke="var(--app-accent)"
+              strokeWidth="1.75"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-[stroke-dashoffset] duration-100 ease-linear"
+            />
+          </svg>
+
+          {/* Centered Content */}
+          <div className="absolute inset-0 flex items-center justify-center gap-0.5 pr-0.5">
+            {metrics.pauseReason === 'inactivity' ? (
+              <Clock className="w-3 h-3 text-amber-500" />
+            ) : metrics.isUserPaused ? (
+              <Play className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)] group-hover:text-[var(--app-text-strong)]" />
+            ) : null}
+            <span className="text-[11px] font-semibold leading-none">{metrics.remainingSec}</span>
+          </div>
+        </button>
+
+        {/* Quiet Settings Cog Button */}
+        <button
+          type="button"
+          onClick={() => setIsModalOpen((prev) => !prev)}
+          aria-label="Auto-Scroll Settings"
+          title="Auto-Scroll Settings"
+          className={`w-6 h-6 flex items-center justify-center rounded-full text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface)] transition-colors cursor-pointer ${
+            isModalOpen ? 'text-[var(--app-accent)] bg-[var(--app-surface)]' : ''
+          }`}
+        >
+          <SettingsIcon className="w-3 h-3" />
+        </button>
+      </div>
     </>
   )
 }

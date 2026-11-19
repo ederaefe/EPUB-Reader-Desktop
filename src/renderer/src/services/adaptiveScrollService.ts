@@ -12,6 +12,13 @@ import type { AutoscrollMode } from '../db'
 export type SuspensionReason = 'blur' | 'hidden' | 'selection' | 'footnote' | 'drawer' | 'modal'
 export type PauseReason = 'user' | 'inactivity' | null
 
+export type SettingsSyncCallback = (settings: {
+  fixedCountdownSec: number
+  adaptiveBaseSec: number
+  targetWpm: number
+  observedWpm: number
+}) => void
+
 export interface PacingMetrics {
   mode: AutoscrollMode
   isActive: boolean
@@ -89,6 +96,7 @@ export class AdaptiveScrollEngine {
   private awayStartedAt: number | null = null
 
   private listeners: Set<PacingListener> = new Set()
+  private syncCallbacks: Set<SettingsSyncCallback> = new Set()
   private onExpireCallback: (() => void) | null = null
   private tickIntervalId: ReturnType<typeof setInterval> | null = null
   private microPauseTimerId: ReturnType<typeof setTimeout> | null = null
@@ -131,10 +139,33 @@ export class AdaptiveScrollEngine {
     return () => this.listeners.delete(listener)
   }
 
+  public onSyncSettings(cb: SettingsSyncCallback): () => void {
+    this.syncCallbacks.add(cb)
+    return () => this.syncCallbacks.delete(cb)
+  }
+
+  private triggerSettingsSync(): void {
+    const data = {
+      fixedCountdownSec: this.fixedCountdownSec,
+      adaptiveBaseSec: this.adaptiveBaseSec,
+      targetWpm: Math.round(this.targetWpm),
+      observedWpm: Math.round(this.observedWpm)
+    }
+    this.syncCallbacks.forEach((cb) => {
+      try {
+        cb(data)
+      } catch {}
+    })
+  }
+
   private notify(): void {
     const metrics = this.getMetrics()
     this.lastNotifiedSec = metrics.remainingSec
-    this.listeners.forEach((l) => l(metrics))
+    this.listeners.forEach((l) => {
+      try {
+        l(metrics)
+      } catch {}
+    })
   }
 
   public isPausedState(): boolean {
@@ -216,7 +247,7 @@ export class AdaptiveScrollEngine {
     const newTotalMs = this.computePageDurationMs(this.lastPageWordCount)
     const ratio = this.totalDurationMs > 0 ? this.remainingMs / this.totalDurationMs : 1
     this.totalDurationMs = newTotalMs
-    this.remainingMs = Math.min(newTotalMs, Math.max(1000, Math.round(ratio * newTotalMs)))
+    this.remainingMs = Math.min(newTotalMs, Math.max(500, Math.round(ratio * newTotalMs)))
     this.notify()
   }
 
@@ -302,10 +333,8 @@ export class AdaptiveScrollEngine {
       return
     }
 
-    // Only emit UI notifications when the displayed second changes (max 1 Hz)
-    if (nextSec !== this.lastNotifiedSec) {
-      this.notify()
-    }
+    // Always emit on active tick so UI progress rings animate fluidly at 10 Hz (100ms)
+    this.notify()
   }
 
   // Stop the countdown engine completely and release all timers
@@ -318,6 +347,7 @@ export class AdaptiveScrollEngine {
     this.isMicroPausing = false
     this.onExpireCallback = null
     this.awayStartedAt = null
+    this.remainingMs = this.totalDurationMs
     this.notify()
   }
 
@@ -394,7 +424,11 @@ export class AdaptiveScrollEngine {
 
     this.observedWpm = this.clampWpm(rawObserved)
     this.currentWpm = this.alpha * this.observedWpm + (1 - this.alpha) * this.currentWpm
+    this.targetWpm = this.clampWpm(this.currentWpm)
+    // Synchronize adaptiveBaseSec with the learned WPM
+    this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / this.currentWpm) * 60)
     this.notify()
+    this.triggerSettingsSync()
   }
 
   // Behavioral Heuristic 1: Back-Scroll Detection (+15% slower in Adaptive mode)
@@ -410,6 +444,7 @@ export class AdaptiveScrollEngine {
     } else {
       this.notify()
     }
+    this.triggerSettingsSync()
   }
 
   // Behavioral Heuristic 2: Forward Nudge Detection (-10% faster in Adaptive mode)
@@ -425,6 +460,7 @@ export class AdaptiveScrollEngine {
     } else {
       this.notify()
     }
+    this.triggerSettingsSync()
   }
 
   // Adjust countdown seconds in Countdown Only mode (+5s slower / -5s faster)
@@ -436,6 +472,7 @@ export class AdaptiveScrollEngine {
     } else {
       this.notify()
     }
+    this.triggerSettingsSync()
     return this.fixedCountdownSec
   }
 
@@ -454,16 +491,22 @@ export class AdaptiveScrollEngine {
 
   public reset(baseSec = DEFAULT_ADAPTIVE_SEC): void {
     this.adaptiveBaseSec = this.clampCountdownSec(baseSec)
+    this.fixedCountdownSec = DEFAULT_COUNTDOWN_SEC
     const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
     this.currentWpm = derivedWpm
     this.targetWpm = derivedWpm
     this.observedWpm = derivedWpm
     this.isMicroPausing = false
-    if (this.isActive && this.mode === 'adaptive') {
+    this.clearMicroPauseTimer()
+    if (this.isActive) {
       this.recalibrateActiveDuration()
     } else {
+      this.totalDurationMs =
+        (this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec) * 1000
+      this.remainingMs = this.totalDurationMs
       this.notify()
     }
+    this.triggerSettingsSync()
   }
 
   public setTargetWpm(wpm: number): void {
@@ -476,6 +519,7 @@ export class AdaptiveScrollEngine {
     } else {
       this.notify()
     }
+    this.triggerSettingsSync()
   }
 
   public getMetrics(): PacingMetrics {
