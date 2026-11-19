@@ -365,11 +365,18 @@ img, svg {
 }
 
 .platform-pill {
-  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
   border-radius: var(--radius-full);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  cursor: pointer;
+  text-decoration: none;
   transition: all var(--transition-fast);
 }
 
@@ -377,6 +384,14 @@ img, svg {
   border-color: var(--border-strong);
   color: var(--text-primary);
   background-color: var(--bg-surface-elevated);
+}
+
+.platform-pill.active {
+  background-color: rgba(56, 189, 248, 0.12);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue-hover);
+  font-weight: 500;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.15);
 }
 
 /* ==========================================================================

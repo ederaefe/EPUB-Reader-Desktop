@@ -170,14 +170,6 @@
     <!-- Hero Section -->
     <section class="hero-section" id="hero" aria-labelledby="hero-heading">
       <div class="hero-container">
-        
-        <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" target="_blank" rel="noopener noreferrer" class="hero-pill">
-          <span class="pill-dot" aria-hidden="true"></span>
-          <span>A Sanctuary for Books</span>
-          <span style="color: var(--border-focus);" aria-hidden="true">|</span>
-          <span id="release-tag" style="color: var(--accent-blue-hover); font-weight: 600;">v1.0.0</span>
-          <span>Free & Open Source</span>
-        </a>
 
         <h1 class="hero-title" id="hero-heading">
           A Quiet Sanctuary for Those <br>
@@ -209,11 +201,12 @@
             <span class="meta-item">100% Offline</span>
           </div>
 
-          <!-- Direct Platform Links -->
-          <div class="platform-links-row" aria-label="Alternative Operating Systems">
-            <span style="color: var(--text-tertiary);">Other platforms:</span>
-            <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" class="platform-pill" target="_blank" rel="noopener noreferrer">macOS (.dmg)</a>
-            <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest" class="platform-pill" target="_blank" rel="noopener noreferrer">Linux (.AppImage)</a>
+          <!-- Direct Platform Switcher -->
+          <div class="platform-links-row" aria-label="Select Operating System">
+            <span style="color: var(--text-tertiary);">Platform:</span>
+            <button type="button" class="platform-pill" data-os="windows" aria-pressed="false">Windows (.exe)</button>
+            <button type="button" class="platform-pill" data-os="macos" aria-pressed="false">macOS (.dmg)</button>
+            <button type="button" class="platform-pill" data-os="linux" aria-pressed="false">Linux (.AppImage)</button>
             <a href="https://github.com/ederaefe/EPUB-Reader-Desktop/releases" class="platform-pill" target="_blank" rel="noopener noreferrer">All Releases</a>
           </div>
 
@@ -298,7 +291,6 @@
                 <div class="mockup-footnote-card">
                   <div class="mockup-footnote-top">
                     <span class="mockup-footnote-badge">Footnote [1] In-Place Peek</span>
-                    <span class="mockup-footnote-hint">Click number to toggle</span>
                   </div>
                   <p class="mockup-footnote-body">
                     In Semply, footnotes never throw you to the back of the book. Tap any citation to read the note in place without losing your page.
@@ -322,9 +314,6 @@
                     <span class="mockup-highlight">Knowledge is the foundation of resilience. When the seasons break the world, only those who record truth survive the long quiet.</span>
                   </p>
                 </div>
-                <p style="margin-top: 20px; font-size: 0.84rem; color: var(--mock-text-muted);">
-                  Page 12 of 507 • 2.4% Read • Baskerville Serif
-                </p>
               </div>
             </div>
           </div>
@@ -416,25 +405,25 @@
             </ul>
           </article>
 
-          <!-- Card 4: Open & Portable Backups -->
+          <!-- Card 4: Adaptive Auto-Scroll -->
           <article class="security-card">
-            <span class="security-badge blue">Portable Freedom</span>
-            <h3 class="security-card-title">One-Click Backups That Travel With You</h3>
+            <span class="security-badge blue">Hands-Free Reading</span>
+            <h3 class="security-card-title">Smart Pace: A Reader That Learns How You Read</h3>
             <p class="security-card-desc">
-              Back up your entire collection, notes, and progress into a single portable archive. Move to a new laptop and restore your library with a single click without losing a single bookmark.
+              Conventional auto-scroll relies on rigid timers that break your focus. Semply quietly learns your personal reading rhythm as you turn pages. It naturally slows down for rich, descriptive passages, moves swiftly through breezy dialogue, and pauses gently at chapter breaks so you can read hands-free in complete comfort.
             </p>
             <ul class="security-spec-list">
               <li class="security-spec-item">
-                <span>Export:</span>
-                <span>Single portable backup file</span>
+                <span>Rhythm:</span>
+                <span>Learns and adapts to your natural reading speed</span>
               </li>
               <li class="security-spec-item">
-                <span>Restoration:</span>
-                <span>Safe merge without overwriting</span>
+                <span>Pacing:</span>
+                <span>Gives rich text time; glides swiftly through dialogue</span>
               </li>
               <li class="security-spec-item">
-                <span>Longevity:</span>
-                <span>Your reading data is future-proof</span>
+                <span>Presence:</span>
+                <span>Auto-pauses when you switch windows or take notes</span>
               </li>
             </ul>
           </article>
@@ -553,42 +542,25 @@
             <span class="bento-tag">Anchored Inline Notes • 1-Click Export</span>
           </article>
 
-          <!-- Bento 3: Smart Pace Hands-Free Auto-Scroll -->
+          <!-- Bento 3: Portable Library Freedom -->
           <article class="bento-card">
             <div>
               <div class="bento-icon-box" aria-hidden="true">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
                 </svg>
               </div>
-              <h3 class="bento-title">Smart Pace Hands-Free Reading</h3>
+              <h3 class="bento-title">One-Click Portable Library Backups</h3>
               <p class="bento-desc">
-                Read comfortably without touching the mouse or keyboard. Smart Pace measures the visible word count on your screen to pace scrolling naturally, and injects thoughtful micro-pauses at chapter dividers.
+                Back up your entire collection, notes, and reading progress into a single portable file. Move to a new laptop and restore your personal sanctuary in seconds without losing a single bookmark.
               </p>
             </div>
-            <span class="bento-tag">Adapts to Reading Cadence</span>
+            <span class="bento-tag">Portable Archive • Zero Lock-In</span>
           </article>
 
-          <!-- Bento 4: 70+ Curated Bookmaker Fonts -->
-          <article class="bento-card">
-            <div>
-              <div class="bento-icon-box" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="4 7 4 4 20 4 20 7"></polyline>
-                  <line x1="9" y1="20" x2="15" y2="20"></line>
-                  <line x1="12" y1="4" x2="12" y2="20"></line>
-                </svg>
-              </div>
-              <h3 class="bento-title">Over 70 Classic Bookmaker Fonts</h3>
-              <p class="bento-desc">
-                Standard readers offer three generic computer fonts. Semply includes 77 historically curated serif, slab, and high-legibility typefaces—such as Baskerville, Caslon, Garamond, and Atkinson Hyperlegible—designed for long, fatigue-free reading.
-              </p>
-            </div>
-            <span class="bento-tag">77 Curated Typefaces • Offline Quality</span>
-          </article>
-
-          <!-- Bento 5: In-Place Footnote Peek (Thoughtful Detail) -->
+          <!-- Bento 4: In-Place Footnote Peek (Thoughtful Detail) -->
           <article class="bento-card">
             <div>
               <div class="bento-icon-box" aria-hidden="true">
@@ -608,7 +580,7 @@
             <span class="bento-tag">Non-Destructive Reading • Zero Disorientation</span>
           </article>
 
-          <!-- Bento 6: Whisper-Quiet Battery Efficiency -->
+          <!-- Bento 5: Whisper-Quiet Battery Efficiency -->
           <article class="bento-card">
             <div>
               <div class="bento-icon-box" aria-hidden="true">
@@ -675,8 +647,8 @@
                 <td class="status-inactive">Proprietary Export</td>
               </tr>
               <tr>
-                <td>70+ Curated Bookmaker Typefaces</td>
-                <td class="highlight-col status-active">77 Included Offline</td>
+                <td>Curated Classic Book Typography</td>
+                <td class="highlight-col status-active">Included Offline</td>
                 <td class="status-inactive">System Fonts Only</td>
                 <td class="status-inactive">3 to 6 Fonts</td>
                 <td class="status-inactive">2 to 4 Fonts</td>

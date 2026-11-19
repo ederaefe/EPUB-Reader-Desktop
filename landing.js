@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const LATEST_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
 
   // --------------------------------------------------------------------------
-  // 1. Dynamic OS Detection
+  // 1. Dynamic OS Detection & In-Page Platform Switching
   // --------------------------------------------------------------------------
   function detectUserOS() {
     const userAgent = navigator.userAgent || '';
@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'windows'; // Safe default
   }
 
-  const currentOS = detectUserOS();
+  let activeOS = detectUserOS();
+  let activeReleaseData = {
+    tag: FALLBACK_VERSION,
+    assets: [],
+    publishedAt: null
+  };
 
   // --------------------------------------------------------------------------
   // 2. GitHub Releases Live Connector with Graceful Fallback
@@ -49,7 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
     linux: `${LATEST_RELEASE_URL}/download/Semply.AppImage`
   };
 
+  function updatePlatformPillsUI(os) {
+    const pills = document.querySelectorAll('.platform-pill[data-os]');
+    pills.forEach(pill => {
+      const pillOS = pill.getAttribute('data-os');
+      if (pillOS === os) {
+        pill.classList.add('active');
+        pill.setAttribute('aria-pressed', 'true');
+      } else {
+        pill.classList.remove('active');
+        pill.setAttribute('aria-pressed', 'false');
+      }
+    });
+  }
+
   function applyReleaseData(tag, assets, publishedAt) {
+    activeReleaseData = { tag, assets, publishedAt };
+
     if (releaseTagEl) releaseTagEl.textContent = tag;
     if (releaseBadgeEl) releaseBadgeEl.textContent = `${tag} Latest`;
 
@@ -71,11 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (Array.isArray(assets) && assets.length > 0) {
       let matchedAsset = null;
-      if (currentOS === 'windows') {
+      if (activeOS === 'windows') {
         matchedAsset = assets.find(a => a.name.endsWith('.exe')) || assets[0];
-      } else if (currentOS === 'macos') {
+      } else if (activeOS === 'macos') {
         matchedAsset = assets.find(a => a.name.endsWith('.dmg') || a.name.endsWith('.zip')) || assets[0];
-      } else if (currentOS === 'linux') {
+      } else if (activeOS === 'linux') {
         matchedAsset = assets.find(a => a.name.endsWith('.AppImage') || a.name.endsWith('.deb')) || assets[0];
       }
 
@@ -86,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } else {
-      downloadUrl = fallbackUrls[currentOS] || LATEST_RELEASE_URL;
+      downloadUrl = fallbackUrls[activeOS] || LATEST_RELEASE_URL;
     }
 
     if (primaryDownloadBtn) {
@@ -94,11 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (primaryDownloadLabel) {
-      if (currentOS === 'windows') {
+      if (activeOS === 'windows') {
         primaryDownloadLabel.textContent = `Download for Windows (${tag})`;
-      } else if (currentOS === 'macos') {
+      } else if (activeOS === 'macos') {
         primaryDownloadLabel.textContent = `Download for macOS (${tag})`;
-      } else if (currentOS === 'linux') {
+      } else if (activeOS === 'linux') {
         primaryDownloadLabel.textContent = `Download for Linux (${tag})`;
       } else {
         primaryDownloadLabel.textContent = `Download Semply (${tag})`;
@@ -109,6 +130,27 @@ document.addEventListener('DOMContentLoaded', () => {
       releaseSizeEl.textContent = targetSize;
     }
   }
+
+  function setPlatform(newOS) {
+    activeOS = newOS;
+    updatePlatformPillsUI(activeOS);
+    applyReleaseData(activeReleaseData.tag, activeReleaseData.assets, activeReleaseData.publishedAt);
+  }
+
+  // Wire platform switcher pills so clicking switches OS in-place without navigating away
+  const platformPills = document.querySelectorAll('.platform-pill[data-os]');
+  platformPills.forEach(pill => {
+    pill.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetOS = pill.getAttribute('data-os');
+      if (targetOS) {
+        setPlatform(targetOS);
+      }
+    });
+  });
+
+  // Highlight initial detected OS
+  updatePlatformPillsUI(activeOS);
 
   // Initial immediate application of fallback so button is immediately clickable
   applyReleaseData(FALLBACK_VERSION, [], null);
