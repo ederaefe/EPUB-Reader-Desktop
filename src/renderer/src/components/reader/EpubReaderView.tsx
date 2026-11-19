@@ -430,6 +430,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           (state.settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
 
         if (state.isAutoscrollActive) {
+          e.preventDefault()
           if (mode === 'adaptive') {
             if (e.deltaY < -25) {
               // Back-scroll detected: User scrolled up -> decrease WPM (-15% slower)
@@ -998,13 +999,17 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           let visibleWords = 0
           try {
             if (location.start?.cfi && location.end?.cfi) {
-              const visibleRange = (epubInstance as any)?.getRange?.(location.start.cfi, location.end.cfi)
-              if (visibleRange) {
-                const frag = visibleRange.cloneContents?.()
-                // Fast sanitized text extraction (stripping hidden footnote/script/ruby tags)
-                frag?.querySelectorAll?.('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]')?.forEach((el: any) => el.remove())
-                const hasImg = Boolean(frag?.querySelector?.('img, svg, figure, image'))
-                const cleanText = frag?.textContent || visibleRange.toString?.() || ''
+              const startR = (renditionInstance as any)?.getRange?.(location.start.cfi) as Range | undefined
+              const endR = (renditionInstance as any)?.getRange?.(location.end.cfi) as Range | undefined
+              if (startR && endR && startR.startContainer?.ownerDocument) {
+                const doc = startR.startContainer.ownerDocument
+                const combined = doc.createRange()
+                combined.setStart(startR.startContainer, startR.startOffset)
+                combined.setEnd(endR.endContainer, endR.endOffset)
+                const frag = combined.cloneContents()
+                frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+                const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
+                const cleanText = frag.textContent || combined.toString() || ''
                 visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
               }
             }
