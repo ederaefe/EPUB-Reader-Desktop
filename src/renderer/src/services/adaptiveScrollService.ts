@@ -60,6 +60,7 @@ const DEFAULT_COUNTDOWN_SEC = 20
 const DEFAULT_ADAPTIVE_SEC = 25
 const MIN_COUNTDOWN_SEC = 3
 const MAX_COUNTDOWN_SEC = 600
+const MIN_ADAPTIVE_RATIO = 0.35
 const MIN_ADAPTIVE_MS = 2500 // Allow snappy 2.5s for genuine sparse pages (foreword, chapter title)
 const MAX_ADAPTIVE_MS = 600_000
 const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes away from app
@@ -257,12 +258,7 @@ export class AdaptiveScrollEngine {
         if (this.mode === 'countdown') {
           const newTotalMs = clamped * 1000
           this.totalDurationMs = newTotalMs
-          if (this.isPausedState() || !this.isActive) {
-            this.remainingMs = newTotalMs
-          } else {
-            const delta = newTotalMs - oldTotal
-            this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
-          }
+          this.remainingMs = newTotalMs
           shouldRecalibrate = false
           this.notify()
         }
@@ -272,7 +268,6 @@ export class AdaptiveScrollEngine {
     if (params.adaptiveBaseSec !== undefined) {
       const clamped = this.clampCountdownSec(params.adaptiveBaseSec)
       if (clamped !== this.adaptiveBaseSec) {
-        const oldTotal = this.totalDurationMs
         this.adaptiveBaseSec = clamped
         const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
         this.targetWpm = derivedWpm
@@ -280,12 +275,7 @@ export class AdaptiveScrollEngine {
         if (this.mode === 'adaptive') {
           const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
           this.totalDurationMs = newTotalMs
-          if (this.isPausedState() || !this.isActive) {
-            this.remainingMs = newTotalMs
-          } else {
-            const delta = newTotalMs - oldTotal
-            this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
-          }
+          this.remainingMs = newTotalMs
           shouldRecalibrate = false
           this.notify()
         }
@@ -326,22 +316,22 @@ export class AdaptiveScrollEngine {
   public calculateBlockDurationMs(wordsOnScreen: number, isDoubleSpread = false): number {
     const effectiveWords = Math.max(5, wordsOnScreen)
     const refWords = isDoubleSpread ? REFERENCE_PAGE_WORDS * 2 : REFERENCE_PAGE_WORDS
-    const densityRatio = effectiveWords / refWords
+    // Ghost-Sync Hybrid Cadence Model:
+    // Standard text pages (>= 70% reference words) read at 1.0x user baseline cadence.
+    // Sparse pages (short chapter endings, dialogue, poetry < 70% reference words) scale down gracefully (0.35x - 1.0x).
+    const sparseThreshold = refWords * 0.7
+    const densityRatio =
+      effectiveWords >= sparseThreshold
+        ? 1.0
+        : Math.max(MIN_ADAPTIVE_RATIO, effectiveWords / sparseThreshold)
     const rawMs = Math.round(this.adaptiveBaseSec * 1000 * densityRatio)
     return Math.max(MIN_ADAPTIVE_MS, Math.min(MAX_ADAPTIVE_MS, rawMs))
   }
 
   private recalibrateActiveDuration(): void {
     const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-    if (this.isPausedState()) {
-      this.totalDurationMs = newTotalMs
-      this.remainingMs = newTotalMs
-    } else {
-      const oldTotal = this.totalDurationMs
-      this.totalDurationMs = newTotalMs
-      const delta = newTotalMs - oldTotal
-      this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
-    }
+    this.totalDurationMs = newTotalMs
+    this.remainingMs = newTotalMs
     this.notify()
   }
 

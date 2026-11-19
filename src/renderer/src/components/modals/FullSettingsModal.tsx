@@ -614,6 +614,40 @@ export const FullSettingsModal: React.FC = () => {
                 )}
               </div>
 
+              {/* Reading Progress Bar Section */}
+              <div className="settings-card p-3.5 rounded-lg space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
+                      Reading Progress Bar
+                    </span>
+                    <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
+                      Show persistent bottom progress bar and chapter meniscus
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.showProgressBar !== false}
+                    data-preserve-theme="true"
+                    onClick={() => updateSettings({ showProgressBar: settings.showProgressBar === false })}
+                    style={{
+                      backgroundColor: settings.showProgressBar !== false
+                        ? 'var(--app-accent)'
+                        : 'var(--app-border-strong)'
+                    }}
+                    className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
+                    title={settings.showProgressBar !== false ? 'Hide progress bar' : 'Show progress bar'}
+                  >
+                    <span
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
+                        settings.showProgressBar !== false ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
               {/* Dual-Mode Auto-Scroll Countdown Section */}
               {(() => {
                 const effectiveMode: AutoscrollMode =

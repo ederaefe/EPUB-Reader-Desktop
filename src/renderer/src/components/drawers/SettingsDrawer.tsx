@@ -482,6 +482,41 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Reading Progress Bar */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-[var(--app-border)]">
+                  <div>
+                    <div className="text-[12px] font-semibold text-[var(--app-text)]">
+                      Progress bar
+                    </div>
+                    <div className="text-[10.5px] font-normal text-[var(--app-text-subtle)]">
+                      Show bottom reading progress bar
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={settings.showProgressBar !== false}
+                    data-preserve-theme="true"
+                    onClick={() =>
+                      updateSettings({ showProgressBar: settings.showProgressBar === false })
+                    }
+                    style={{
+                      backgroundColor:
+                        settings.showProgressBar !== false
+                          ? 'var(--app-accent)'
+                          : 'var(--app-border-strong)'
+                    }}
+                    className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 cursor-pointer"
+                    title={settings.showProgressBar !== false ? 'Hide progress bar' : 'Show progress bar'}
+                  >
+                    <span
+                      className={`w-3 h-3 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
+                        settings.showProgressBar !== false ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           )}
