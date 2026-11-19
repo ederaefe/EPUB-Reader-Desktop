@@ -154,11 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
   // --------------------------------------------------------------------------
-  // 3. Interactive Hero Reader Theme Switcher
+  // 3. Interactive Hero Reader Engine (Theme, Font Size, Layout, Footnote Peek)
   // --------------------------------------------------------------------------
   const themePills = document.querySelectorAll('.theme-pill-btn');
   const readerFrame = document.querySelector('.reader-frame');
 
+  // Theme Switching
   if (readerFrame && themePills.length > 0) {
     themePills.forEach(pill => {
       pill.addEventListener('click', () => {
@@ -167,9 +168,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
         readerFrame.setAttribute('data-reader-theme', targetTheme);
 
-        themePills.forEach(p => p.classList.remove('is-active'));
+        themePills.forEach(p => {
+          p.classList.remove('is-active');
+          p.setAttribute('aria-checked', 'false');
+        });
         pill.classList.add('is-active');
+        pill.setAttribute('aria-checked', 'true');
       });
+    });
+  }
+
+  // Font Size Stepping (Small -> Medium -> Large)
+  const fontSizes = ['small', 'medium', 'large'];
+  let currentFontIndex = 1; // Default: 'medium'
+
+  const fontDecBtn = document.getElementById('mockup-font-dec');
+  const fontIncBtn = document.getElementById('mockup-font-inc');
+  const fontSizeLabel = document.getElementById('mockup-font-label');
+
+  function updateFontSize() {
+    if (!readerFrame) return;
+    const size = fontSizes[currentFontIndex];
+    readerFrame.setAttribute('data-font-size', size);
+    if (fontSizeLabel) {
+      fontSizeLabel.textContent = size === 'small' ? '16px' : size === 'medium' ? '18px' : '22px';
+    }
+  }
+
+  if (fontDecBtn) {
+    fontDecBtn.addEventListener('click', () => {
+      if (currentFontIndex > 0) {
+        currentFontIndex--;
+        updateFontSize();
+      }
+    });
+  }
+
+  if (fontIncBtn) {
+    fontIncBtn.addEventListener('click', () => {
+      if (currentFontIndex < fontSizes.length - 1) {
+        currentFontIndex++;
+        updateFontSize();
+      }
+    });
+  }
+
+  // Layout Toggling (Single Page vs Spread)
+  const layoutBtns = document.querySelectorAll('.mockup-layout-btn');
+  if (readerFrame && layoutBtns.length > 0) {
+    layoutBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetLayout = btn.getAttribute('data-layout-target');
+        if (!targetLayout) return;
+
+        readerFrame.setAttribute('data-layout', targetLayout);
+        layoutBtns.forEach(b => {
+          b.classList.remove('is-active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('is-active');
+        btn.setAttribute('aria-checked', 'true');
+      });
+    });
+  }
+
+  // In-Place Footnote Peek Demo Toggle
+  const fnRef = document.querySelector('.mockup-fn-ref');
+  const fnCard = document.querySelector('.mockup-footnote-card');
+  if (fnRef && fnCard) {
+    fnRef.addEventListener('click', () => {
+      const isVisible = fnCard.style.display !== 'none';
+      fnCard.style.display = isVisible ? 'none' : 'block';
     });
   }
 
