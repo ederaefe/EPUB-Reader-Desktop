@@ -20,6 +20,7 @@ import {
   type WikipediaSummary
 } from '../../services/dictService'
 import { ttsService } from '../../services/ttsService'
+import { useAppStore } from '../../stores/useAppStore'
 import type { NoteColor } from '../../db'
 import { ICE_NOTE_COLOR_LIST, ICE_NOTE_COLORS } from '../../services/annotationService'
 
@@ -116,8 +117,22 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     }, 600)
   }
 
+  const isSingleWord = selectedText.trim().split(/\s+/).filter(Boolean).length === 1
+
   const handleSpeak = () => {
-    ttsService.speak(selectedText)
+    const st = useAppStore.getState()
+    st.setTTSActive(true)
+    st.setTTSMuted(false)
+    ttsService.speak(selectedText, {
+      rate: st.settings.ttsSpeed,
+      pitch: st.settings.ttsPitch,
+      voiceURI: st.settings.ttsVoice,
+      onEnd: () => {
+        const cur = useAppStore.getState()
+        cur.setTTSActive(false)
+        cur.setTTSMuted(false)
+      }
+    })
     setShowMoreMenu(false)
     onClose()
   }
