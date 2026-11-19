@@ -74,7 +74,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     }
   }, [showNoteComposer])
 
-  // Global keydown: Escape dismisses, Ctrl+Enter saves note
+  // Global dismissal: Escape key or clicking outside the popup (Standard in Adobe/Edge/Chrome)
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -82,9 +82,19 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
         onClose()
       }
     }
+    const handleMouseDown = (e: MouseEvent) => {
+      if (showDictModal || showWikiModal) return
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      document.removeEventListener('mousedown', handleMouseDown)
+    }
+  }, [onClose, showDictModal, showWikiModal])
 
   // Precision Viewport Clamping (Chrome PDF Floating Style)
   const barWidth = 330
