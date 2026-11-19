@@ -633,15 +633,6 @@ export const LibraryView: React.FC = () => {
         if (await processAndAddFile(p, targetCatId)) importedCount++
       }
       await loadData()
-      if (importedCount > 0) {
-        const noun = importedCount === 1 ? 'book' : 'books'
-        showToast(
-          targetCatName
-            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
-            : `Imported ${importedCount} ${noun}`,
-          'success'
-        )
-      }
     }
     setIsLoading(false)
     setStatusMessage(null)
@@ -662,15 +653,6 @@ export const LibraryView: React.FC = () => {
         if (await processAndAddFile(f, targetCatId)) importedCount++
       }
       await loadData()
-      if (importedCount > 0) {
-        const noun = importedCount === 1 ? 'book' : 'books'
-        showToast(
-          targetCatName
-            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
-            : `Imported ${importedCount} ${noun} from folder`,
-          'success'
-        )
-      }
     }
     setIsLoading(false)
     setStatusMessage(null)
@@ -681,14 +663,6 @@ export const LibraryView: React.FC = () => {
     if (bookIds.length === 0) return
     await Promise.all(bookIds.map((id) => db.books.update(id, { categoryId })))
     await loadData()
-    const targetCat = categories.find((c) => c.id === categoryId)
-    const noun = bookIds.length === 1 ? 'book' : 'books'
-    showToast(
-      targetCat
-        ? `Added ${bookIds.length} ${noun} to "${targetCat.name}"`
-        : `Updated ${bookIds.length} ${noun}`,
-      'success'
-    )
   }
 
   // Open Book in Reader (always hydrates latest saved CFI/page from Dexie so Continue Reading is exact)
@@ -756,7 +730,6 @@ export const LibraryView: React.FC = () => {
           onConfirm: async () => {
             const res = await window.desktopAPI.addAuthorizedFolder()
             if (!res.canceled && !res.error) {
-              showToast('Folder authorized — opening book...', 'success')
               await handleOpenBook(book)
             } else if (res.error) {
               showToast(res.error, 'error')
@@ -859,15 +832,6 @@ export const LibraryView: React.FC = () => {
       }
       await loadData()
       setIsLoading(false)
-      if (importedCount > 0) {
-        const noun = importedCount === 1 ? 'book' : 'books'
-        showToast(
-          targetCatName
-            ? `Added ${importedCount} ${noun} to "${targetCatName}"`
-            : `Imported ${importedCount} ${noun}`,
-          'success'
-        )
-      }
     }
   }
 

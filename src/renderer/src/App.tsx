@@ -514,9 +514,6 @@ export const App: React.FC = () => {
     }
     if (importedCount > 0) {
       bumpLibraryVersion()
-      showToast(`Imported ${importedCount} ${importedCount === 1 ? 'book' : 'books'}`, 'success')
-    } else {
-      showToast('No new supported books found in drop.', 'info')
     }
   }
 

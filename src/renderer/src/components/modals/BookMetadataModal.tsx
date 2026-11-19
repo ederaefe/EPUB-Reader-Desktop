@@ -451,7 +451,6 @@ const BookMetadataModalContent: React.FC<BookMetadataModalContentProps> = ({
       if (extracted) {
         updateFormField((prev) => ({ ...prev, coverDataUrl: extracted }))
         setCoverDimensions(null)
-        showToast('Restored original cover', 'info')
       } else {
         setErrorMessage('No embedded cover or first-page preview could be extracted.')
       }
@@ -549,21 +548,14 @@ const BookMetadataModalContent: React.FC<BookMetadataModalContentProps> = ({
             if (book.id) await db.books.update(book.id, { fileSize: res.fileSize })
             updateActiveBook({ fileSize: res.fileSize })
           }
-          showToast(
-            res.warning || `Metadata saved to library and .${book.format} file`,
-            'success'
-          )
         } else {
           const msg = res.error || 'Could not write changes to source file.'
           setErrorMessage(`Saved to Semply library, but file write failed: ${msg}`)
           showToast('Saved to library; file write failed', 'error')
         }
-      } else {
-        showToast('Metadata saved', 'success')
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Could not save metadata.')
-      showToast('Failed to save metadata', 'error')
     } finally {
       setIsSaving(false)
     }

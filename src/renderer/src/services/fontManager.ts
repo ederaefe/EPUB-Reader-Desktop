@@ -139,7 +139,6 @@ export async function selectOrDownloadFont(fontId: string): Promise<FontSelectRe
       store.addDownloadedFontId(entry.id)
       await injectFontIntoDocument(document, entry.id)
       store.updateSettings({ fontFamily: entry.id })
-      store.showToast(`Downloaded ${entry.name} for offline reading`, 'success')
       return { ok: true }
     }
 
