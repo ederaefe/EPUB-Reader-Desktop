@@ -1,257 +1,206 @@
 <div align="center">
 
-# Semply Ebook Reader & Desktop App Template
+<img src="assets/semply-logo.png" alt="Semply Logo" width="96" height="96" />
 
-**A high-performance, distraction-free desktop e-book reader and modern desktop application template.**  
-Built with Electron 34, React 19, TypeScript 5.8, Tailwind CSS, Dexie.js (IndexedDB), and offline WebAssembly engines.
+# Semply
 
+**A quiet desktop sanctuary for those who still read deeply.**  
+A fast, private, distraction-free desktop reader for your personal book library. Features 100% offline PDF reflow, hands-free adaptive auto-scroll, thoughtful floating notes, and complete digital sovereignty.
+
+[![Website](https://img.shields.io/badge/Website-semply.vercel.app-38bdf8.svg?style=flat-square)](https://semply.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](./LICENSE)
-[![Electron 34](https://img.shields.io/badge/Electron-34.3.0-47848F.svg?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![React 19](https://img.shields.io/badge/React-19.0.0-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript 5.8](https://img.shields.io/badge/TypeScript-5.8.2-3178C6.svg?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4.17-38B2AC.svg?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20.0.0-339933.svg?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=flat-square)]()
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=flat-square)](https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest)
+[![Electron](https://img.shields.io/badge/Electron-34-47848F.svg?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6.svg?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Offline](https://img.shields.io/badge/Privacy-100%25%20Offline-emerald.svg?style=flat-square)]()
+[![Zero Accounts](https://img.shields.io/badge/Accounts-Zero%20Required-blueviolet.svg?style=flat-square)]()
 
-[Features](#key-features) &bull; [Quick Start](#quick-start--template-usage) &bull; [Architecture](#architecture--subsystems) &bull; [Keyboard Shortcuts](#keyboard-shortcuts) &bull; [Documentation](#documentation) &bull; [License](#license)
+<br />
+
+[Live Web Preview](https://semply.vercel.app/) &bull; [Download App](https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest) &bull; [Core Moats](#the-five-reading-superpowers) &bull; [Comparison](#why-readers-choose-semply) &bull; [Keyboard Shortcuts](#cursorless-keyboard-navigation) &bull; [Documentation](#documentation)
+
+<br />
+
+<img src="assets/app-preview.png" alt="Semply Desktop Application Preview" width="900" />
+
+<p><em>The Semply desktop sanctuary: frameless titlebar, clean library navigation, zero telemetry, and distraction-free typography.</em></p>
 
 </div>
 
 ---
 
-## Overview
+## The Philosophy: A Sanctuary for Books
 
-**Semply Ebook Reader** is a zero-paywall, privacy-first desktop e-book and document reader that combines reflowable EPUB reading, native PDF canvas viewing, and offline PDF-to-EPUB conversion powered by Artifex MuPDF WebAssembly.
+Modern reading apps have turned books into rented licenses. Commercial readers track your reading habits, lock your bookmarks inside walled gardens, clutter your screen with store recommendations, and charge monthly fees to access your own files.
 
-Beyond being a complete application, this repository is designed as a **production-ready GitHub Template** for engineering high-performance desktop apps on the modern JavaScript stack. It solves the hardest desktop challenges out of the box:
-- Frameless native window chrome with custom titlebars and OS drag boundary protection.
-- Secure, context-isolated Electron IPC with zero unsafe remote capabilities.
-- Zero-native-compilation storage using Dexie.js on IndexedDB for frictionless cross-platform builds.
-- Background WebAssembly execution in Electron Node.js runtime for CPU-heavy tasks.
-- Sleek, monochrome Geist Obsidian design system with custom accessible controls.
+**Semply was built on digital sovereignty and sustained focus:**
+- **Your Books Stay on Your Computer**: All library files, shelves, annotations, and reading progress reside safely in local storage on your device. Zero telemetry, zero analytics, and zero cloud uploads.
+- **100% Offline Forever**: Read on flights, train commutes, and off-grid retreats without ever needing an active internet connection or login check.
+- **Zero Paywalls or Subscriptions**: Free and open source under the MIT License. No accounts to create, no passwords to manage, and no locked features.
+- **One-Click Portable Freedom**: Export your entire library, notes, and reading history into a single portable backup file and restore it effortlessly on any laptop.
+
+Visit the official website and live preview at **[https://semply.vercel.app/](https://semply.vercel.app/)**.
 
 ---
 
-## Why Use This Template?
+## The Five Reading Superpowers
 
-| Feature | Semply Architecture | Traditional Boilerplates |
+### 1. Offline PDF Reflow: Turn Rigid Documents into Living Books
+Reading static, multi-column PDFs on desktop screens traditionally means tiny fonts, clumsy zoom sliders, and endless horizontal panning. Semply reconstructs complex PDF documents into flowing, resizable book chapters entirely on your local machine using embedded WebAssembly. Adjust font sizes, select classic serif typography, and read in single or dual-page spreads without uploading sensitive files to cloud servers.
+
+### 2. Smart Pace: Adaptive Auto-Scroll That Learns How You Read
+Conventional auto-scroll engines rely on rigid pixel timers that force your eyes to race or wait. Semply's adaptive reading engine silently observes your personal reading cadence as you turn pages. It glides swiftly across light dialogue, settles gently into dense descriptive passages, and introduces mindful breathing pauses at chapter dividers so you can read hands-free in deep comfort.
+
+### 3. Floating Notes & Thought Capture
+Select any passage to summon a sleek, non-blocking toolbar. Highlight text across six soft paper hues and record thoughts in anchored cards that never obscure your page. When your reading session concludes, export all highlights and reflections directly to Obsidian, Notion, or Markdown with a single click.
+
+### 4. In-Place Footnote Peek: Never Lose Your Page
+Traditional readers jolt you hundreds of pages away to an appendix at the back of the book whenever you click a citation. In Semply, citations open in a gentle popover directly above the sentence. Read the reference in place, close it, and continue your reading flow without losing your line.
+
+### 5. Whisper-Quiet Battery Efficiency
+Built lean with zero background sync daemons, telemetry loops, or memory leaks. Semply launches in milliseconds, draws minimal system resources, and stays silent between page turns, letting you read for hours on laptop battery without heating your device.
+
+---
+
+## Universal Format Support
+
+Semply opens personal book collections directly with zero proprietary conversion locks:
+
+| Format | Native Capabilities |
+| --- | --- |
+| **EPUB (`.epub`)** | Reflowable single-page and two-page spreads, custom serif typography, line spacing, margins, floating notes, bookmarks, and in-place footnotes. |
+| **PDF (`.pdf`)** | High-DPI canvas rendering, native text selection, outline navigation, zoom (`50%` to `300%`), and one-click offline reflow into resizable book format. |
+| **MOBI (`.mobi`)** | Native PalmDB parsing, automatic cover extraction, and chapter navigation. |
+| **TXT (`.txt`)** | Warm-paper typographic layout, auto-detected chapter breaks, and customizable fonts. |
+
+---
+
+## Why Readers Choose Semply
+
+| Capability | Semply | Generic Desktop Readers | Closed Hardware Stores (Kindle/Kobo) | Cloud Web Readers |
+| --- | --- | --- | --- | --- |
+| **Offline PDF Reflow** | Yes (100% Offline WASM) | Format Loss / Conversion | Fixed Layout Only | Requires Cloud Upload |
+| **Privacy & Sovereignty** | 100% Offline (No Accounts) | Local Files Only | Tracked by Store Account | Tracked on Cloud Servers |
+| **Thought Capture Export** | Markdown, Obsidian, Notion | Basic / Cumbersome | Locked in Store Ecosystem | Proprietary Export |
+| **Classic Book Typography** | Curated Offline Serif Fonts | System Fonts Only | 3 to 6 Fonts | 2 to 4 Web Fonts |
+| **In-Place Footnote Peek** | Yes (In-Place Popover) | Jumps to back of book | Jumps to back of book | Rare |
+| **Hands-Free Auto-Scroll** | Smart Pace (Cadence-Aware) | Rigid Pixel Scroll / None | None | Rare |
+| **Pricing & License** | Free Forever (MIT Open Source) | Ad-Supported / Outdated | Store Locked | Monthly Subscription |
+| **Distraction-Free Design** | Modern Sanctuary UI | Dated 2000s Interface | Store-First Storefront | Web Clutter & Popups |
+| **Library Portability** | Single-File Portable Archive | Manual File Copies | DRM Locked Licenses | Rented Cloud Access |
+
+---
+
+## Download & Installation
+
+Pre-built binaries for every major desktop operating system are available on the [Releases Page](https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest) and on the [Official Website](https://semply.vercel.app/):
+
+- **Windows**: `Semply-Setup.exe` (Installer) or Portable Executable
+- **macOS**: `Semply.dmg` (Universal binary supporting Apple Silicon and Intel)
+- **Linux**: `Semply.AppImage` (Self-contained, cross-distribution)
+
+---
+
+## Cursorless Keyboard Navigation
+
+Semply is fully controllable from the keyboard, enabling continuous reading without reaching for a mouse:
+
+| Key | Context | Action |
 | --- | --- | --- |
-| **Electron + UI Core** | Electron 34 + React 19 + TypeScript + Vite | Outdated Electron 20-25 + React 17/18 with Webpack |
-| **Styling & Theme** | Tailwind CSS with Geist Obsidian dark tokens | Generic Bootstrap or heavy UI component libraries |
-| **Local Persistence** | Zero-native-dependency Dexie.js IndexedDB | SQLite/better-sqlite3 requiring native Node GYP compilation |
-| **Offline WASM** | Bundled Artifex MuPDF WASM + PDF.js workers | Dependent on cloud APIs or heavy native binaries |
-| **Privacy & Storage** | 100% local-first, zero telemetry or accounts | Hard-coded analytics and vendor locks |
-| **Developer Ergonomics** | Instant HMR via `electron-vite`, unified `tsc` checks | Slow reloads, fragmented build scripts |
+| `Space` | Reader | Advance page (or pause/resume active auto-scroll) |
+| `Shift + Space` | Reader | Turn back one page |
+| `j` / `k` or `Down` / `Up` | Reader | Smoothly advance / scroll backwards |
+| `[` / `]` | Reader | Jump to previous / next chapter |
+| `Ctrl + F` | Reader | Open full-book search drawer with instant highlight jumping |
+| `Enter` / `Shift + Enter` | Search | Navigate to next / previous search match |
+| `Ctrl + B` | Reader | Toggle bookmark with automatic excerpt capture |
+| `F9` | Reader | Cycle reading themes (`Obsidian`, `Light`, `Paper`, `Dusk`) |
+| `F10` | Reader | Toggle single-page / two-page spread mode |
+| `F11` | Global | Toggle true immersive fullscreen (zero distraction) |
+| `Alt + Left` or `Alt + <` | Reader | Return to library home |
+| `F7` / `F8` | Reader | Play/pause and stop Read Aloud narration |
+| `Esc` | Global | Close popovers, dismiss search/settings drawers, or cancel modals |
 
 ---
 
-## Key Features
+## Architecture & Developer Guide
 
-### Universal Library Management
-- **Multi-Format Ingestion**: Drag-and-drop or recursive folder import for `.epub`, `.pdf`, `.mobi`, and `.txt` files.
-- **Dual Display Modes**: Toggle between Grid Card View and a 5-column sortable List View (`Title`, `Author`, `Date`, `Notes`, `Progress`).
-- **Smart Cover Pipeline**: Automatically extracts embedded covers from EPUB 2/3 and MOBI PalmDB records, generates HiDPI first-page thumbnails for PDFs via offline PDF.js, and renders custom warm-paper typographic covers for plain text documents.
-- **Shelves & Bulk Assignment**: User-defined color-coded shelves and categories with multi-book assignment and soft-delete trash with one-click restore.
-- **Quick-Resume Bar**: Bottom dock showing recently opened documents with real-time reading progress indicators.
-
-### Dual Reading Engines
-- **Reflowable EPUB Reader (`EpubReaderView`)**:
-  - Powered by `epub.js` with Librera CSS typography normalization.
-  - Single-page and dual-page spreads with global CFI progress tracking.
-  - 4 calibrated color themes: `Light`, `Paper`, `Dusk`, and `Obsidian`.
-  - Customizable typography, font size, line spacing, margins, and screen dimming.
-- **Native PDF Reader (`PdfReaderView`)**:
-  - Offline `pdfjs-dist` HiDPI canvas rendering with aligned selectable text overlay for native text selection and copying.
-  - Single and double page spreads with `50%` to `300%` continuous zoom.
-  - PDF outline table of contents, bookmarks, and calibrated CSS dark mode filters.
-- **Offline MuPDF PDF Reflow Engine**:
-  - 100% offline conversion of fixed-layout PDFs into cached, reflowable EPUB 3 archives via Artifex MuPDF WebAssembly.
-  - Strips repetitive running headers and footers, preserves headings, and unlocks every EPUB feature (custom fonts, themes, notes, text-to-speech, auto-scroll).
-
-### Deep Reading & Annotation Tools
-- **Annotations & Highlights**:
-  - 6 theme-aware SVG highlight styles (`Yellow`, `Blue`, `Green`, `Purple`, `Red`, `Underline`) using blend modes (`screen` in dark mode, `multiply` in light mode).
-  - Dual-anchor persistence (`EpubCFI` + `IceRange` XPath) ensuring highlights stay aligned even across layout adjustments.
-  - Dedicated `NotesDrawer` with full search, chapter grouping, and export to HTML, Markdown, and Plain Text.
-- **Full-Book Spine Search (`Ctrl+F`)**:
-  - Asynchronous background spine scanning with 250ms debounced queries.
-  - Live chapter attribution, inline excerpts, temporary in-page match highlights, and keyboard stepping (`Enter` / `Shift+Enter`).
-- **Dual-Mode Auto-Scroll Engine**:
-  - **Fixed Timer**: Deterministic countdown (`3s` to `600s`) for steady hands-free reading.
-  - **Smart Pace**: Dynamic reading timer scaled to visible page word density with manual wheel nudges and exponential moving average (EMA) cadence adaptation.
-  - Unobtrusive fullscreen countdown indicator with away-from-app pause protection.
-- **Read Aloud (TTS) & Auxiliary Tools**:
-  - Offline Web Speech Synthesis with pronunciation normalization for abbreviations, numbers, and Roman numerals.
-  - Contextual text selection popup with inline Free Dictionary definitions and Wikipedia lookup.
-  - Non-destructive floating footnote popover supporting cross-document references.
-  - Hardware-independent Warm Night Blue Light Filter (`2000K` to `4500K`).
-
-### Local-First Privacy & Backup
-- **No Cloud Dependency**: All database tables, reading positions, notes, and preferences reside on the local filesystem in browser-backed IndexedDB.
-- **Additive Backup & Sync**: Export complete library metadata and annotations to `.json` or `.zip` archives with non-destructive merge upon import.
-
----
-
-## Architecture & Subsystems
+Beyond serving readers as a standalone application, this repository functions as a reference implementation for high-performance desktop software:
 
 ```
 +-----------------------------------------------------------------------+
 |                    Electron Main Process (Node.js)                    |
-|  - BrowserWindow lifecycle & frameless titlebar mechanics             |
-|  - System font discovery service (Windows, macOS, Linux)              |
-|  - Offline Artifex MuPDF WASM 2-Pass Reflow & EPUB Packager           |
-|  - Safe IPC dispatch and file dialog handlers                         |
+|  - Frameless window lifecycle & OS boundary protection                |
+|  - Offline Artifex MuPDF WebAssembly 2-Pass Reflow Engine             |
+|  - Strict local file authorization & security boundary sandbox        |
 +-----------------------------------------------------------------------+
-                                  |
-                                  v
+                                   |
+                                   v
 +-----------------------------------------------------------------------+
 |                 Preload Bridge (contextBridge)                        |
-|  - Strictly typed window.electronAPI contract                         |
-|  - Isolated execution context preventing unsafe node access           |
+|  - Strictly typed desktop API contract (window.api)                   |
+|  - Isolated execution context preventing unsafe Node.js access        |
 +-----------------------------------------------------------------------+
-                                  |
-                                  v
+                                   |
+                                   v
 +-----------------------------------------------------------------------+
 |                 Renderer Process (React 19 + Vite)                    |
-|  - State Management: Zustand store slices                             |
-|  - Persistence: Dexie.js (IndexedDB wrapper)                          |
-|  - EPUB Engine: epub.js with normalized iframe bridge                 |
-|  - PDF Engine: pdfjs-dist canvas + selectable text layer              |
-|  - Design System: Geist Obsidian Tailwind CSS monochrome tokens       |
+|  - State Management: Modular Zustand store slices                     |
+|  - Persistence: Dexie.js (IndexedDB zero-native-compilation storage)  |
+|  - EPUB Engine: epub.js with normalized typography iframe sandbox     |
+|  - PDF Engine: pdfjs-dist HiDPI canvas + aligned text selection layer |
+|  - Design System: Monochromatic Geist Obsidian Tailwind tokens        |
 +-----------------------------------------------------------------------+
 ```
 
----
-
-## Project Structure
-
-```
-EPUB READER DESKTOP/
-├── build/                        # Application icons and packaging assets
-├── documentations/               # Interactive documentation web application
-│   ├── index.html                # Standalone guide with live search & preview
-│   ├── llms.txt                  # High-level context for AI agents
-│   └── llms-full.txt             # Exhaustive architecture reference for AI
-├── src/
-│   ├── main/                     # Electron Main process
-│   │   ├── fontService.ts        # OS font scanner without native dependencies
-│   │   ├── index.ts              # Window lifecycle, IPC routing, menu handlers
-│   │   └── pdfToEpubEngine.ts    # MuPDF WASM reflow and EPUB 3 packaging
-│   ├── preload/                  # Secure context isolation scripts
-│   │   └── index.ts              # window.electronAPI exposure
-│   ├── shared/                   # Shared type definitions and constants
-│   │   └── fontCatalog.ts        # System and web font metadata definitions
-│   └── renderer/                 # React 19 user interface
-│       ├── index.html            # Renderer entry HTML
-│       └── src/
-│           ├── assets/           # Static graphic assets and icons
-│           ├── components/
-│           │   ├── drawers/      # Slide-out drawers (Notes, Search, Settings, TOC)
-│           │   ├── library/      # Book grid, list view, sidebar, shelf management
-│           │   ├── modals/       # Dialogs (Settings, Import, Hotkeys, About)
-│           │   ├── reader/       # EpubReaderView, PdfReaderView, SelectionPopup
-│           │   └── ui/           # Custom titlebar, buttons, sliders, theme pickers
-│           ├── db/               # Dexie.js database schema and migrations
-│           ├── services/         # Backup, font management, annotation logic
-│           ├── stores/           # Zustand state slices (app, reader, auto-scroll)
-│           ├── App.tsx           # Top-level view router and keyboard orchestrator
-│           ├── index.css         # Geist Obsidian design tokens and base styles
-│           └── main.tsx          # React application root
-├── DESIGN.md                     # Design system lock and UI anti-pattern rules
-├── dev-documentations.md         # Exhaustive internal developer architecture guide
-├── documentation.md              # High-level implementation-agnostic reference
-├── electron-builder.config.ts    # Desktop installer and packaging configuration
-├── electron.vite.config.ts       # Multi-target Vite bundling configuration
-├── package.json                  # Dependencies and execution scripts
-├── tailwind.config.ts            # Tailwind styling tokens and geometry
-└── tsconfig.json                 # Unified TypeScript configuration
-```
-
----
-
-## Quick Start & Template Usage
-
-### Prerequisites
-- **Node.js**: Version `20.0.0` or higher
-- **Package Manager**: `npm` (bundled with Node)
-
-### 1. Initialize from Template
-Click the green **"Use this template"** button at the top of the GitHub repository, or clone directly:
+### Building from Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/ederaefe/semply-ebook-reader.git my-desktop-app
+# 1. Clone the repository
+git clone https://github.com/ederaefe/EPUB-Reader-Desktop.git
+cd EPUB-Reader-Desktop
 
-# Navigate to the workspace
-cd my-desktop-app
-
-# Install dependencies
+# 2. Install dependencies
 npm install
+
+# 3. Start development environment with Hot Module Replacement (HMR)
+npm run dev
+
+# 4. Typecheck and verify
+npm run typecheck
+
+# 5. Build production bundle
+npm run build
+
+# 6. Package installer for current operating system
+npm run package
 ```
-
-### 2. Available Scripts
-
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Launch the app in development mode with Hot Module Replacement (HMR). |
-| `npm run typecheck` | Run TypeScript validation across main, preload, and renderer targets. |
-| `npm run build` | Compile and bundle production assets into `out/`. |
-| `npm run package` | Package the desktop application installer via `electron-builder`. |
-| `npm run release` | Run typecheck, build production bundles, and output release installers. |
-
-### 3. Customizing the Template
-To adapt this repository for a new desktop application:
-1. **Update Identifiers**: Update `name`, `version`, `author`, and `description` in `package.json`.
-2. **Configure App ID**: Modify `appId` (`com.yourcompany.appname`) and window titles in `electron-builder.config.ts` and `src/main/index.ts`.
-3. **Database Adaptation**: Add or modify tables in `src/renderer/src/db/index.ts` using Dexie.js schema syntax.
-4. **Window Mechanics**: Adjust frameless window dimensions, min-sizes, and system tray defaults in `src/main/index.ts`.
-5. **Brand Tokens**: Tweak monochrome surfaces and accent colors in `src/renderer/src/index.css` and `tailwind.config.ts`.
-
----
-
-## Keyboard Shortcuts
-
-| Shortcut | Context | Action |
-| --- | --- | --- |
-| `Ctrl + O` | Library | Open Add Book / Folder / Shelf import modal |
-| `Ctrl + F` | Reader | Open Full-Book Find drawer / re-focus search input |
-| `Enter` / `Shift + Enter` | Search | Jump to next / previous in-book match |
-| `Ctrl + B` | Reader | Toggle bookmark on active page with auto-excerpt |
-| `Left` / `Up` / `Page Up` | Reader | Turn to previous page (or smooth scroll up) |
-| `Right` / `Down` / `Page Down` | Reader | Turn to next page (or smooth scroll down) |
-| `Space` | Reader | Advance page or scroll reading viewport |
-| `Home` / `End` | Reader | Jump to the beginning / end of document |
-| `F9` | Reader | Cycle reading theme (`Light`, `Obsidian`, `Paper`, `Dusk`) |
-| `F10` | Reader | Toggle single-page / dual-page spread mode |
-| `F11` | Global | Toggle True Immersive Fullscreen (zero chrome) |
-| `F1` | Global | Open Hotkeys and Navigation help modal |
-| `Esc` | Global | Dismiss modals, popovers, drawers, auto-scroll, or return to library |
 
 ---
 
 ## Documentation
 
-This repository provides multiple tiers of documentation:
-- **[Interactive Documentation Guide](./documentations/index.html)**: A zero-build, responsive web guide with live search, theme preview, and user walkthroughs, ready to host on GitHub Pages or Cloudflare Pages.
-- **[Developer & Architecture Guide](./dev-documentations.md)**: Exhaustive technical manual detailing Electron IPC contracts, Dexie database structures, Zustand slices, and WASM pipeline internals.
+Comprehensive guides are maintained across multiple levels:
+- **[Official Website & Web Preview](https://semply.vercel.app/)**: Live demo and product overview.
+- **[Interactive Documentation Guide](./documentations/index.html)**: Complete user manual with live topic search and theme preview.
+- **[Developer Architecture Guide](./dev-documentations.md)**: Exhaustive technical manual detailing Electron IPC contracts, Dexie database structures, and WASM pipeline internals.
 - **[High-Level Technical Reference](./documentation.md)**: Implementation-agnostic technical documentation and system reference.
 - **[Design System Specification](./DESIGN.md)**: Visual tokens, Geist Obsidian surface guidelines, and explicit UI anti-pattern rules.
-- **[Machine Context (`llms.txt`)](./documentations/llms.txt)**: Structured overview optimized for AI coding assistants and LLM tooling.
 
 ---
 
 ## Contributing
 
-Contributions, bug reports, and feature proposals are welcome:
+Contributions, bug reports, and suggestions are warmly appreciated:
 1. Fork the repository.
 2. Create your feature branch (`git checkout -b feat/your-feature-name`).
 3. Ensure strict type-checking passes: `npm run typecheck`.
 4. Commit your changes with clear messages (`git commit -m 'feat: add feature'`).
-5. Push to the branch (`git push origin feat/your-feature-name`).
-6. Open a Pull Request.
+5. Push to your branch and open a Pull Request.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE). You are free to use, modify, and distribute this codebase for personal, academic, or commercial desktop software.
+This project is licensed under the [MIT License](./LICENSE). You are free to use, modify, and distribute this software for personal, academic, or commercial purposes.
