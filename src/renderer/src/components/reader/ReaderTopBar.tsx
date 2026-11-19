@@ -52,7 +52,7 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
         <button
           onClick={onBack}
           className="h-7 px-2 rounded-md flex items-center gap-1 text-[#888888] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-          title="Back to Library (Alt+X)"
+          title="Back to Library (Alt+< or Alt+X)"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           <span>Library</span>
@@ -95,7 +95,11 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
           }`}
           title="Bookmarks (3)"
         >
-          <Bookmark className={`w-3.5 h-3.5 ${isCurrentPageBookmarked ? 'fill-[#0070f3] text-[#0070f3]' : ''}`} />
+          <Bookmark
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isCurrentPageBookmarked ? 'fill-[#0070f3] text-[#0070f3] scale-110' : 'scale-100'
+            }`}
+          />
           <span>Bookmarks</span>
         </button>
 

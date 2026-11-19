@@ -36,7 +36,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onRenameBookmark: onRenameBookmarkProp,
   onClearAllBookmarks: onClearAllBookmarksProp
 }) => {
-  const { isBookmarksDrawerOpen, toggleBookmarksDrawer, activeBook, bookmarksVersion, openConfirmDialog, showToast } =
+  const { isBookmarksDrawerOpen, toggleBookmarksDrawer, activeBook, bookmarksVersion, openConfirmDialog } =
     useAppStore()
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([])
 
@@ -337,7 +337,6 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                                 danger: true,
                                 onConfirm: async () => {
                                   if (bm.id) await onDeleteBookmark(bm.id)
-                                  showToast('Bookmark deleted', 'info')
                                 }
                               })
                             }}
@@ -384,7 +383,6 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                     danger: true,
                     onConfirm: async () => {
                       await onClearAllBookmarks()
-                      showToast('All bookmarks cleared', 'info')
                     }
                   })
                 }}

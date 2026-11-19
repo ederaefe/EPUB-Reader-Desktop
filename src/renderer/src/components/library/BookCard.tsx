@@ -104,7 +104,6 @@ export const BookCard: React.FC<BookCardProps> = ({
           totalPages: meta.totalPages || book.totalPages
         })
         onUpdate()
-        showToast('Cover refreshed', 'success')
       }
     } catch (err) {
       console.warn('Refresh cover failed:', err)
@@ -441,16 +440,32 @@ export const BookCard: React.FC<BookCardProps> = ({
             </button>
           )}
 
-          {/* Persistent Status Badges (Pin / Read / Favorite) */}
+          {/* Persistent Status Badges (Pin / Favorite / Read) */}
           <div
             className={`absolute top-1.5 z-10 flex items-center gap-1 ${
               isSelectionMode ? 'right-1.5' : 'left-1.5'
             }`}
             data-preserve-theme="true"
           >
+            {book.isPinned && (
+              <span
+                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#58a6ff] animate-in zoom-in-75 duration-150"
+                title="Pinned to top"
+              >
+                <Pin className="w-3 h-3 fill-current" />
+              </span>
+            )}
+            {book.isFavorite && (
+              <span
+                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#e3b341] animate-in zoom-in-75 duration-150"
+                title="Favorites"
+              >
+                <Star className="w-3 h-3 fill-current" />
+              </span>
+            )}
             {book.isRead && (
               <span
-                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#4cd964]"
+                className="w-5 h-5 rounded-[3px] bg-black/75 border border-white/15 flex items-center justify-center text-[#4cd964] animate-in zoom-in-75 duration-150"
                 title="Read"
               >
                 <CheckCircle2 className="w-3 h-3" />

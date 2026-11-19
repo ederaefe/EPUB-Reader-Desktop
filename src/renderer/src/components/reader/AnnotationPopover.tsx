@@ -44,7 +44,7 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
   }, [onClose])
 
   // Clamp popover inside viewport so it never clips off edges
-  const width = 320
+  const width = 310
   const halfW = width / 2
   const clampedX = Math.max(halfW + 12, Math.min(window.innerWidth - halfW - 12, position.x))
   const showBelow = position.y < 230
@@ -72,7 +72,7 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
       : annotation.text
     navigator.clipboard.writeText(payload)
     setCopied(true)
-    setTimeout(() => setCopied(false), 1100)
+    setTimeout(() => setCopied(false), 900)
   }
 
   const handleSpeak = () => {
@@ -100,10 +100,10 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
           width: `${width}px`,
           transform: showBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)'
         }}
-        className="fixed z-50 bg-[#171a21] border border-[#2d323f] rounded-lg shadow-2xl overflow-hidden text-xs text-[#c9d1d9] select-none app-no-drag animate-in fade-in duration-100"
+        className="fixed z-50 bg-[var(--app-chrome)]/96 backdrop-blur-xl border border-[var(--app-border-strong)] rounded-xl shadow-2xl overflow-hidden text-xs text-[var(--app-text)] select-none app-no-drag animate-in fade-in duration-100"
       >
         {/* Top Bar: Color Switcher + Quick Actions */}
-        <div className="h-9 bg-[#14161c] border-b border-[#232732] px-2.5 flex items-center justify-between gap-2">
+        <div className="h-8 bg-[var(--app-surface-2)]/50 border-b border-[var(--app-border)] px-2.5 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             {ICE_NOTE_COLOR_LIST.map((col) => {
               const isSelected = annotation.color === col.id
@@ -113,37 +113,37 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                   type="button"
                   onClick={() => handleColorSwitch(col.id)}
                   title={`Change to ${col.label}`}
-                  className={`w-4 h-4 rounded-[2px] flex items-center justify-center transition-transform cursor-pointer ${
-                    isSelected ? 'ring-1 ring-[var(--app-text-strong)] scale-110' : 'opacity-80 hover:opacity-100 hover:scale-105'
+                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-transform cursor-pointer ${
+                    isSelected ? 'ring-2 ring-[var(--app-text-strong)] scale-110 shadow-xs' : 'opacity-70 hover:opacity-100 hover:scale-105'
                   }`}
                   style={
                     col.isUnderline
-                      ? { backgroundColor: 'var(--app-surface-2)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
-                      : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.35)' }
+                      ? { backgroundColor: 'var(--app-surface)', border: '1px solid var(--app-border-strong)', color: 'var(--app-accent-text)' }
+                      : { backgroundColor: col.hex, border: '1px solid rgba(0,0,0,0.3)' }
                   }
                 >
-                  {col.isUnderline && <Underline className="w-2.5 h-2.5 pointer-events-none" />}
+                  {col.isUnderline && <Underline className="w-2 h-2 pointer-events-none" />}
                 </button>
               )
             })}
           </div>
 
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={handleCopy}
-              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors cursor-pointer"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] transition-colors cursor-pointer"
               title="Copy quote and note"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
             </button>
             <button
               type="button"
               onClick={handleSpeak}
-              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors cursor-pointer"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] transition-colors cursor-pointer"
               title="Read aloud"
             >
-              <Volume2 className="w-3.5 h-3.5" />
+              <Volume2 className="w-3 h-3" />
             </button>
             <button
               type="button"
@@ -163,26 +163,26 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                   }
                 })
               }}
-              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-[#f85149] hover:bg-[#282c37] transition-colors cursor-pointer"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[var(--app-text-subtle)] hover:text-red-400 hover:bg-[var(--app-surface-hover)] transition-colors cursor-pointer"
               title="Delete highlight"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-3 h-3" />
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="w-6 h-6 flex items-center justify-center rounded-[2px] text-[#8b949e] hover:text-white hover:bg-[#282c37] transition-colors cursor-pointer"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] transition-colors cursor-pointer"
               title="Close"
             >
-              <X className="w-3.5 h-3.5 pointer-events-none" />
+              <X className="w-3 h-3 pointer-events-none" />
             </button>
           </div>
         </div>
 
         {/* Body: Quote + Note Comment */}
-        <div className="p-3 space-y-2.5">
+        <div className="p-3 space-y-2">
           <div
-            className="text-[11px] font-serif italic text-[#e6edf3] bg-[#12141a] px-2.5 py-2 rounded-[2px] line-clamp-3 border-l-2"
+            className="text-[11.5px] font-serif italic text-[var(--app-text-muted)] bg-[var(--app-surface-2)]/50 px-2.5 py-1.5 rounded-lg line-clamp-3 border-l-2 leading-relaxed"
             style={{ borderLeftColor: activeMeta.borderHex }}
           >
             &ldquo;{annotation.text}&rdquo;
@@ -200,9 +200,9 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                     handleSaveComment()
                   }
                 }}
-                placeholder="Write a comment... (Ctrl+Enter to save)"
+                placeholder="Write a reflection... (Ctrl+Enter to save)"
                 rows={3}
-                className="ice-input w-full p-2 text-xs rounded-[2px] resize-none"
+                className="w-full bg-[var(--app-surface-2)]/40 border border-[var(--app-border)] text-[var(--app-text-strong)] placeholder-[var(--app-text-subtle)] p-2 text-xs rounded-lg focus:outline-none focus:border-[var(--app-accent)] resize-none transition-colors"
               />
               <div className="flex items-center justify-end gap-1.5">
                 <button
@@ -211,14 +211,14 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                     setNoteDraft(annotation.note || '')
                     setIsEditingNote(false)
                   }}
-                  className="ice-btn-dark px-2.5 h-7 text-[11px] rounded-[2px]"
+                  className="px-2 py-1 rounded-md text-[11px] text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="ice-btn-blue px-2.5 h-7 text-[11px] gap-1 rounded-[2px]"
+                  className="px-3 py-1 rounded-md text-[11px] font-medium bg-[var(--app-accent)] hover:brightness-110 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1"
                 >
                   <Save className="w-3 h-3" />
                   <span>Save</span>
@@ -230,8 +230,8 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
               {annotation.note?.trim() ? (
                 <div
                   onClick={() => setIsEditingNote(true)}
-                  className="text-[12px] text-[#79c0ff] bg-[#141822] hover:bg-[#1a2030] border border-[#232732] rounded-[2px] p-2 cursor-pointer transition-colors whitespace-pre-wrap"
-                  title="Click to edit comment"
+                  className="text-[12px] text-[var(--app-accent-text)] bg-[var(--app-surface-2)]/40 hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)] rounded-lg p-2 cursor-pointer transition-colors whitespace-pre-wrap leading-relaxed"
+                  title="Click to edit thought"
                 >
                   {annotation.note}
                 </div>
@@ -239,14 +239,14 @@ export const AnnotationPopover: React.FC<AnnotationPopoverProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsEditingNote(true)}
-                  className="ice-btn-dark w-full h-7 text-[11px] gap-1.5 rounded-[2px] text-[#9da7b3] hover:text-white"
+                  className="w-full h-7 text-[11px] rounded-lg border border-dashed border-[var(--app-border-strong)] text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <FileText className="w-3 h-3 text-[#2a69df]" />
-                  <span>Add a comment to this highlight...</span>
+                  <FileText className="w-3 h-3 text-[var(--app-accent)]" />
+                  <span>Add a thought to this highlight...</span>
                 </button>
               )}
 
-              <div className="flex items-center justify-between text-[10px] text-[#6e7681] pt-0.5">
+              <div className="flex items-center justify-between text-[10.5px] text-[var(--app-text-subtle)] font-mono pt-0.5">
                 <span className="truncate max-w-[190px]">
                   {annotation.pageNumber ? `p.${annotation.pageNumber}` : ''}
                   {annotation.chapterTitle ? ` · ${annotation.chapterTitle}` : ''}

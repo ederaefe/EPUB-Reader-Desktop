@@ -355,10 +355,8 @@ export const LibraryView: React.FC = () => {
         )
       )
       await loadData()
-      const noun = ids.length === 1 ? `"${targets[0].title}"` : `${ids.length} books`
-      showToast(nextPinned ? `Pinned ${noun} to top` : `Unpinned ${noun}`, 'success')
     },
-    [loadData, showToast]
+    [loadData]
   )
 
   const handleFavoriteBooks = useCallback(
@@ -367,13 +365,8 @@ export const LibraryView: React.FC = () => {
       if (ids.length === 0) return
       await Promise.all(ids.map((id) => db.books.update(id, { isFavorite: nextFavorite })))
       await loadData()
-      const noun = ids.length === 1 ? `"${targets[0].title}"` : `${ids.length} books`
-      showToast(
-        nextFavorite ? `Added ${noun} to Favorites` : `Removed ${noun} from Favorites`,
-        'success'
-      )
     },
-    [loadData, showToast]
+    [loadData]
   )
 
   const handleMarkReadBooks = useCallback(
@@ -390,10 +383,8 @@ export const LibraryView: React.FC = () => {
         )
       )
       await loadData()
-      const noun = valid.length === 1 ? `"${valid[0].title}"` : `${valid.length} books`
-      showToast(`Marked ${noun} as read`, 'success')
     },
-    [loadData, showToast]
+    [loadData]
   )
 
   const handleMarkUnreadBooks = useCallback(
@@ -412,10 +403,8 @@ export const LibraryView: React.FC = () => {
         )
       )
       await loadData()
-      const noun = valid.length === 1 ? `"${valid[0].title}"` : `${valid.length} books`
-      showToast(`Marked ${noun} as unread`, 'success')
     },
-    [loadData, showToast]
+    [loadData]
   )
 
   const handleAssignCategoryBooks = useCallback(
@@ -424,14 +413,8 @@ export const LibraryView: React.FC = () => {
       if (ids.length === 0) return
       await Promise.all(ids.map((id) => db.books.update(id, { categoryId: catId })))
       await loadData()
-      const cat = catId !== null ? categories.find((c) => c.id === catId) : null
-      const noun = ids.length === 1 ? `"${targets[0].title}"` : `${ids.length} books`
-      showToast(
-        cat ? `Moved ${noun} to "${cat.name}"` : `Removed ${noun} from category`,
-        'success'
-      )
     },
-    [loadData, categories, showToast]
+    [loadData]
   )
 
   const handleRequestDeleteBooks = useCallback(

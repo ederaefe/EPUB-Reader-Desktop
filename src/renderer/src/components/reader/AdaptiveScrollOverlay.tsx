@@ -229,9 +229,16 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 <Gauge className="w-3.5 h-3.5 text-[var(--app-accent)]" />
                 <span>Reading Pace</span>
               </div>
-              <span className="font-mono font-semibold text-[var(--app-text-strong)]">
-                {metrics.currentWpm} WPM
-              </span>
+              <div className="flex items-center gap-1.5">
+                {metrics.isSkimming && (
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500 font-medium">
+                    Skim Guard
+                  </span>
+                )}
+                <span className="font-mono font-semibold text-[var(--app-text-strong)]">
+                  {metrics.currentWpm} WPM
+                </span>
+              </div>
             </div>
           )}
 

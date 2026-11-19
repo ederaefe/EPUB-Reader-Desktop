@@ -325,10 +325,17 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
             span.style.cursor = 'text'
             span.style.userSelect = 'text'
 
-            // Check if span matches any page highlight
-            const matchingAnn = pageAnns.find(
-              (a) => a.text && (a.text.includes(item.str) || item.str.includes(a.text))
-            )
+            // Check if span matches any page highlight with word-boundary safety
+            const strTrimmed = item.str.trim()
+            const matchingAnn = strTrimmed.length > 0
+              ? pageAnns.find((a) => {
+                  if (!a.text) return false
+                  const annTrimmed = a.text.trim()
+                  if (annTrimmed === strTrimmed) return true
+                  if (strTrimmed.includes(annTrimmed)) return true
+                  return strTrimmed.length > 3 && annTrimmed.includes(strTrimmed)
+                })
+              : null
             if (matchingAnn) {
               const hex = (ICE_NOTE_COLORS[matchingAnn.color] || ICE_NOTE_COLORS.yellow).hex
               span.style.backgroundColor = hex
@@ -624,7 +631,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     bumpAnnotationsVersion()
   }
 
-  const handleAddPdfNote = async (color: NoteColor, noteText: string) => {
+  const handleAddPdfNote = async (noteText: string, color: NoteColor) => {
     if (!book.id || !selectedPdfText) return
     const record: Annotation = {
       bookId: book.id,
@@ -644,6 +651,20 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
   const handleUpdatePdfAnnotation = async (id: number, updates: { color?: NoteColor; note?: string }) => {
     await db.annotations.update(id, { ...updates, updatedAt: Date.now() })
+    if (activeAnnotation?.annotation.id === id) {
+      setActiveAnnotation((prev) =>
+        prev
+          ? {
+              ...prev,
+              annotation: {
+                ...prev.annotation,
+                ...updates,
+                updatedAt: Date.now()
+              }
+            }
+          : null
+      )
+    }
     bumpAnnotationsVersion()
   }
 

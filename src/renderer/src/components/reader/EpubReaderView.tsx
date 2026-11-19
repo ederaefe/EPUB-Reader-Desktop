@@ -26,12 +26,13 @@ import { SelectionPopup } from './SelectionPopup'
 import { AnnotationPopover } from './AnnotationPopover'
 import { FootnotePopover } from './FootnotePopover'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
+import { ReaderAudioHUD } from './ReaderAudioHUD'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
 import { SideNavigation } from './SideNavigation'
 import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
-import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
+import { adaptiveScrollEngine, computeEffectiveWordCount } from '../../services/adaptiveScrollService'
 import { splitIntoSentences, ttsService } from '../../services/ttsService'
 import { injectFontIntoDocument } from '../../services/fontManager'
 import { getFontCssFamily } from '../../../../shared/fontCatalog'
@@ -65,6 +66,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     syncActiveBookProgress,
     setPendingSeekPercent,
     isTTSActive,
+    isTTSMuted,
     setTTSActive,
     isAutoscrollActive,
     setAutoscrollActive,
@@ -165,24 +167,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   // Bookmarks state for instant current-page ribbon indicator
   const [bookBookmarks, setBookBookmarks] = useState<BookmarkItem[]>([])
   const toggleCurrentBookmarkRef = useRef<() => Promise<void>>(async () => {})
-
-  // Custom native desktop toast notification with optional Undo action
-  const [readerToast, setReaderToast] = useState<{
-    message: string
-    actionLabel?: string
-    onAction?: () => void
-  } | null>(null)
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const showToast = useCallback(
-    (message: string, actionLabel?: string, onAction?: () => void) => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-      setReaderToast({ message, actionLabel, onAction })
-      toastTimerRef.current = setTimeout(() => {
-        setReaderToast(null)
-      }, 3600)
-    },
-    []
-  )
+  const handleChapterStepRef = useRef<(dir: 'prev' | 'next') => void>(() => {})
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
   const openContextMenuRef = useRef<(x: number, y: number, text?: string, cfiRange?: string) => void>(() => {})
@@ -525,7 +510,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
     })
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key.toLowerCase() === 'x' || e.code === 'KeyX')) {
+      const isBackKey =
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        )) ||
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')
+      if (isBackKey) {
         e.preventDefault()
         e.stopPropagation()
         onBackRef.current()
@@ -587,12 +577,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
           scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
         }
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') {
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'j') {
         e.preventDefault()
         navigateStepRef.current('next')
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace' || e.key === 'k') {
         e.preventDefault()
         navigateStepRef.current('prev')
+      } else if (e.key === '[') {
+        e.preventDefault()
+        handleChapterStepRef.current('prev')
+      } else if (e.key === ']') {
+        e.preventDefault()
+        handleChapterStepRef.current('next')
       } else if (e.key === 'Home') {
         e.preventDefault()
         renditionRef.current?.display(0)
@@ -986,11 +982,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
         syncActiveChapter(location, tocRef.current)
 
-        // Feature 1: Record manual reading cadence between page turns (using live store state)
+        // Feature 1: Record manual reading cadence between page turns with Skimming Protection
         const now = Date.now()
         const elapsedMs = now - pageEnteredAtRef.current
         const prevWords = lastWordsOnPageRef.current
-        if (!useAppStore.getState().isAutoscrollActive && elapsedMs >= 2000 && elapsedMs <= 300000 && prevWords > 10) {
+        if (!useAppStore.getState().isAutoscrollActive && prevWords > 0) {
           adaptiveScrollEngine.recordManualReading(prevWords, elapsedMs)
         }
         pageEnteredAtRef.current = now
@@ -1003,14 +999,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           try {
             if (location.start?.cfi && location.end?.cfi) {
               const visibleRange = (epubInstance as any)?.getRange?.(location.start.cfi, location.end.cfi)
-              const rangeText = visibleRange?.toString?.() || ''
-              visibleWords = rangeText.split(/\s+/).filter(Boolean).length
+              if (visibleRange) {
+                const frag = visibleRange.cloneContents?.()
+                // Fast sanitized text extraction (stripping hidden footnote/script/ruby tags)
+                frag?.querySelectorAll?.('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]')?.forEach((el: any) => el.remove())
+                const hasImg = Boolean(frag?.querySelector?.('img, svg, figure, image'))
+                const cleanText = frag?.textContent || visibleRange.toString?.() || ''
+                visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+              }
             }
           } catch {}
           if (visibleWords <= 0) {
-            const chapterWords = pageText.split(/\s+/).filter(Boolean).length
+            const hasImg = Boolean(iframeDoc?.querySelector('img, svg, figure, image'))
+            const chapterWords = computeEffectiveWordCount(pageText, hasImg).words
             const secPages = Math.max(1, location.start?.displayed?.total || 1)
-            visibleWords = Math.round(chapterWords / secPages) || 150
+            const spreadFactor = settings.pageSpread === 'double' ? 2 : 1
+            visibleWords = Math.round((chapterWords / secPages) * spreadFactor) || 150
           }
           lastWordsOnPageRef.current = visibleWords
         }
@@ -1386,12 +1390,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (loc?.start?.cfi && loc?.end?.cfi && epubBookRef.current) {
         const range = (epubBookRef.current as any).getRange?.(loc.start.cfi, loc.end.cfi)
         if (range) {
-          const rangeText = range.toString() || ''
-          visibleWords = rangeText.split(/\s+/).filter(Boolean).length
           const frag = range.cloneContents?.()
+          // Fast sanitized text extraction (stripping hidden footnote/script/ruby tags)
+          frag?.querySelectorAll?.('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]')?.forEach((el: any) => el.remove())
+          const hasImg = Boolean(frag?.querySelector?.('img, svg, figure, image'))
+          const cleanText = frag?.textContent || range.toString() || ''
+          visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+
           hasBreak = Boolean(
             frag?.querySelector?.('hr, .section-break, .break, .separator, blockquote, .asterism') ||
-            /\*\s*\*\s*\*|\u2042|\u2041/.test(rangeText)
+            /\*\s*\*\s*\*|\u2042|\u2041/.test(cleanText)
           )
         }
       }
@@ -1399,9 +1407,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     // Tier 2: Proportional chapter fallback if exact range is unavailable
     if (visibleWords <= 0 && chapterText) {
-      const chapterWords = chapterText.split(/\s+/).filter(Boolean).length
+      const hasImg = Boolean(iframeDoc?.querySelector('img, svg, figure, image'))
+      const chapterWords = computeEffectiveWordCount(chapterText, hasImg).words
       const secTotal = Math.max(1, loc?.start?.displayed?.total || 1)
-      visibleWords = Math.round(chapterWords / secTotal)
+      const spreadFactor = settings.pageSpread === 'double' ? 2 : 1
+      visibleWords = Math.round((chapterWords / secTotal) * spreadFactor)
       if (!hasBreak) {
         hasBreak = Boolean(
           iframeDoc?.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
@@ -1412,11 +1422,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     // Tier 3: Safe default for illustration/title spreads
     if (visibleWords <= 0) {
-      visibleWords = 150
+      const hasImg = Boolean(iframeDoc?.querySelector('img, svg, figure, image'))
+      visibleWords = hasImg ? 60 : 150
     }
 
     return { visibleWords, hasBreak, atEnd }
-  }, [])
+  }, [settings.pageSpread])
 
   // Sync Auto-Scroll settings from Zustand store into engine
   useEffect(() => {
@@ -1563,38 +1574,43 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
 
       const cfiBeforeTurn = currentCfiRef.current
-      adaptiveScrollEngine.startPageCountdown(visibleWords, hasBreak, () => {
-        if (cancelled || !useAppStore.getState().isAutoscrollActive || isAdvancing) return
-        isAdvancing = true
-        Promise.resolve(handleNext())
-          .catch(() => {})
-          .finally(() => {
-            setTimeout(() => {
-              isAdvancing = false
-            }, 400)
-          })
+      adaptiveScrollEngine.startPageCountdown(
+        visibleWords,
+        hasBreak,
+        () => {
+          if (cancelled || !useAppStore.getState().isAutoscrollActive || isAdvancing) return
+          isAdvancing = true
+          Promise.resolve(handleNext())
+            .catch(() => {})
+            .finally(() => {
+              setTimeout(() => {
+                isAdvancing = false
+              }, 400)
+            })
 
-        // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI,
-        // retry once after 1200ms so Auto-Scroll never freezes at 0s or skips multiple pages.
-        if (recoveryTimer) clearTimeout(recoveryTimer)
-        recoveryTimer = setTimeout(() => {
-          if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-          if (currentCfiRef.current === cfiBeforeTurn) {
-            const check = analyzeVisiblePage()
-            if (check.atEnd) {
-              adaptiveScrollEngine.stop()
-              setAutoscrollActive(false)
-            } else {
-              Promise.resolve(handleNext()).catch(() => {})
-              recoveryTimer = setTimeout(() => {
-                if (!cancelled && useAppStore.getState().isAutoscrollActive && currentCfiRef.current === cfiBeforeTurn) {
-                  armPage()
-                }
-              }, 1000)
+          // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI,
+          // retry once after 1200ms so Auto-Scroll never freezes at 0s or skips multiple pages.
+          if (recoveryTimer) clearTimeout(recoveryTimer)
+          recoveryTimer = setTimeout(() => {
+            if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+            if (currentCfiRef.current === cfiBeforeTurn) {
+              const check = analyzeVisiblePage()
+              if (check.atEnd) {
+                adaptiveScrollEngine.stop()
+                setAutoscrollActive(false)
+              } else {
+                Promise.resolve(handleNext()).catch(() => {})
+                recoveryTimer = setTimeout(() => {
+                  if (!cancelled && useAppStore.getState().isAutoscrollActive && currentCfiRef.current === cfiBeforeTurn) {
+                    armPage()
+                  }
+                }, 1000)
+              }
             }
-          }
-        }, 1200)
-      })
+          }, 1200)
+        },
+        settings.pageSpread === 'double'
+      )
     }
 
     armPage()
@@ -1625,11 +1641,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (st.isTTSMuted) {
         ttsService.resume()
         st.setTTSMuted(false)
-        showToast('Read Aloud resumed')
       } else {
         ttsService.pause()
         st.setTTSMuted(true)
-        showToast('Read Aloud paused')
       }
       return
     }
@@ -1647,7 +1661,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         cur.setTTSMuted(false)
       }
     })
-    showToast('Read Aloud started (F7 pause · F8 stop)')
   }
 
   handleStopTTSRef.current = () => {
@@ -1656,7 +1669,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     ttsService.stop()
     st.setTTSActive(false)
     st.setTTSMuted(false)
-    showToast('Read Aloud stopped')
   }
 
   // Reliable progress bar seeking with strict locations readiness check, CFI validation & spine/scroll fallbacks
@@ -1769,6 +1781,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const isBackKey =
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        )) ||
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')
+      if (isBackKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        onBackRef.current()
+        return
+      }
+
       // Allow Ctrl+F / Cmd+F even when focus is inside an input so it always opens & selects Find
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault()
@@ -1806,12 +1830,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const delta = e.key === 'ArrowUp' ? -140 : -Math.round(scrollContainer.clientHeight * 0.85)
           scrollContainer.scrollBy({ top: delta, behavior: 'smooth' })
         }
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') {
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'j') {
         e.preventDefault()
         handleNext()
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace' || e.key === 'k') {
         e.preventDefault()
         handlePrev()
+      } else if (e.key === '[') {
+        e.preventDefault()
+        handleChapterStepRef.current('prev')
+      } else if (e.key === ']') {
+        e.preventDefault()
+        handleChapterStepRef.current('next')
       } else if (e.key === 'Home') {
         e.preventDefault()
         renditionRef.current?.display(0)
@@ -2049,6 +2079,21 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
   }, [setCurrentChapterTitle])
 
+  handleChapterStepRef.current = (dir: 'prev' | 'next') => {
+    const list = tocRef.current
+    if (!list || list.length === 0) return
+    const curIdx = list.findIndex(
+      (item) => item.id === activeTocId || item.href === currentHrefRef.current
+    )
+    const targetIdx =
+      dir === 'next'
+        ? Math.min(list.length - 1, curIdx >= 0 ? curIdx + 1 : 0)
+        : Math.max(0, curIdx >= 0 ? curIdx - 1 : 0)
+    if (targetIdx >= 0 && targetIdx < list.length) {
+      handleSelectChapter(list[targetIdx].href, list[targetIdx])
+    }
+  }
+
   const handleJumpToCfi = async (cfi: string, pageNumber?: number) => {
     if (cfi && renditionRef.current) {
       try {
@@ -2177,7 +2222,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
   const handleDeleteAnnotation = async (ann: Annotation) => {
     if (!book.id || !ann.id) return
-    const backup = { ...ann }
     await db.annotations.delete(ann.id)
     removeAnnotationFromRendition(renditionRef.current, ann.cfiRange)
     if (activeAnnotation?.annotation.id === ann.id) {
@@ -2185,20 +2229,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
     await syncBookNotesCount(book.id)
     bumpAnnotationsVersion()
-
-    showToast('Highlight removed', 'Undo', async () => {
-      const { id: _oldId, ...rest } = backup
-      const newId = await db.annotations.add(rest)
-      const restored: Annotation = { ...rest, id: Number(newId) }
-      applyAnnotationToRendition(
-        renditionRef.current,
-        restored,
-        themeRef.current,
-        (a, ev) => openAnnotationPopoverRef.current(a, ev)
-      )
-      await syncBookNotesCount(book.id!)
-      bumpAnnotationsVersion()
-    })
   }
 
   const handleUpdateAnnotation = async (id: number, updates: { color?: NoteColor; note?: string }) => {
@@ -2241,7 +2271,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     setActiveAnnotation(null)
     await syncBookNotesCount(book.id)
     bumpAnnotationsVersion()
-    showToast('All notes cleared')
   }
 
   const handleAddAnnotation = async (
@@ -2265,7 +2294,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         clearIframeSelection()
         setSelectedText(null)
         setOpenNoteModalDirect(false)
-        showToast('Highlight color updated')
         return
       }
     }
@@ -2297,10 +2325,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     setOpenNoteModalDirect(false)
     await syncBookNotesCount(book.id)
     bumpAnnotationsVersion()
-
-    showToast('Highlight saved', 'Undo', () => {
-      handleDeleteAnnotation(saved)
-    })
   }
 
   const handleAddNote = async (
@@ -2325,7 +2349,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         clearIframeSelection()
         setSelectedText(null)
         setOpenNoteModalDirect(false)
-        showToast('Note updated')
         return
       }
     }
@@ -2357,10 +2380,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     setOpenNoteModalDirect(false)
     await syncBookNotesCount(book.id)
     bumpAnnotationsVersion()
-
-    showToast(note ? 'Note saved' : 'Highlight saved', 'View Notes', () => {
-      toggleNotesDrawer(true)
-    })
   }
 
   // Bookmarks CRUD & Smart Toggle (Icecream getBookmarkData + duplicate guard)
@@ -2386,7 +2405,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     if (existing?.id) {
       await db.bookmarks.delete(existing.id)
       bumpBookmarksVersion()
-      showToast(`Removed bookmark on page ${existing.pageNumber}`)
       return
     }
 
@@ -2412,29 +2430,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       createdAt: Date.now()
     })
     bumpBookmarksVersion()
-    showToast(`Bookmarked page ${currentPageRef.current}`, 'View Bookmarks', () => {
-      toggleBookmarksDrawer(true)
-    })
   }
   toggleCurrentBookmarkRef.current = handleToggleCurrentBookmark
 
   const handleDeleteBookmark = async (id: number) => {
     await db.bookmarks.delete(id)
     bumpBookmarksVersion()
-    showToast('Bookmark deleted')
   }
 
   const handleRenameBookmark = async (id: number, label: string) => {
     await db.bookmarks.update(id, { label })
     bumpBookmarksVersion()
-    showToast('Bookmark renamed')
   }
 
   const handleClearAllBookmarks = async () => {
     if (!book.id) return
     await db.bookmarks.where('bookId').equals(book.id).delete()
     bumpBookmarksVersion()
-    showToast('All bookmarks cleared')
   }
 
   // Always-fresh right-click context menu builder (via ref so iframe hooks never re-mount EPUB)
@@ -2649,10 +2661,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           <button
             type="button"
             onClick={handleToggleCurrentBookmark}
-            className={`absolute top-2 right-5 z-30 w-7 h-8 flex items-center justify-center rounded-[2px] transition-all cursor-pointer app-no-drag ${
+            className={`absolute top-2 right-5 z-30 w-7 h-8 flex items-center justify-center rounded-[2px] transition-all duration-200 cursor-pointer app-no-drag ${
               isCurrentPageBookmarked
-                ? 'text-[#2a69df] opacity-100 hover:scale-105'
-                : 'text-[#8b949e] opacity-25 hover:opacity-85 hover:text-white'
+                ? 'text-[#2a69df] opacity-100 hover:scale-110 active:scale-95'
+                : 'text-[#8b949e] opacity-25 hover:opacity-85 hover:text-white active:scale-95'
             }`}
             title={
               isCurrentPageBookmarked
@@ -2660,7 +2672,11 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
                 : `Bookmark page ${currentPage} (Ctrl+B)`
             }
           >
-            <Bookmark className={`w-5 h-5 ${isCurrentPageBookmarked ? 'fill-current drop-shadow' : ''}`} />
+            <Bookmark
+              className={`w-5 h-5 transition-transform duration-200 ${
+                isCurrentPageBookmarked ? 'fill-current drop-shadow scale-105' : 'scale-100'
+              }`}
+            />
           </button>
         )}
 
@@ -2685,25 +2701,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         onClose={() => setAutoscrollActive(false)}
       />
 
-      {/* Custom Contextual Toast Notification */}
-      {readerToast && (
-        <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 bg-[#171a21] border border-[#2d323f] text-[#e6edf3] text-xs px-3.5 py-2 rounded-md shadow-2xl flex items-center gap-3 app-no-drag animate-in fade-in duration-100">
-          <span>{readerToast.message}</span>
-          {readerToast.actionLabel && readerToast.onAction && (
-            <button
-              type="button"
-              onClick={() => {
-                const fn = readerToast.onAction
-                setReaderToast(null)
-                fn?.()
-              }}
-              className="text-[#58a6ff] hover:text-[#79c0ff] font-semibold cursor-pointer"
-            >
-              {readerToast.actionLabel}
-            </button>
-          )}
-        </div>
-      )}
+      {/* Draggable & Minimizable Reader Audio HUD for Read Aloud */}
+      <ReaderAudioHUD
+        isTTSActive={isTTSActive}
+        isTTSMuted={isTTSMuted}
+        currentChapter={currentChapter}
+        ttsSpeed={settings.ttsSpeed}
+        onTogglePlay={() => handleToggleTTSRef.current()}
+        onStop={() => handleStopTTSRef.current()}
+      />
 
       {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (

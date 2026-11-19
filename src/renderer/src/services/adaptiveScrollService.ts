@@ -25,6 +25,7 @@ export interface PacingMetrics {
   isPaused: boolean
   isUserPaused: boolean
   isAutoSuspended: boolean
+  isSkimming: boolean
   pauseReason: PauseReason
   isMicroPausing: boolean
   microPauseEnabled: boolean
@@ -59,10 +60,69 @@ const DEFAULT_COUNTDOWN_SEC = 20
 const DEFAULT_ADAPTIVE_SEC = 25
 const MIN_COUNTDOWN_SEC = 3
 const MAX_COUNTDOWN_SEC = 600
-const MIN_ADAPTIVE_MS = 3_000
+const MIN_ADAPTIVE_MS = 2500 // Allow snappy 2.5s for genuine sparse pages (foreword, chapter title)
 const MAX_ADAPTIVE_MS = 600_000
 const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes away from app
 const TICK_INTERVAL_MS = 100
+
+// Physiological reading boundaries for the Skimming Protector:
+export const MIN_RECOGNITION_DWELL_MS = 800 // Below 800ms is pure accidental flip or key repeat
+export const MAX_PLAUSIBLE_READING_WPM = 750 // Above 750 WPM is scanning/skimming
+export const MIN_PLAUSIBLE_READING_WPM = 60  // Below 60 WPM is distraction/idling
+
+/**
+ * Ultra-fast O(N) language-aware word & character counter.
+ * Correctly accounts for non-space-delimited CJK ideograms (~0.6 words each)
+ * without triggering heavy regex thrashing or memory allocations.
+ */
+export function computeEffectiveWordCount(
+  rawText: string,
+  hasIllustration = false
+): { words: number; chars: number; isImageOrSparse: boolean } {
+  const text = rawText.trim()
+  if (!text) {
+    return {
+      words: hasIllustration ? 60 : 0,
+      chars: 0,
+      isImageOrSparse: true
+    }
+  }
+
+  let cjkCount = 0
+  const len = text.length
+  for (let i = 0; i < len; i++) {
+    const code = text.charCodeAt(i)
+    if (
+      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
+      (code >= 0x3400 && code <= 0x4dbf) || // CJK Extension A
+      (code >= 0x3040 && code <= 0x30ff) || // Hiragana & Katakana
+      (code >= 0xac00 && code <= 0xd7af)    // Hangul Syllables
+    ) {
+      cjkCount++
+    }
+  }
+
+  // Non-CJK text word splitting
+  let latinWords = 0
+  if (cjkCount < len) {
+    const nonCjk = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uac00-\ud7af]/g, ' ')
+    latinWords = nonCjk.split(/\s+/).filter(Boolean).length
+  }
+
+  // Combine Latin words + CJK morphemes (~0.6 words per ideogram)
+  let effectiveWords = latinWords + Math.round(cjkCount * 0.6)
+
+  // If page is an illustration/figure with minimal text, allocate visual viewing dwell
+  if (hasIllustration && effectiveWords < 15) {
+    effectiveWords = 60
+  }
+
+  return {
+    words: Math.max(1, effectiveWords),
+    chars: len,
+    isImageOrSparse: effectiveWords < 20
+  }
+}
 
 export class AdaptiveScrollEngine {
   private readonly alpha = 0.15
@@ -84,6 +144,8 @@ export class AdaptiveScrollEngine {
   private pauseReason: PauseReason = null
   private suspensionReasons: Set<SuspensionReason> = new Set()
   private isMicroPausing = false
+  private isSkimming = false
+  private isDoubleSpread = false
 
   private totalDurationMs: number
   private remainingMs: number
@@ -227,24 +289,25 @@ export class AdaptiveScrollEngine {
     }
   }
 
-  public computePageDurationMs(visibleWords: number): number {
+  public computePageDurationMs(visibleWords: number, isDoubleSpread = false): number {
     if (this.mode === 'countdown') {
       return this.fixedCountdownSec * 1000
     }
-    return this.calculateBlockDurationMs(visibleWords)
+    return this.calculateBlockDurationMs(visibleWords, isDoubleSpread)
   }
 
   // Calculate dynamic duration for visible on-screen words in Smart/Adaptive mode
-  // Scales proportionally around the user's manual adaptiveBaseSec for a reference 180-word page
-  public calculateBlockDurationMs(wordsOnScreen: number): number {
-    const effectiveWords = Math.max(20, wordsOnScreen)
-    const densityRatio = effectiveWords / REFERENCE_PAGE_WORDS
+  // Scales proportionally around the user's manual adaptiveBaseSec for a reference 180-word page (or 360-word spread)
+  public calculateBlockDurationMs(wordsOnScreen: number, isDoubleSpread = false): number {
+    const effectiveWords = Math.max(5, wordsOnScreen)
+    const refWords = isDoubleSpread ? REFERENCE_PAGE_WORDS * 2 : REFERENCE_PAGE_WORDS
+    const densityRatio = effectiveWords / refWords
     const rawMs = Math.round(this.adaptiveBaseSec * 1000 * densityRatio)
     return Math.max(MIN_ADAPTIVE_MS, Math.min(MAX_ADAPTIVE_MS, rawMs))
   }
 
   private recalibrateActiveDuration(): void {
-    const newTotalMs = this.computePageDurationMs(this.lastPageWordCount)
+    const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
     const ratio = this.totalDurationMs > 0 ? this.remainingMs / this.totalDurationMs : 1
     this.totalDurationMs = newTotalMs
     this.remainingMs = Math.min(newTotalMs, Math.max(500, Math.round(ratio * newTotalMs)))
@@ -255,10 +318,12 @@ export class AdaptiveScrollEngine {
   public startPageCountdown(
     visibleWords: number,
     hasBreak: boolean,
-    onExpire: () => void
+    onExpire: () => void,
+    isDoubleSpread = false
   ): void {
     this.clearMicroPauseTimer()
     this.isMicroPausing = false
+    this.isDoubleSpread = isDoubleSpread
 
     const now = this.nowFn()
     if (!this.isActive) {
@@ -269,11 +334,11 @@ export class AdaptiveScrollEngine {
     }
 
     this.isActive = true
-    this.lastPageWordCount = Math.max(10, visibleWords)
+    this.lastPageWordCount = Math.max(5, visibleWords)
     this.hasBreakOnPage = hasBreak
     this.onExpireCallback = onExpire
 
-    const durationMs = this.computePageDurationMs(this.lastPageWordCount)
+    const durationMs = this.computePageDurationMs(this.lastPageWordCount, isDoubleSpread)
     this.totalDurationMs = durationMs
     this.remainingMs = durationMs
     this.lastTickAt = now
@@ -417,11 +482,32 @@ export class AdaptiveScrollEngine {
   }
 
   // Record observed manual reading speed between page turns (EMA alpha = 0.15)
+  // Protected by the Mathematical Skimming & Idling Guard:
   public recordManualReading(wordCount: number, elapsedMs: number): void {
-    if (elapsedMs <= 500 || wordCount <= 0) return
+    // 1. Physical fixation minimum: Dwells under 800ms are accidental clicks or rapid key-repeats
+    if (elapsedMs < MIN_RECOGNITION_DWELL_MS || wordCount <= 0) return
+
     const elapsedMinutes = elapsedMs / 60000
     const rawObserved = wordCount / elapsedMinutes
 
+    // 2. Skimming Protector: If observed speed exceeds plausible reading ceiling
+    // (e.g. 230 words in 3s or 10s gives 4,600 / 1,380 WPM)
+    if (rawObserved > MAX_PLAUSIBLE_READING_WPM) {
+      this.isSkimming = true
+      this.observedWpm = this.clampWpm(rawObserved)
+      // Do NOT corrupt the learned cadence! Preserve currentWpm and adaptiveBaseSec intact.
+      this.notify()
+      return
+    }
+
+    // 3. Idling / Inattention Protector: If observed speed is lower than 60 WPM (e.g. reader paused or stepped away)
+    if (rawObserved < MIN_PLAUSIBLE_READING_WPM) {
+      // Do not pull learned reading cadence down to turtle pace
+      return
+    }
+
+    // 4. Normal Reading Cadence: User is reading within physiological bounds (even short pages like 5 words in 2s = 150 WPM)
+    this.isSkimming = false
     this.observedWpm = this.clampWpm(rawObserved)
     this.currentWpm = this.alpha * this.observedWpm + (1 - this.alpha) * this.currentWpm
     this.targetWpm = this.clampWpm(this.currentWpm)
@@ -540,6 +626,7 @@ export class AdaptiveScrollEngine {
       isPaused: this.isPausedState(),
       isUserPaused: this.isUserPaused,
       isAutoSuspended: this.suspensionReasons.size > 0,
+      isSkimming: this.isSkimming,
       pauseReason: this.pauseReason,
       isMicroPausing: this.isMicroPausing,
       microPauseEnabled: this.microPauseEnabled,
