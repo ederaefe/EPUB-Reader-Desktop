@@ -367,6 +367,7 @@ img, svg {
 .platform-pill {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 5px 14px;
   border-radius: var(--radius-full);
   background-color: var(--bg-surface);
@@ -378,6 +379,19 @@ img, svg {
   cursor: pointer;
   text-decoration: none;
   transition: all var(--transition-fast);
+}
+
+.platform-pill svg {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.platform-pill:hover svg,
+.platform-pill.active svg {
+  opacity: 1;
 }
 
 .platform-pill:hover {
