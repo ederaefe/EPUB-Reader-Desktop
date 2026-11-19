@@ -404,12 +404,33 @@ export class AdaptiveScrollEngine {
     if (!this.isActive) return
 
     const now = this.nowFn()
-    const deltaMs = Math.max(0, now - this.lastTickAt)
+    const rawDeltaMs = Math.max(0, now - this.lastTickAt)
     this.lastTickAt = now
+
+    // 1. Sleep / Hibernate / Extreme Thread Freeze Guard:
+    // If elapsed wall clock time jumped by > 3000ms, the OS or window was suspended.
+    // Safely auto-pause with reason 'inactivity' instead of burning remaining time and jumping pages!
+    if (rawDeltaMs > 3000) {
+      this.isUserPaused = true
+      this.pauseReason = 'inactivity'
+      this.notify()
+      return
+    }
+
+    // 2. Active Inactivity Watchdog:
+    // If the user leaves the computer focused without interacting for >= 5 minutes (300,000ms),
+    // automatically pause to avoid reading through the entire book unattended.
+    if (!this.isUserPaused && now - this.lastUserActivityAt >= this.inactivityTimeoutMs) {
+      this.isUserPaused = true
+      this.pauseReason = 'inactivity'
+      this.notify()
+      return
+    }
 
     // Freeze countdown while paused, suspended, or micro-pausing
     if (this.isPausedState() || this.isMicroPausing) return
 
+    const deltaMs = Math.min(rawDeltaMs, 1000)
     this.remainingMs = Math.max(0, this.remainingMs - deltaMs)
     const nextSec = Math.ceil(this.remainingMs / 1000)
 
