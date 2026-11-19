@@ -239,6 +239,16 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookKey, activeBookBuffer])
 
+  // Stop Read Aloud on unmount
+  useEffect(() => {
+    return () => {
+      ttsService.stop()
+      const st = useAppStore.getState()
+      st.setTTSActive(false)
+      st.setTTSMuted(false)
+    }
+  }, [])
+
   const activePdfTocItem = findActivePdfTocItem(toc, currentPage)
   const activePdfChapterLabel = activePdfTocItem?.label || `Page ${currentPage} / ${totalPages}`
 
@@ -758,8 +768,34 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         )}
       </div>
 
-      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
-      {!isImmersiveFullscreen && (
+      {/* Draggable & Minimizable Reader Audio HUD for Read Aloud */}
+      <ReaderAudioHUD
+        isTTSActive={isTTSActive}
+        isTTSMuted={isTTSMuted}
+        currentChapter={activePdfChapterLabel}
+        ttsSpeed={settings.ttsSpeed}
+        onTogglePlay={() => {
+          const st = useAppStore.getState()
+          if (st.isTTSActive) {
+            if (st.isTTSMuted) {
+              ttsService.resume()
+              st.setTTSMuted(false)
+            } else {
+              ttsService.pause()
+              st.setTTSMuted(true)
+            }
+          }
+        }}
+        onStop={() => {
+          ttsService.stop()
+          const st = useAppStore.getState()
+          st.setTTSActive(false)
+          st.setTTSMuted(false)
+        }}
+      />
+
+      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen or when toggled off in settings) */}
+      {!isImmersiveFullscreen && settings.showProgressBar !== false && (
         <FluidClimaxProgressBar
           progressPercent={pdfProgressPercent}
           currentPage={currentPage}
