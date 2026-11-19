@@ -137,11 +137,12 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
       currentHue = interpolateHue(CLIMAX_RED_HUE, endHue, Math.min(1, (1 - climaxWeight) * Math.min(1, t * 1.25)))
     }
 
-    const saturation = Math.round(75 + climaxWeight * 22)
-    const lightness = Math.round(48 + climaxWeight * 8)
+    // Calmed, literary saturation & lightness to avoid visual distraction
+    const saturation = Math.round(38 + climaxWeight * 16)
+    const lightness = Math.round(42 + climaxWeight * 6)
 
     const color = `hsl(${Math.round(currentHue)}, ${saturation}%, ${lightness}%)`
-    const glow = `hsla(${Math.round(currentHue)}, ${saturation}%, ${lightness}%, ${Math.max(0.2, climaxWeight * 0.75).toFixed(2)})`
+    const glow = `hsla(${Math.round(currentHue)}, ${saturation}%, ${lightness}%, ${Math.max(0.08, climaxWeight * 0.28).toFixed(2)})`
 
     return {
       fluidColor: color,
@@ -279,16 +280,16 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
                 backgroundColor: isSaberGlowing ? '#ff1e2d' : fluidColor,
                 boxShadow: isSaberGlowing
                   ? 'inset 0 0 3px #ffffff, 0 0 14px rgba(255, 24, 42, 0.95)'
-                  : `0 0 ${Math.round(4 + climaxIntensity * 8)}px ${glowColor}`
+                  : `0 0 ${Math.round(2 + climaxIntensity * 3)}px ${glowColor}`
               }}
             >
               {/* Top Cylindrical Liquid Specular Sheen */}
               <div
-                className="absolute inset-x-0 top-0 h-[45%] rounded-t-full pointer-events-none opacity-60"
+                className="absolute inset-x-0 top-0 h-[45%] rounded-t-full pointer-events-none opacity-40"
                 style={{
                   background: isSaberGlowing
                     ? 'linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, rgba(255,210,218,0.45) 100%)'
-                    : 'linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.1) 100%)'
+                    : 'linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.05) 100%)'
                 }}
               />
 
@@ -297,19 +298,19 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
                 <div
                   className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full pointer-events-none transition-all duration-150"
                   style={{
-                    width: isHovered || isDragging || isSaberGlowing ? '6px' : '4px',
-                    height: isHovered || isDragging || isSaberGlowing ? '6px' : '4px',
+                    width: isHovered || isDragging || isSaberGlowing ? '5px' : '3.5px',
+                    height: isHovered || isDragging || isSaberGlowing ? '5px' : '3.5px',
                     backgroundColor: isSaberGlowing
                       ? '#ffffff'
                       : isLightMode
                         ? fluidColor
-                        : '#ffffff',
+                        : 'rgba(255,255,255,0.85)',
                     boxShadow: isSaberGlowing
                       ? '0 0 8px #ffffff, 0 0 14px #ff1e2d'
                       : isLightMode
-                        ? `0 0 0 1.5px rgba(255,255,255,0.85), 0 0 6px ${glowColor}`
-                        : `0 0 6px ${glowColor}, 0 0 2px #ffffff`,
-                    opacity: 0.98
+                        ? `0 0 0 1px rgba(255,255,255,0.65), 0 0 3px ${glowColor}`
+                        : `0 0 3px ${glowColor}`,
+                    opacity: 0.85
                   }}
                 />
               )}
