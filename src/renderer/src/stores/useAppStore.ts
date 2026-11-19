@@ -42,6 +42,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   lastNoteColor: 'yellow',
   pdfZoom: 1.2,
   scrollMode: 'horizontal',
+  showProgressBar: true,
   resumeBarDismissedAt: null
 }
 

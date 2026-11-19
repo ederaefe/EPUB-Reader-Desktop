@@ -252,25 +252,50 @@ export class AdaptiveScrollEngine {
     if (params.fixedCountdownSec !== undefined) {
       const clamped = this.clampCountdownSec(params.fixedCountdownSec)
       if (clamped !== this.fixedCountdownSec) {
+        const oldTotal = this.totalDurationMs
         this.fixedCountdownSec = clamped
-        if (this.mode === 'countdown') shouldRecalibrate = true
+        if (this.mode === 'countdown') {
+          const newTotalMs = clamped * 1000
+          this.totalDurationMs = newTotalMs
+          if (this.isPausedState() || !this.isActive) {
+            this.remainingMs = newTotalMs
+          } else {
+            const delta = newTotalMs - oldTotal
+            this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
+          }
+          shouldRecalibrate = false
+          this.notify()
+        }
       }
     }
 
     if (params.adaptiveBaseSec !== undefined) {
       const clamped = this.clampCountdownSec(params.adaptiveBaseSec)
       if (clamped !== this.adaptiveBaseSec) {
+        const oldTotal = this.totalDurationMs
         this.adaptiveBaseSec = clamped
         const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
         this.targetWpm = derivedWpm
         this.currentWpm = derivedWpm
-        if (this.mode === 'adaptive') shouldRecalibrate = true
+        if (this.mode === 'adaptive') {
+          const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
+          this.totalDurationMs = newTotalMs
+          if (this.isPausedState() || !this.isActive) {
+            this.remainingMs = newTotalMs
+          } else {
+            const delta = newTotalMs - oldTotal
+            this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
+          }
+          shouldRecalibrate = false
+          this.notify()
+        }
       }
     } else if (params.targetWpm !== undefined) {
       const clamped = this.clampWpm(params.targetWpm)
       if (clamped !== Math.round(this.targetWpm)) {
         this.targetWpm = clamped
         this.currentWpm = clamped
+        this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / clamped) * 60)
         if (this.mode === 'adaptive') shouldRecalibrate = true
       }
     }
@@ -308,9 +333,15 @@ export class AdaptiveScrollEngine {
 
   private recalibrateActiveDuration(): void {
     const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-    const ratio = this.totalDurationMs > 0 ? this.remainingMs / this.totalDurationMs : 1
-    this.totalDurationMs = newTotalMs
-    this.remainingMs = Math.min(newTotalMs, Math.max(500, Math.round(ratio * newTotalMs)))
+    if (this.isPausedState()) {
+      this.totalDurationMs = newTotalMs
+      this.remainingMs = newTotalMs
+    } else {
+      const oldTotal = this.totalDurationMs
+      this.totalDurationMs = newTotalMs
+      const delta = newTotalMs - oldTotal
+      this.remainingMs = Math.max(500, Math.min(newTotalMs, this.remainingMs + delta))
+    }
     this.notify()
   }
 
