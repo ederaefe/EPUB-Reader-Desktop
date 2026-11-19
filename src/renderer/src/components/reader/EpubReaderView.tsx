@@ -1324,10 +1324,31 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     const epub = epubBookRef.current as any
     if (!rendition) return
 
+    const container = rendition.manager?.container as HTMLElement | undefined
+    const isVert = scrollModeRef.current === 'vertical'
+
+    // Feature 1: Smooth continuous viewport slice advancement in vertical mode
+    if (isVert && container) {
+      const scrollHeight = container.scrollHeight
+      const clientHeight = container.clientHeight
+      const scrollTop = container.scrollTop
+      const atBottom = scrollTop + clientHeight >= scrollHeight - 20
+      const atTop = scrollTop <= 20
+
+      if (direction === 'next' && !atBottom) {
+        const step = Math.round(clientHeight * 0.85)
+        container.scrollBy({ top: step, behavior: 'smooth' })
+        return
+      } else if (direction === 'prev' && !atTop) {
+        const step = Math.round(clientHeight * 0.85)
+        container.scrollBy({ top: -step, behavior: 'smooth' })
+        return
+      }
+    }
+
     const beforeLoc = rendition.currentLocation?.() as any
     const beforeCfi: string = beforeLoc?.start?.cfi || currentCfiRef.current || ''
     const beforeIdx: number = typeof beforeLoc?.start?.index === 'number' ? beforeLoc.start.index : -1
-    const container = rendition.manager?.container as HTMLElement | undefined
     const beforeScrollLeft = container?.scrollLeft ?? 0
     const beforeScrollTop = container?.scrollTop ?? 0
 
@@ -1392,18 +1413,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
     // Tier 1: Exact visible range between start.cfi and end.cfi
     try {
-      if (loc?.start?.cfi && loc?.end?.cfi && epubBookRef.current) {
-        const range = (epubBookRef.current as any).getRange?.(loc.start.cfi, loc.end.cfi)
-        if (range) {
-          const frag = range.cloneContents?.()
-          // Fast sanitized text extraction (stripping hidden footnote/script/ruby tags)
-          frag?.querySelectorAll?.('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]')?.forEach((el: any) => el.remove())
-          const hasImg = Boolean(frag?.querySelector?.('img, svg, figure, image'))
-          const cleanText = frag?.textContent || range.toString() || ''
+      if (loc?.start?.cfi && loc?.end?.cfi && renditionRef.current) {
+        const startR = (renditionRef.current as any).getRange?.(loc.start.cfi) as Range | undefined
+        const endR = (renditionRef.current as any).getRange?.(loc.end.cfi) as Range | undefined
+        if (startR && endR && startR.startContainer?.ownerDocument) {
+          const doc = startR.startContainer.ownerDocument
+          const combined = doc.createRange()
+          combined.setStart(startR.startContainer, startR.startOffset)
+          combined.setEnd(endR.endContainer, endR.endOffset)
+          const frag = combined.cloneContents()
+          frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+          const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
+          const cleanText = frag.textContent || combined.toString() || ''
           visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
 
           hasBreak = Boolean(
-            frag?.querySelector?.('hr, .section-break, .break, .separator, blockquote, .asterism') ||
+            frag.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
             /\*\s*\*\s*\*|\u2042|\u2041/.test(cleanText)
           )
         }
@@ -2716,8 +2741,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         onStop={() => handleStopTTSRef.current()}
       />
 
-      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen) */}
-      {!isImmersiveFullscreen && (
+      {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen or when toggled off in settings) */}
+      {!isImmersiveFullscreen && settings.showProgressBar !== false && (
         <FluidClimaxProgressBar
           progressPercent={progressPercent || 0}
           currentPage={currentPage}

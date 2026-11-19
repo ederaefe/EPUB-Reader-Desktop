@@ -25,8 +25,10 @@ import { AnnotationPopover } from './AnnotationPopover'
 import { syncBookNotesCount, ICE_NOTE_COLORS } from '../../services/annotationService'
 import { buildPdfToc, findActivePdfTocItem } from '../../services/tocService'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
+import { ReaderAudioHUD } from './ReaderAudioHUD'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
 import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
+import { ttsService } from '../../services/ttsService'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
