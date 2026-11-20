@@ -128,22 +128,22 @@ export const DimnessSlider: React.FC<DimnessSliderProps> = ({
           className="relative flex-1 h-5 flex items-center cursor-pointer group outline-none"
         >
           {/* Base Unfilled Pill Track */}
-          <div className="w-full h-1.5 rounded-full bg-[rgba(0,0,0,0.28)] dark:bg-[rgba(255,255,255,0.12)] border border-[rgba(255,255,255,0.06)] dark:border-[rgba(255,255,255,0.1)] overflow-hidden shadow-inner" />
+          <div className="w-full h-1.5 rounded-full bg-black/15 dark:bg-white/15 border border-black/5 dark:border-white/10 overflow-hidden shadow-inner" />
 
           {/* Active Filled Pill Bar */}
           <div
             style={{ width: `${pct}%` }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gradient-to-r from-[var(--app-accent)] to-[var(--app-accent-hover,var(--app-accent))] pointer-events-none transition-[width] duration-75"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[var(--app-accent,#3b82f6)] pointer-events-none transition-[width] duration-75"
           />
 
-          {/* Donut Thumb Knob (Outer disc with solid white center dot) */}
+          {/* Donut Thumb Knob (Outer dark disc with solid white center dot for all themes) */}
           <div
             style={{ left: `${pct}%` }}
-            className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[var(--app-surface-3,#1e222d)] border border-white/30 shadow-[0_2px_8px_rgba(0,0,0,0.4)] flex items-center justify-center pointer-events-none transition-transform duration-100 ${
+            className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#1e293b] border border-white/25 shadow-[0_2px_8px_rgba(0,0,0,0.35)] flex items-center justify-center pointer-events-none transition-transform duration-100 ${
               isDragging ? 'scale-115 ring-2 ring-[var(--app-accent)]/50' : 'group-hover:scale-110'
             }`}
           >
-            {/* Inner White Dot */}
+            {/* Inner Crisp White Dot */}
             <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
           </div>
         </div>
