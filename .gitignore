@@ -11,6 +11,7 @@ release/
 Thumbs.db
 
 scratch/
-.agents/
+.agents/*
+!.agents/skills/
 release-Windows/
 handoff.md

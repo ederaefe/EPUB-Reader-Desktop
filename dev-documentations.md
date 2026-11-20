@@ -2008,3 +2008,29 @@ Establish a strict separation between public website documentation and internal 
 ### Verification Matrix
 - `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+
+---
+
+## Increment 30: Horizontal Reader Hardening & Dual-Layout Edge Stabilization
+
+### Problem Description
+1. **Dual-Page Estimation Regression**: In `EpubReaderView.tsx`, `applyLocationState` calculated `spreadFactor` by evaluating `settings.pageSpread === 'double'`, which failed to recognize `pageLayout === 'dual'`, causing page number estimations in dual mode to be halved.
+2. **Text Input Hotkey Interception**: In-book content window listeners (`contents.window.addEventListener('keydown')`) and main window keydown listeners captured navigation keys (`ArrowLeft`, `ArrowRight`, `PageUp`, `PageDown`) without checking whether the active target was a text input or textarea, stealing cursor movements in annotations and search fields.
+3. **Modal Overlay Margin Collision**: Opening the TOC Drawer applied a margin shift (`ml-[340px]`) to the reader canvas even though `TOCDrawer` is rendered as an overlay modal with a backdrop, causing unnecessary canvas reflows and off-center text columns.
+4. **Side Navigation Floating Button Overlap**: Reader next/prev floating navigation arrows remained visible on hover when side drawers or modals were open, occluding drawer inputs and controls.
+5. **Settings Hydration & Layout Reconciliation**: `loadSyncSettings` and `hydrateSettingsFromDb` in `useAppStore.ts` shallow-merged stored settings, allowing obsolete `pageSpread` values to conflict with `pageLayout: 'dual'`. Additionally, `PdfReaderView.tsx` omitted `settings.pageLayout` from layout recalculation hooks, and the center gutter divider lacked midpoint centering (`-translate-x-1/2`).
+
+### Architectural Solution
+1. **Layout-Aware Spread Factor**: Updated `spreadFactor` calculation in `applyLocationState` to evaluate `isDualLayout ? 2 : 1`, aligning location calculations with the modernized layout schema.
+2. **Input-Safe Keyboard Navigation**: Added `isTargetInput` checks across both `contents.window` and `window` keydown handlers, bypassing reader hotkeys whenever focus resides in an `input`, `textarea`, `select`, or `contenteditable` node.
+3. **Decoupled Overlay Drawer Spacing**: Removed the left margin contraction from `#reader-wrapper` for the TOC drawer modal while preserving smooth right margin contraction (`mr-[380px]`) for the non-modal right settings drawer.
+4. **Drawer-Aware Arrow Visibility**: Passed `hidden={isImmersiveFullscreen || isRightDrawerOpen || isTOCDrawerOpen}` to `SideNavigation` in both `EpubReaderView.tsx` and `PdfReaderView.tsx`, completely suppressing hover navigation buttons whenever any drawer is active.
+5. **Reconciliation & Geometric Centering**:
+   - Added hydration migration logic in `useAppStore.ts` mapping legacy `pageSpread: 'double'` to `pageLayout: 'dual'`.
+   - Added `settings.pageLayout` to `PdfReaderView.tsx` effect dependencies.
+   - Added `-translate-x-1/2` to `[data-testid="dual-page-gutter-divider"]` in `EpubReaderView.tsx` to guarantee exact optical midpoint alignment.
+
+### Automated Testing Matrix
+- `npm run typecheck`: Passed with zero errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+- Automated layout test suite (`scratch/test_reader_layout_modes.js`): All test cases (TC-1, TC-2, TC-3, TC-4) verified passing.

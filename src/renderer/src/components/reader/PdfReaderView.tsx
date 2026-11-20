@@ -434,6 +434,107 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     setCurrentPage((p) => Math.max(1, p - step))
   }, [step])
 
+  // Keep stable refs for timer loop to avoid stale closure
+  const currentPageRef = useRef(currentPage)
+  const totalPagesRef = useRef(totalPages)
+  currentPageRef.current = currentPage
+  totalPagesRef.current = totalPages
+
+  // Cleanup autoscroll on unmount
+  useEffect(() => {
+    return () => {
+      adaptiveScrollEngine.stop()
+      useAppStore.getState().setAutoscrollActive(false)
+    }
+  }, [])
+
+  // Auto-pause PDF Autoscroll when any drawer, modal, or context menu is open
+  useEffect(() => {
+    const anyPanelOpen = Boolean(
+      isTOCDrawerOpen ||
+      isNotesDrawerOpen ||
+      isBookmarksDrawerOpen ||
+      isSearchDrawerOpen ||
+      isSettingsDrawerOpen ||
+      isFullSettingsModalOpen ||
+      contextMenu
+    )
+    adaptiveScrollEngine.setSuspension('drawer', anyPanelOpen)
+  }, [
+    isTOCDrawerOpen,
+    isNotesDrawerOpen,
+    isBookmarksDrawerOpen,
+    isSearchDrawerOpen,
+    isSettingsDrawerOpen,
+    isFullSettingsModalOpen,
+    contextMenu
+  ])
+
+  // Auto-pause while user is selecting text
+  useEffect(() => {
+    adaptiveScrollEngine.setSuspension('selection', Boolean(selectedPdfText))
+  }, [selectedPdfText])
+
+  // Shared Autoscroll Engine Lifecycle for PDF (Dwell time only, no WPM)
+  // Single page default: 25s, Dual spread default: 45s.
+  useEffect(() => {
+    if (!isAutoscrollActive) {
+      adaptiveScrollEngine.stop()
+      return
+    }
+
+    const dwellSec = isDual
+      ? (settings.pdfCountdownSecDual ?? 45)
+      : (settings.pdfCountdownSecSingle ?? 25)
+    adaptiveScrollEngine.configure({ mode: 'countdown', fixedCountdownSec: dwellSec })
+
+    let cancelled = false
+
+    const armPage = () => {
+      if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+      if (currentPage >= totalPages) {
+        adaptiveScrollEngine.stop()
+        setAutoscrollActive(false)
+        return
+      }
+
+      adaptiveScrollEngine.startPageCountdown(
+        180,
+        false,
+        () => {
+          if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+          const cur = currentPageRef.current
+          const tot = totalPagesRef.current
+          if (cur + step > tot) {
+            handleNext()
+            adaptiveScrollEngine.stop()
+            useAppStore.getState().setAutoscrollActive(false)
+          } else {
+            handleNext()
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+          }
+        },
+        isDual
+      )
+    }
+
+    armPage()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    isAutoscrollActive,
+    currentPage,
+    totalPages,
+    isDual,
+    step,
+    handleNext,
+    setAutoscrollActive,
+    settings.pdfCountdownSecDual,
+    settings.pdfCountdownSecSingle
+  ])
+
   // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
