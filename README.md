@@ -22,9 +22,9 @@ A fast, private, distraction-free desktop reader for your personal book library.
 
 <br />
 
-<img src="assets/app-preview.png" alt="Semply Desktop Application Preview" width="900" />
+<img src="assets/app-preview.png" alt="Semply Deep Reading Session Preview" width="900" />
 
-<p><em>The Semply desktop sanctuary: frameless titlebar, clean library navigation, zero telemetry, and distraction-free typography.</em></p>
+<p><em>The Semply reading sanctuary: dual-page spread typography, chapter tracking, subtle progress scrubber, and zero distraction.</em></p>
 
 </div>
 
