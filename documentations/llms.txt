@@ -25,4 +25,4 @@ Semply Ebook Reader requires no account, no subscription, and no internet connec
 - [Troubleshooting & FAQ](./index.html#faq): Answers to common offline, cover, PDF reflow, and shortcut questions.
 
 ## Optional
-- [GitHub Repository](https://github.com/ederaefe/EPUB-Reader-Desktop): Source code, releases, and internal developer documentation (`dev-documentations.md`).
+- [GitHub Repository](https://github.com/ederaefe/EPUB-Reader-Desktop): Official source code and releases.

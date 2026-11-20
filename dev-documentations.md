@@ -1757,3 +1757,22 @@ In `vercel.json`, `"cleanUrls": true` and `"trailingSlash": false` strip trailin
 3. **Verification**:
    - Verified locally via HTTP server on port 3456 and Playwright headless Chromium browser.
    - Confirmed full visual layout rendering with Obsidian dark theme, responsive sidebar navigation, search modal, and pace calculator functionality.
+
+---
+
+## Increment 47: Public Documentation & Contributor Architecture Boundary Segregation (2026-11-20)
+
+### Architectural Intent
+Establish a strict separation between public website documentation and internal repository developer documentation. Contributor and architectural internals (`dev-documentations.md`) must only exist inside the repository and must never be exposed to end users navigating the public website.
+
+### Changes & Scoping
+1. **Public Website Reference Purge**:
+   - `index.html`: Replaced the community action CTA `<a href="dev-documentations.md">Developer Manual</a>` with `<a href="/documentations">Docs</a>` using a clean book icon.
+   - `index.html`: Removed `<li><a href="dev-documentations.md">Developer Reference</a></li>` from the footer documentation column, keeping only public resources (`Docs`, `AI Summary Index`, `AI Full Context`).
+   - `documentations/index.html`: Stripped out internal contributor documentation references from the hosting guidelines note.
+   - `documentations/llms-full.txt`: Removed the internal developer documentation entry from the FAQ section.
+   - `documentations/llms.txt`: Cleaned the repository entry under Optional links to reference only official source code and releases.
+2. **Repository Boundary Invariant**:
+   - `dev-documentations.md`: Houses all low-level technical architecture, IPC event catalogs, reflow engine synchronization logic, and historical build increments for open-source contributors working within the Git workspace.
+   - `documentation.md`: High-level, user-centric, implementation-agnostic permanent reference document for end-user functionality and readers.
+   - `/documentations/`: Static web documentation portal hosted on Vercel containing semantic guide chapters, keyboard shortcut tables, and `llmstxt.org` AI assistant indexes.

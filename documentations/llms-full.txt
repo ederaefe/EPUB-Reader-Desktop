@@ -158,4 +158,3 @@ From **All Preferences -> Backup & Sync**:
 - **Does Semply require an account or internet?** No. Everything runs offline locally; internet is only used for optional Dictionary, Wikipedia, and Translate lookups.
 - **Why does a book display a miniature first page?** Coverless EPUBs and TXT files automatically generate a crisp warm-paper first-page preview; PDFs render Page 1.
 - **Why don't `Ctrl+R` or `F5` reload the app?** Semply intentionally blocks accidental reload, close, and browser history shortcuts so reading state is never wiped.
-- **Where is the internal developer documentation?** See `dev-documentations.md` in the project repository root.
