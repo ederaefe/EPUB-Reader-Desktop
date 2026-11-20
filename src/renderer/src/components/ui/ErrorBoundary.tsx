@@ -87,11 +87,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleOpenGitHubIssues = () => {
     const issuesUrl = 'https://github.com/elrazortheodore/Semply/issues/new'
-    if (typeof (window.desktopAPI as any)?.openExternal === 'function') {
-      ;(window.desktopAPI as any).openExternal(issuesUrl)
-    } else {
-      window.open(issuesUrl, '_blank', 'noopener,noreferrer')
-    }
+    window.open(issuesUrl, '_blank', 'noopener,noreferrer')
   }
 
   render() {
