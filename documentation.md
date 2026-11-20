@@ -1,13 +1,28 @@
 # Semply Ebook Reader - User Documentation
 
-> **User-Facing Guide** — Simple, plain-language overview of Semply Ebook Reader features, preferences, and recent updates. For internal architecture, file paths, IPC contracts, and technical implementation specs, see `dev-documentations.md`.
+> [!IMPORTANT]
+> **Instructions for AI Agents Appending to this Document**
+> Do NOT read the entire document before appending. Read only this header section (Rules, Template, and Example), then jump straight to the end of the file and append your entry under **Recent Updates**.
 
-## Documentation Style Guide (User-Facing)
-All future updates appended to `documentation.md` must follow these rules:
-- **Audience**: Everyday readers, not engineers. Explain *what changed for the user* and *how to use it*.
-- **Tone & Clarity**: Use plain, direct language with short bullet points and clear headings. Keep sentences concise.
-- **No Code Internals**: Omit source file paths, CSS class names, IPC channel names, database schemas, and internal component names (put those in `dev-documentations.md`).
-- **Format**: Append new user-visible changes under **Recent Updates** with a short bold title and 1–3 plain sentences per feature.
+### Appending Rules
+1. **Audience**: Everyday readers (non-technical). Explain *what changed for the user* and *how to use it*.
+2. **Strictly No Code Internals**: Do NOT include file paths (`src/...`), function names, variable names, CSS classes, or internal architecture details. (Those belong in `dev-documentations.md`).
+3. **Format**: Append at the very bottom of the document under `## Recent Updates`.
+4. **Structure**: Bold feature title (`- **Feature Title**:`) followed by clean, plain-language bullet points explaining reader benefits and behavior.
+
+### Append Template
+```markdown
+- **<User-Facing Feature Name>**:
+  - **<Sub-feature or Benefit>**: Plain language explanation of what was added or changed, why it helps the reader, and how to use it.
+  - **<Sub-feature or Benefit>**: Plain language description of any visual, functional, or stability improvement.
+```
+
+### Example Entry
+```markdown
+- **Neo-Styled PDF Zoom & Dimension Presets**:
+  - **Tactile Zoom Control**: When viewing original PDF documents, the Display settings panel offers a dedicated zoom stepper control with quick minus and plus buttons matching keyboard shortcuts (`Ctrl + -` and `Ctrl + =`).
+  - **Instant Size Presets**: Provides one-click scaling across three standard viewing dimensions: **Fit** (85%), **Default** (120%), and **Full** (160%). Clicking the central preset label cycles through dimensions, while stepping allows continuous scaling from 50% to 300%.
+```
 
 ---
 

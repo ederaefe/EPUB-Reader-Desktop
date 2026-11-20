@@ -1,13 +1,55 @@
 # Semply Ebook Reader (EPUB Reader Desktop) - Developer Reference & Architecture Documentation
 
-> **Permanent Technical Reference** — Verified against the live Electron + React 19 + TypeScript + MuPDF WASM codebase. Every IPC channel, database schema, state slice, algorithmic threshold, design token, and invariant documented below reflects the current production architecture.
+> [!IMPORTANT]
+> **Instructions for AI Agents Appending to this Document**
+> Do NOT read the entire document before appending. Read only this header section (Rules, Template, and Example), then jump straight to the end of the file and append your entry as the next sequentially numbered `## Increment N: <Title>`.
 
-## Documentation Style Guide (Developer Reference)
-All future technical updates appended to `dev-documentations.md` must follow these rules:
-- **Audience**: Maintainers and contributors working directly on the Electron, React, TypeScript, and CSS layers.
-- **Depth & Precision**: Cite exact file paths, component/prop signatures, CSS custom properties, typography/spacing values, Zustand/Dexie schema changes, IPC contracts, and architectural invariants.
-- **Append-Only Revision Log**: Record each completed increment as a sequentially numbered `## Increment N: <Title>` section at the end of the file, grouped under `### Architecture & Implementation` with numbered subsystems.
-- **Separation of Concerns**: Keep plain-language user summaries in `documentation.md`; keep code-level specifics and engineering trade-offs here in `dev-documentations.md`.
+### Appending Rules
+1. **Audience**: Software engineers and future AI agents working on Electron, React, TypeScript, and CSS.
+2. **Depth & Precision**: Must cite exact file paths (`src/...`), component names, function signatures, data structures/schemas, state stores, and architectural trade-offs.
+3. **Append-Only Sequence**: Check the last increment number at the end of the file (e.g. Increment 31), and title your section `## Increment N+1: <Descriptive Title>`.
+4. **Mandatory Sections**: Every increment must contain:
+   - `### Problem Description`: Clear numbered list of bugs, requirements, or regressions addressed.
+   - `### Architectural Solution`: Concrete breakdown of how each problem was solved with file citations.
+   - `### Verification Matrix`: Exact commands run and pass criteria (`npm run typecheck`, `npm run build`).
+
+### Append Template
+```markdown
+---
+
+## Increment <N>: <Feature / Fix Title>
+
+### Problem Description
+1. **<Issue / Requirement Name>**: Detail the exact defect, race condition, state leak, or feature request. Cite files where the issue manifested.
+2. **<Second Issue Name>**: Detail additional bugs or requirements.
+
+### Architectural Solution
+1. **<Subsystem / Component Name>** (`path/to/File.tsx`): Describe the architectural resolution, exact state changes, and component lifecycle fixes.
+2. **<Second Subsystem>** (`path/to/OtherFile.ts`): Describe further changes and cross-process telemetry synchronization.
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+```
+
+### Example Entry
+```markdown
+---
+
+## Increment 31: PDF Autoscroll Dwell Engine, Neo-Styled Zoom Presets & Dual-Page Hardening
+
+### Problem Description
+1. **Missing Text Layer on Right Page in Dual PDF View**: In `PdfReaderView.tsx`, `renderSingleCanvas` was invoked with `textLayerDiv = null` for `currentPage + 1`, and the secondary canvas lacked a corresponding DOM text layer container. Consequently, text selection, copying, highlights, and note creation were impossible on the right page in dual spread mode.
+
+### Architectural Solution
+1. **Dual-Page Text Layer Architecture** (`PdfReaderView.tsx`): Added `textLayerRightRef` alongside `canvasRightRef`. Both left and right canvases now mount absolute selectable text layers populated via `page.getTextContent()`, granting full annotation parity across dual pages.
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+```
+
+---
 
 ## Table of Contents
 1. [Product Overview & System Topology](#1-product-overview--system-topology)
@@ -2078,11 +2120,50 @@ Establish a strict separation between public website documentation and internal 
 1. **Asynchronous Agent Group Chat Ledger**: Established `scratch/issues.md` as an append-only, human-readable coordination log and group chat for autonomous agents.
 2. **Standardized Communication Protocol**:
    - Defined strict rules of engagement requiring all agents to inspect the board prior to modifications.
-   - Standardized structured entries specifying agent handle (`@<username>`), status (`IN PROGRESS`, `COMPLETED`, `BLOCKED`, `QUESTION`), touched file paths, concise change summaries, verification results, and handoff notes.
-3. **Workspace Rule Integration**: Added Section 4 to `AGENTS.md` establishing the mandatory review and post-increment logging of `scratch/issues.md` as a permanent repository guideline.
+   - Mandated two standardized logging templates:
+     - `[IN PROGRESS]`: Requires declaring Agent Handle (`@<username>`), Status (`IN PROGRESS`), "What I Am Doing", the root-cause "Problem Statement", and locked file paths.
+     - `[COMPLETED]`: Requires declaring Agent Handle, Status (`COMPLETED`), "What Was Done", the underlying "Problem Statement", the granular "Technical Fix" (architecture/code mechanics), touched files, verification results, and handoff caveats.
+3. **Workspace Rule Integration**: Added Section 4 to `AGENTS.md` establishing the mandatory review and post-increment logging of `scratch/issues.md` with explicit Problem Statement and Technical Fix fields as a permanent repository guideline.
 4. **Historical Seeding**: Populated initial entries documenting recent milestones (Increments 29 and 30) to provide immediate context for incoming agents.
 
 ### Verification Matrix
 - Verified file creation and path resolution for `c:/Users/USER/Documents/Projects/EPUB READER DESKTOP/scratch/issues.md`.
 - Updated `AGENTS.md` and `dev-documentations.md`.
 - `npm run typecheck`: Verified 0 TypeScript errors.
+
+---
+
+## Increment 32: Multi-Agent Git Worktree Isolation & Single-Authority Consolidation Architecture
+
+### Problem Description
+1. **Git Index Lock Contention (`.git/index.lock`)**: When multiple autonomous agents run concurrent staging (`git add`) and commit commands within a shared workspace directory, Git's file lock causes catastrophic aborts (`fatal: Unable to create '.git/index.lock': File exists`).
+2. **Intermediate Stage Contamination**: Concurrent `git add` operations cross-contaminate disparate features, causing one agent's commit to sweep in unfinished or broken changes from another agent.
+3. **Non-Fast-Forward Push Collisions**: Multiple agents pushing directly to `main` at the same time experience remote push rejections, forcing uncoordinated pulls, merge thrashing, and potential code rollbacks.
+
+### Architectural Solution
+1. **Isolated Worktree Provisioning (Fan-Out)**:
+   - Parallel or feature agents are strictly prohibited from committing directly to the root repository copy.
+   - When parallel tasks execute, agents provision isolated Git worktrees:
+     ```bash
+     git worktree add -b feat/<task-id> .worktrees/<task-id> origin/main
+     ```
+   - Each worktree maintains a distinct working tree, independent index file, and isolated `HEAD`, completely eliminating `index.lock` contention and staged-file cross-talk.
+2. **Repository Hygiene (`.gitignore`)**:
+   - Added `.worktrees/` to root `.gitignore` to prevent ephemeral worktree directories from being tracked as untracked files in the root workspace.
+3. **Single-Authority Review & Consolidation (Fan-In)**:
+   - A single designated Lead Coordinator or Reviewer agent serves as the gatekeeper for integration:
+     - Conducts automated static analysis (`npx tsc --noEmit`) across the branch.
+     - Performs architectural code review and regression checks against invariants in `AGENTS.md`.
+     - Merges verified feature branches into `main`.
+     - Cleans up ephemeral worktrees (`git worktree remove .worktrees/<task-id>`).
+     - Performs the single, canonical push to the remote repository.
+4. **Permanent Workspace Invariants**:
+   - Added Section 5 to `AGENTS.md`.
+   - Added Rule 6 to `scratch/issues.md`.
+
+### Verification Matrix
+- `.gitignore`: Added `.worktrees/`.
+- `AGENTS.md`: Integrated Section 5 protocol.
+- `scratch/issues.md`: Added Rule 6 and synchronization entry.
+- `npm run typecheck`: Verified 0 TypeScript errors across the workspace.
+

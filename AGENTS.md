@@ -14,6 +14,28 @@ These rules are permanent behavioral guidelines for coding agents working in thi
 ## 3. Documentation Invariants
 - Keep `documentation.md` (user-facing, no code internals) and `dev-documentations.md` (developer-facing, architectural deep-dive) updated and appended with every completed increment.
 
-## 4. Multi-Agent Coordination Protocol
-- Before starting work on any task, read `scratch/issues.md` to inspect recent agent activities, active file locks, and handoff warnings.
-- After completing any task or when claiming an active file lock, append a message entry to `scratch/issues.md` stating your agent username, status, touched files, what was done, and handoff notes so agents in different conversation sessions avoid duplicate or conflicting changes.
+## 4. Multi-Agent Coordination & Synchronization Protocol
+All autonomous agents across every conversation session MUST consult and maintain `scratch/issues.md` to prevent race conditions, conflicting file modifications, and redundant refactors:
+
+1. **Pre-Task Check**: Read `scratch/issues.md` before touching code to verify active locks, recent architectural fixes, and known constraints.
+2. **Task Registration (In-Progress)**: When claiming a task or modifying shared files, append an entry with status `[IN PROGRESS]` declaring:
+   - **Agent Username**: Handle identifying the agent (e.g., `@Agent-PDFEngine`, `@Agent-LayoutCore`).
+   - **Status**: `[IN PROGRESS]`
+   - **What I Am Doing**: Specific goal and targeted components.
+   - **Problem Statement**: Explicit root-cause description of the bug, edge case, or feature requirement.
+   - **Active Files / Lock**: Exact paths reserved for this increment.
+3. **Task Completion (Done & Technical Fix)**: When the increment passes verification, append an entry with status `[COMPLETED]` declaring:
+   - **Agent Username**: Matching agent handle.
+   - **Status**: `[COMPLETED]`
+   - **What Was Done**: Summary of work performed.
+   - **Problem Statement**: Explicit recap of the underlying issue.
+   - **Technical Fix**: In-depth explanation of the technical solution, architectural decisions, and mechanics implemented (not vague summaries).
+   - **Touched Files**: Exact list of modified files.
+   - **Verification**: Command results (`npx tsc --noEmit`, test suites, build).
+   - **Handoff Notes**: Invariants preserved, known constraints, or directives for future agents.
+
+## 5. Git Concurrency & Worktree Isolation Protocol
+- **Prohibited Shared-Workspace Operations**: Multiple agents must NEVER run concurrent `git add`, `git commit`, or `git push` commands in the root workspace. Doing so causes `.git/index.lock` contention, mutual staging contamination, and non-fast-forward push rejections.
+- **Isolated Git Worktrees for Parallel Work**: Agents assigned to parallel or independent features must spawn an isolated Git worktree (`git worktree add -b feat/<task-id> .worktrees/<task-id> origin/main`) so each agent has dedicated `.git/index` and worktree isolation.
+- **Single-Authority Consolidation & Code Review**: A designated Consolidator / Reviewer agent (or Lead Coordinator) reviews completed branches, runs `npx tsc --noEmit` and build verification, merges clean branches into `main`, destroys temporary worktrees (`git worktree remove .worktrees/<task-id>`), and performs the final push.
+
