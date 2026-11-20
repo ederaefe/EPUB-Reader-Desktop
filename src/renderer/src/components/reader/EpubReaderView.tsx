@@ -304,14 +304,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           padding-right: 36px !important;
           box-sizing: border-box !important;
           overflow-y: hidden !important;
-          column-count: 2 !important;
-          column-width: auto !important;
           column-gap: 64px !important;
           column-fill: auto !important;
           column-rule: none !important;
         }
         .galley-rw, section, article, div.body-rw, main {
-          max-width: none !important;
+          max-width: 100% !important;
           width: auto !important;
         }
         h1, h2, h3, h4, h5, h6 {
@@ -323,6 +321,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       ? `
         html {
           height: 100% !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
         }
         body {
           height: 100% !important;
@@ -332,8 +332,15 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           padding-left: 48px !important;
           padding-right: 48px !important;
           box-sizing: border-box !important;
-          column-count: 1 !important;
-          column-width: auto !important;
+          overflow-y: hidden !important;
+        }
+        .galley-rw, section, article, div.body-rw, main {
+          max-width: 100% !important;
+          width: auto !important;
+        }
+        h1, h2, h3, h4, h5, h6 {
+          column-span: none !important;
+          -webkit-column-span: none !important;
         }
       `
       : ''
@@ -1511,7 +1518,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     activeBookBuffer,
     pdfViewMode,
     reflowEpubBuffer,
-    settings.pageSpread,
     settings.scrollMode,
     attachIframeHooks,
     computeProgressMetrics
@@ -3206,22 +3212,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           </button>
         )}
 
-        {/* EPUB Mount Point */}
+        {/* EPUB Mount Point (kept completely empty of React children so 3rd-party DOM cleanup never collides with React fiber reconciler) */}
         <div
           ref={viewerRef}
           className="w-full h-full max-w-6xl mx-auto relative"
-        >
-          {/* Center Gutter Divider for Double Page Spread (Horizontal Paginated mode only) */}
-          {settings.pageSpread === 'double' && settings.scrollMode !== 'vertical' && !isImmersiveFullscreen && (
-            <div
-              style={{
-                backgroundColor: currentTheme.border,
-                boxShadow: '-1px 0 6px rgba(0,0,0,0.3), 1px 0 6px rgba(0,0,0,0.3)'
-              }}
-              className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40 z-10"
-            />
-          )}
-        </div>
+        />
+
+        {/* Center Gutter Divider for Double Page Spread (Horizontal Paginated mode only) */}
+        {settings.pageSpread === 'double' && settings.scrollMode !== 'vertical' && !isImmersiveFullscreen && (
+          <div
+            style={{
+              backgroundColor: currentTheme.border,
+              boxShadow: '-1px 0 6px rgba(0,0,0,0.3), 1px 0 6px rgba(0,0,0,0.3)'
+            }}
+            className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40 z-20"
+          />
+        )}
       </div>
 
       {/* Feature 1: Minimalist Bottom-Right Auto-Scroll Countdown (persists even in Fullscreen) */}
