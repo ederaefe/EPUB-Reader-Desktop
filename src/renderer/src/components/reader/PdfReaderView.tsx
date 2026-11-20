@@ -758,7 +758,8 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           x: rect.left + rect.width / 2,
           y: rect.top
         })
-        setSelectedPageNum(currentPage)
+        const isRight = Boolean(textLayerRightRef.current?.contains(range.commonAncestorContainer))
+        setSelectedPageNum(isRight ? currentPage + 1 : currentPage)
       }
     } catch {
       // Range calculation fallback
@@ -905,6 +906,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
                 style={{ filter: currentTheme.pageFilter }}
               >
                 <canvas ref={canvasRightRef} className="block" />
+                <div
+                  ref={textLayerRightRef}
+                  className="absolute inset-0 overflow-hidden select-text"
+                />
               </div>
             )}
           </div>
