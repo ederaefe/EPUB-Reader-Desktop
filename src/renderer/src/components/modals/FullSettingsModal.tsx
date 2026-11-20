@@ -19,7 +19,9 @@ import {
   FolderOpen,
   WifiOff,
   RefreshCw,
-  Unlink
+  Unlink,
+  Mail,
+  AlertCircle
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { backupService } from '../../services/backupService'
@@ -1391,22 +1393,38 @@ export const FullSettingsModal: React.FC = () => {
                     <span>GitHub</span>
                   </a>
                   <a
-                    href="https://github.com/ederaefe/EPUB-Reader-Desktop/blob/main/documentation.md"
+                    href="https://semply.vercel.app/documentations"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    <span>User Manual</span>
+                    <span>Docs</span>
                   </a>
                   <a
-                    href="https://github.com/ederaefe/EPUB-Reader-Desktop#readme"
+                    href="https://semply.vercel.app"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <Globe className="w-3.5 h-3.5" />
                     <span>Website</span>
+                  </a>
+                  <a
+                    href="https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>Report Issue</span>
+                  </a>
+                  <a
+                    href="mailto:efeoghene@proton.me?subject=Semply%20Feedback"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Email Support</span>
                   </a>
                 </div>
               </div>

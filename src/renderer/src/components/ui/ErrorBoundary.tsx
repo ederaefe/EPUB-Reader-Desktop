@@ -1,5 +1,5 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertCircle, RotateCcw, BookOpen, Copy, Check, ExternalLink } from 'lucide-react'
+import { AlertCircle, RotateCcw, BookOpen, Copy, Check, ExternalLink, Mail } from 'lucide-react'
 
 interface Props {
   children: ReactNode
@@ -12,10 +12,12 @@ interface State {
   error: Error | null
   errorInfo: ErrorInfo | null
   copied: boolean
+  copiedEmail: boolean
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   private copyTimeout: ReturnType<typeof setTimeout> | null = null
+  private emailTimeout: ReturnType<typeof setTimeout> | null = null
 
   constructor(props: Props) {
     super(props)
@@ -23,7 +25,8 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
-      copied: false
+      copied: false,
+      copiedEmail: false
     }
   }
 
@@ -38,10 +41,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentWillUnmount() {
     if (this.copyTimeout) clearTimeout(this.copyTimeout)
+    if (this.emailTimeout) clearTimeout(this.emailTimeout)
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null, copied: false })
+    this.setState({ hasError: false, error: null, errorInfo: null, copied: false, copiedEmail: false })
     if (this.props.onReset) {
       this.props.onReset()
     }
@@ -86,8 +90,19 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleOpenGitHubIssues = () => {
-    const issuesUrl = 'https://github.com/elrazortheodore/Semply/issues/new'
+    const issuesUrl = 'https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new'
     window.open(issuesUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText('efeoghene@proton.me')
+      this.setState({ copiedEmail: true })
+      if (this.emailTimeout) clearTimeout(this.emailTimeout)
+      this.emailTimeout = setTimeout(() => this.setState({ copiedEmail: false }), 2500)
+    } catch (e) {
+      console.warn('Failed to copy email to clipboard:', e)
+    }
   }
 
   render() {
@@ -117,7 +132,7 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
 
             {/* Diagnostic Logs & GitHub Issue Actions */}
-            <div className="grid grid-cols-2 gap-2 w-full mb-3">
+            <div className="grid grid-cols-2 gap-2 w-full mb-2">
               <button
                 type="button"
                 onClick={this.handleCopyLogs}
@@ -149,6 +164,30 @@ export class ErrorBoundary extends Component<Props, State> {
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>Report on GitHub</span>
+              </button>
+            </div>
+
+            {/* Email Developer Support Bar */}
+            <div className="flex items-center justify-between w-full px-2.5 py-1.5 bg-[#0a0a0a] border border-white/[0.06] rounded-lg mb-3 text-[11px] text-[#aaaaaa]">
+              <a
+                href="mailto:efeoghene@proton.me?subject=Semply%20Error%20Report"
+                className="inline-flex items-center gap-1.5 text-white/90 hover:text-white transition-colors"
+                title="Send error report email to efeoghene@proton.me"
+              >
+                <Mail className="w-3.5 h-3.5 text-blue-400" />
+                <span>efeoghene@proton.me</span>
+              </a>
+              <button
+                type="button"
+                onClick={this.handleCopyEmail}
+                className={`px-2 py-0.5 rounded text-[10.5px] font-medium transition-all cursor-pointer border ${
+                  this.state.copiedEmail
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    : 'bg-white/[0.05] border-white/[0.08] hover:bg-white/[0.1] text-white/80'
+                }`}
+                title="Copy developer email to clipboard"
+              >
+                {this.state.copiedEmail ? 'Copied!' : 'Copy email'}
               </button>
             </div>
 

@@ -26,3 +26,5 @@ Semply Ebook Reader requires no account, no subscription, and no internet connec
 
 ## Optional
 - [GitHub Repository](https://github.com/ederaefe/EPUB-Reader-Desktop): Official source code and releases.
+- [Submit an Issue](https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new): Bug reports and feature proposals.
+- [Contact Developer](mailto:efeoghene@proton.me): Direct email inquiry (efeoghene@proton.me).

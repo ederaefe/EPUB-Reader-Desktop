@@ -75,7 +75,7 @@
   }
 
   /* ------------------------------------------------------------------------
-   * 3. Copy Section Link Buttons
+   * 3. Copy Section Link Buttons & Email Copy
    * ------------------------------------------------------------------------ */
   document.querySelectorAll('.copy-anchor').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -92,6 +92,18 @@
       }
     });
   });
+
+  const copyEmailBtn = document.getElementById('copy-support-email-btn');
+  if (copyEmailBtn) {
+    copyEmailBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText('efeoghene@proton.me');
+        showToast('Developer email copied to clipboard');
+      } catch (_) {
+        showToast('efeoghene@proton.me');
+      }
+    });
+  }
 
   /* ------------------------------------------------------------------------
    * 4. Interactive Auto-Scroll Pace Calculator

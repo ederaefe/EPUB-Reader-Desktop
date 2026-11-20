@@ -1821,3 +1821,28 @@ Establish a strict separation between public website documentation and internal 
   - In Double Spread mode: `columnWidth: 512px`, `columnGap: 64px`. Paragraphs on the left page measure `left: 2336, right: 2848, width: 512`; paragraphs on the right page measure `left: 2912, right: 3424, width: 512`.
   - Confirmed that toggling Single and Spread back and forth executes in-memory with 0 DOM exceptions and 0 React fiber errors.
 - Verified TypeScript compilation (`npm run typecheck`) and complete Electron production build (`npm run build`) passing cleanly.
+
+---
+
+## Increment 49: Unified Error Boundary Dispatch & Multi-Channel Issue Reporting (2026-11-20)
+
+### Problem Description
+1. The desktop application's React `ErrorBoundary.tsx` contained a legacy, defunct repository URL (`elrazortheodore/Semply/issues/new`), preventing readers from lodging bug reports on GitHub.
+2. The error boundary provided no alternative communication channel for users without GitHub accounts.
+3. The desktop app's About settings tab, public website, and documentation portal lacked direct, consistent access to the `/issues/new` form and developer support email.
+
+### Engineering Solution
+1. **Desktop Error Boundary Hardening (`ErrorBoundary.tsx`)**:
+   - Updated `handleOpenGitHubIssues` to launch `https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new` in the system default browser.
+   - Added direct email support: `mailto:efeoghene@proton.me?subject=Semply%20Error%20Report`.
+   - Added `handleCopyEmail` with temporary `copiedEmail` state (2.5s auto-reset) for one-click clipboard copying.
+   - Preserved diagnostic log formatting (`App Version`, `navigator.userAgent`, `Timestamp`, `Error Stack`, and `ComponentStack`).
+2. **In-App Settings About Surface (`FullSettingsModal.tsx`)**:
+   - Added "Report Issue" action linking to `https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new`.
+   - Added "Email Support" action linking to `mailto:efeoghene@proton.me?subject=Semply%20Feedback`.
+   - Updated documentation link from legacy Markdown file to live `/documentations` portal.
+3. **Public Website & Documentation Portal Synchronization**:
+   - `index.html`: Updated community row to point directly to `/issues/new`, and added "Report an Issue" and "Contact Developer" in the footer links.
+   - `documentations/index.html`: Added a dedicated issue reporting & developer contact entry under Section 12 FAQ, along with footer support links.
+   - `documentations/app.js`: Added click handler for `#copy-support-email-btn` to copy `efeoghene@proton.me` to the clipboard with contextual toast feedback.
+   - `documentations/llms.txt` & `documentations/llms-full.txt`: Documented official `/issues/new` and email inquiry endpoints for external AI assistants.

@@ -158,3 +158,4 @@ From **All Preferences -> Backup & Sync**:
 - **Does Semply require an account or internet?** No. Everything runs offline locally; internet is only used for optional Dictionary, Wikipedia, and Translate lookups.
 - **Why does a book display a miniature first page?** Coverless EPUBs and TXT files automatically generate a crisp warm-paper first-page preview; PDFs render Page 1.
 - **Why don't `Ctrl+R` or `F5` reload the app?** Semply intentionally blocks accidental reload, close, and browser history shortcuts so reading state is never wiped.
+- **How do I report an issue or contact the developer?** Submit a bug report at `https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new` or email `efeoghene@proton.me`.
