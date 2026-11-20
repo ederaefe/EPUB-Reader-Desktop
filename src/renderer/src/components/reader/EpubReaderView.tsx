@@ -265,6 +265,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
 
     const currentSettings = useAppStore.getState().settings
+    const isVertical = currentSettings.scrollMode === 'vertical'
+    const isDouble = !isVertical && currentSettings.pageSpread === 'double'
     const fontFam = getFontCssFamily(currentSettings.fontFamily)
     const rawSize = Number(currentSettings.fontSize)
     const safeFontSize = Number.isFinite(rawSize) ? Math.max(12, Math.min(42, Math.round(rawSize))) : 21
@@ -285,6 +287,57 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         ? `body, body p, body div, body span, body li, body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 { font-family: ${fontFam} !important; }`
         : ''
 
+    // Strict two-column spread vs single-column formatting
+    const columnLayoutRule = isDouble
+      ? `
+        html {
+          height: 100% !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
+        }
+        body {
+          height: 100% !important;
+          margin: 0 !important;
+          padding-top: 24px !important;
+          padding-bottom: 24px !important;
+          padding-left: 36px !important;
+          padding-right: 36px !important;
+          box-sizing: border-box !important;
+          overflow-y: hidden !important;
+          column-count: 2 !important;
+          column-width: auto !important;
+          column-gap: 64px !important;
+          column-fill: auto !important;
+          column-rule: none !important;
+        }
+        .galley-rw, section, article, div.body-rw, main {
+          max-width: none !important;
+          width: auto !important;
+        }
+        h1, h2, h3, h4, h5, h6 {
+          column-span: none !important;
+          -webkit-column-span: none !important;
+        }
+      `
+      : !isVertical
+      ? `
+        html {
+          height: 100% !important;
+        }
+        body {
+          height: 100% !important;
+          margin: 0 auto !important;
+          padding-top: 24px !important;
+          padding-bottom: 24px !important;
+          padding-left: 48px !important;
+          padding-right: 48px !important;
+          box-sizing: border-box !important;
+          column-count: 1 !important;
+          column-width: auto !important;
+        }
+      `
+      : ''
+
     styleEl.textContent = `
       html, body {
         font-size: ${safeFontSize}px !important;
@@ -303,6 +356,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         font-weight: ${emphasisWeight} !important;
       }
       ${fontRule}
+      ${columnLayoutRule}
     `
   }, [])
 
@@ -955,8 +1009,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         spread: isDouble ? 'always' : 'none',
         flow: isVertical ? 'scrolled' : 'paginated',
         manager: isVertical ? 'continuous' : 'default',
-        minSpreadWidth: 800
-      })
+        minSpreadWidth: 0,
+        gap: 64
+      } as any)
       renditionRef.current = renditionInstance
 
       // Guard epub.js internal Queue against permanent rejection deadlocks:
@@ -1492,7 +1547,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       .catch(() => {})
   }, [settings.theme, book.id, annotationsVersion])
 
-  // Synchronize dynamic settings (theme, font size, line height, font weight, and downloaded/local font family)
+  // Synchronize dynamic settings (theme, font size, line height, font weight, spread, and downloaded/local font family)
   useEffect(() => {
     if (!renditionRef.current) return
     adaptiveScrollEngine.setSuspension('layout', true)
@@ -1500,6 +1555,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     // Inject @font-face CSS and dynamic typography rules into any currently mounted EPUB iframes
     const applyFontAndTheme = async () => {
       try {
+        const isVert = settings.scrollMode === 'vertical'
+        const isDbl = !isVert && settings.pageSpread === 'double'
+        try {
+          ;(renditionRef.current as any)?.spread?.(isDbl ? 'always' : 'none', 0)
+        } catch {}
+
         const contentsList = (renditionRef.current?.getContents() as unknown as any[]) || []
         for (const c of contentsList) {
           if (c?.document) {
@@ -1524,7 +1585,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
 
     applyFontAndTheme()
-  }, [settings.theme, settings.fontSize, settings.fontWeight, settings.lineHeight, settings.fontFamily, applyDynamicStylesToDoc])
+  }, [
+    settings.theme,
+    settings.fontSize,
+    settings.fontWeight,
+    settings.lineHeight,
+    settings.fontFamily,
+    settings.pageSpread,
+    settings.scrollMode,
+    applyDynamicStylesToDoc
+  ])
 
   // Resilient page navigation: delegates to epub.js next()/prev(), and if a non-linear
   // spine section (linear="no", common on EPUB covers/front-matter) returns undefined from
@@ -3140,15 +3210,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         <div
           ref={viewerRef}
           className="w-full h-full max-w-6xl mx-auto relative"
-        />
-
-        {/* Center Gutter Divider for Double Page Spread (Horizontal Paginated mode only) */}
-        {settings.pageSpread === 'double' && settings.scrollMode !== 'vertical' && !isImmersiveFullscreen && (
-          <div
-            style={{ backgroundColor: currentTheme.border }}
-            className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40"
-          />
-        )}
+        >
+          {/* Center Gutter Divider for Double Page Spread (Horizontal Paginated mode only) */}
+          {settings.pageSpread === 'double' && settings.scrollMode !== 'vertical' && !isImmersiveFullscreen && (
+            <div
+              style={{
+                backgroundColor: currentTheme.border,
+                boxShadow: '-1px 0 6px rgba(0,0,0,0.3), 1px 0 6px rgba(0,0,0,0.3)'
+              }}
+              className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40 z-10"
+            />
+          )}
+        </div>
       </div>
 
       {/* Feature 1: Minimalist Bottom-Right Auto-Scroll Countdown (persists even in Fullscreen) */}

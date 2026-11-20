@@ -183,7 +183,7 @@ npm run package
 
 Comprehensive guides are maintained across multiple levels:
 - **[Official Website & Web Preview](https://semply.vercel.app/)**: Live demo and product overview.
-- **[Interactive Documentation Guide](./documentations/index.html)**: Complete user manual with live topic search and theme preview.
+- **[Interactive Documentation Guide](./documentations/index.html)**: Complete interactive docs with live topic search and theme preview.
 - **[Developer Architecture Guide](./dev-documentations.md)**: Exhaustive technical manual detailing Electron IPC contracts, Dexie database structures, and WASM pipeline internals.
 - **[High-Level Technical Reference](./documentation.md)**: Implementation-agnostic technical documentation and system reference.
 - **[Design System Specification](./DESIGN.md)**: Visual tokens, Geist Obsidian surface guidelines, and explicit UI anti-pattern rules.

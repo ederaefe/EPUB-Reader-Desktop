@@ -511,21 +511,35 @@ a:hover {
   transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .sidebar.open {
   transform: translateX(0);
 }
 
 .nav-group {
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .nav-group-title {
+  font-family: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--ink-muted);
-  padding: 0 10px 6px;
+  padding: 0 12px 8px;
   margin: 0;
 }
 
@@ -535,33 +549,34 @@ a:hover {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
   color: var(--ink-secondary);
   text-decoration: none;
   font-size: 13.5px;
   font-weight: 450;
   border-left: 2px solid transparent;
-  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: all 140ms ease;
 }
 
 .nav-link:hover {
   background: var(--bg-hover);
   color: var(--ink-primary);
+  transform: translateX(2px);
   text-decoration: none;
 }
 
 .nav-link.active {
-  background: var(--bg-active);
-  color: var(--ink-primary);
-  font-weight: 550;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
   border-left-color: var(--accent);
 }
 
