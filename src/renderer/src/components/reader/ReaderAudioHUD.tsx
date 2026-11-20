@@ -30,13 +30,34 @@ export const ReaderAudioHUD: React.FC<ReaderAudioHUDProps> = ({
     hudY: 0
   })
 
-  // Center near bottom-center initially
+  // Expand whenever Read Aloud starts
+  useEffect(() => {
+    if (isTTSActive) {
+      setIsMinimized(false)
+    }
+  }, [isTTSActive])
+
+  // Center near bottom-center initially and clamp on window resize
   useEffect(() => {
     if (!position && typeof window !== 'undefined') {
       const defaultY = Math.max(80, window.innerHeight - 90)
       const defaultX = Math.max(20, Math.round(window.innerWidth / 2 - 130))
       setPosition({ x: defaultX, y: defaultY })
     }
+
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return null
+        const maxX = Math.max(10, window.innerWidth - (hudRef.current?.offsetWidth || 260) - 10)
+        const maxY = Math.max(10, window.innerHeight - (hudRef.current?.offsetHeight || 44) - 10)
+        return {
+          x: Math.max(10, Math.min(maxX, prev.x)),
+          y: Math.max(10, Math.min(maxY, prev.y))
+        }
+      })
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [position])
 
   // Drag physics with screen boundary clamping
@@ -91,7 +112,7 @@ export const ReaderAudioHUD: React.FC<ReaderAudioHUDProps> = ({
         transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
         touchAction: 'none'
       }}
-      className={`fixed top-0 left-0 z-50 select-none transition-shadow ${
+      className={`fixed top-0 left-0 z-[95] select-none transition-shadow ${
         isDragging ? 'cursor-grabbing opacity-95 scale-[1.02]' : 'cursor-grab'
       }`}
       role="region"

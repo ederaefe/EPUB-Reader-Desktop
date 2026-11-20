@@ -247,38 +247,43 @@ export class AdaptiveScrollEngine {
 
     if (params.mode !== undefined && params.mode !== this.mode) {
       this.mode = params.mode
-      shouldRecalibrate = true
+      const newTotalMs =
+        params.mode === 'countdown'
+          ? this.fixedCountdownSec * 1000
+          : this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
+      this.totalDurationMs = newTotalMs
+      this.remainingMs = newTotalMs
+      this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
+      this.notify()
+      shouldRecalibrate = false
     }
 
     if (params.fixedCountdownSec !== undefined) {
       const clamped = this.clampCountdownSec(params.fixedCountdownSec)
-      if (clamped !== this.fixedCountdownSec) {
-        const oldTotal = this.totalDurationMs
-        this.fixedCountdownSec = clamped
-        if (this.mode === 'countdown') {
-          const newTotalMs = clamped * 1000
-          this.totalDurationMs = newTotalMs
-          this.remainingMs = newTotalMs
-          shouldRecalibrate = false
-          this.notify()
-        }
+      this.fixedCountdownSec = clamped
+      if (this.mode === 'countdown') {
+        const newTotalMs = clamped * 1000
+        this.totalDurationMs = newTotalMs
+        this.remainingMs = newTotalMs
+        this.lastNotifiedSec = clamped
+        shouldRecalibrate = false
+        this.notify()
       }
     }
 
     if (params.adaptiveBaseSec !== undefined) {
       const clamped = this.clampCountdownSec(params.adaptiveBaseSec)
-      if (clamped !== this.adaptiveBaseSec) {
-        this.adaptiveBaseSec = clamped
-        const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
-        this.targetWpm = derivedWpm
-        this.currentWpm = derivedWpm
-        if (this.mode === 'adaptive') {
-          const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-          this.totalDurationMs = newTotalMs
-          this.remainingMs = newTotalMs
-          shouldRecalibrate = false
-          this.notify()
-        }
+      this.adaptiveBaseSec = clamped
+      const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
+      this.targetWpm = derivedWpm
+      this.currentWpm = derivedWpm
+      if (this.mode === 'adaptive') {
+        const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
+        this.totalDurationMs = newTotalMs
+        this.remainingMs = newTotalMs
+        this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
+        shouldRecalibrate = false
+        this.notify()
       }
     } else if (params.targetWpm !== undefined) {
       const clamped = this.clampWpm(params.targetWpm)
@@ -312,14 +317,12 @@ export class AdaptiveScrollEngine {
   }
 
   // Calculate dynamic duration for visible on-screen words in Smart/Adaptive mode
-  // Scales proportionally around the user's manual adaptiveBaseSec for a reference 180-word page (or 360-word spread)
+  // Scales proportionally around the user's manual adaptiveBaseSec for a reference page
   public calculateBlockDurationMs(wordsOnScreen: number, isDoubleSpread = false): number {
     const effectiveWords = Math.max(5, wordsOnScreen)
-    const refWords = isDoubleSpread ? REFERENCE_PAGE_WORDS * 2 : REFERENCE_PAGE_WORDS
-    // Ghost-Sync Hybrid Cadence Model:
-    // Standard text pages (>= 70% reference words) read at 1.0x user baseline cadence.
-    // Sparse pages (short chapter endings, dialogue, poetry < 70% reference words) scale down gracefully (0.35x - 1.0x).
-    const sparseThreshold = refWords * 0.7
+    // Sparse threshold: Normal reading pages (>= 40 words) execute at 100% of user-configured base seconds.
+    // Extremely brief pages (forewords, titles, chapter headings < 40 words) gracefully scale down (0.35x - 1.0x).
+    const sparseThreshold = isDoubleSpread ? 80 : 40
     const densityRatio =
       effectiveWords >= sparseThreshold
         ? 1.0
@@ -332,6 +335,7 @@ export class AdaptiveScrollEngine {
     const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
     this.totalDurationMs = newTotalMs
     this.remainingMs = newTotalMs
+    this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
     this.notify()
   }
 
