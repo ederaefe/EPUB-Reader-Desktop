@@ -989,7 +989,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         })
         .catch(() => {})
 
-      // 1:1 Horizontal Paginated Mode exclusively: Single Page (1 column) vs Dual Page (2 columns)
+      // 1:1 Horizontal Paginated Spread: Single Page vs Dual Page
       const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
       renditionInstance = epubInstance.renderTo(viewerRef.current, {
         width: '100%',
@@ -997,26 +997,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         spread: isDual ? 'always' : 'none',
         flow: 'paginated',
         manager: 'default',
-        minSpreadWidth: 0,
-        gap: 64
-      } as any)
-      renditionInstance.settings.minSpreadWidth = 0
-      if ((renditionInstance as any)._layout) {
-        ;(renditionInstance as any)._layout._minSpreadWidth = 0
-      }
+        minSpreadWidth: 800
+      })
       renditionRef.current = renditionInstance
-
-      // Also apply after the rendition's internal start() completes (when _layout is first created)
-      // so the spread constraint is enforced before the first content render.
-      const applyMinSpreadWidth = () => {
-        if ((renditionInstance as any)?._layout) {
-          ;(renditionInstance as any)._layout._minSpreadWidth = 0
-        }
-        if ((renditionInstance as any)?.manager?.layout) {
-          ;(renditionInstance as any).manager.layout._minSpreadWidth = 0
-        }
-      }
-      renditionInstance.on('started', applyMinSpreadWidth)
 
       // Guard epub.js internal Queue against permanent rejection deadlocks:
       // In epubjs@0.3.93, Queue.run() lacks a rejection handler on dequeue(), so any rejected
@@ -1345,37 +1328,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       }
 
-      // Pre-validate startLocation with epub spine before calling display.
-      // spine.get() only understands hrefs and spine indices — NOT epubcfi() strings.
-      // Pass CFI strings straight through; only validate href/index strings via the spine.
-      let validStartLocation: any = startLocation
-      const isCfiString = typeof validStartLocation === 'string' && validStartLocation.startsWith('epubcfi(')
-      if (!isCfiString && validStartLocation && epubInstance?.spine) {
-        try {
-          const sec = epubInstance.spine.get(validStartLocation)
-          if (!sec) {
-            validStartLocation = currentHrefRef.current || undefined
-          }
-        } catch {
-          validStartLocation = currentHrefRef.current || undefined
-        }
-      }
-
       try {
-        await renditionInstance.display(validStartLocation)
+        await renditionInstance.display(startLocation)
       } catch {
         if (!isCancelled) {
           try {
-            ;(renditionInstance as any).displaying = undefined
-            const fallbackTarget = currentHrefRef.current || undefined
-            await renditionInstance.display(fallbackTarget)
-          } catch {
-            try {
-              ;(renditionInstance as any).displaying = undefined
-              await renditionInstance.display()
-            } catch (fallbackErr) {
-              console.warn('EPUB initial display failed:', fallbackErr)
-            }
+            await renditionInstance.display()
+          } catch (fallbackErr) {
+            console.warn('EPUB initial display failed:', fallbackErr)
           }
         }
       }
@@ -1605,20 +1565,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     applyDynamicStylesToDoc
   ])
 
-  // Resilient page navigation: delegates to epub.js next()/prev(), and if a non-linear
-  // spine section (linear="no", common on EPUB covers/front-matter) returns undefined from
-  // section.next()/prev() or fails to advance, steps explicitly to the adjacent spine item.
+  // Standard page navigation: delegates to epub.js next()/prev() cleanly without manual spine thrashing
   const navigateStep = useCallback(async (direction: 'next' | 'prev') => {
     const rendition = renditionRef.current as any
-    const epub = epubBookRef.current as any
     if (!rendition) return
-
-    const container = rendition.manager?.container as HTMLElement | undefined
-    const beforeLoc = safeGetRenditionLocation(rendition)
-    const beforeCfi: string = beforeLoc?.start?.cfi || currentCfiRef.current || ''
-    const beforeIdx: number = typeof beforeLoc?.start?.index === 'number' ? beforeLoc.start.index : -1
-    const beforeScrollLeft = container?.scrollLeft ?? 0
-    const beforeScrollTop = container?.scrollTop ?? 0
 
     try {
       if (direction === 'next') {
@@ -1626,34 +1576,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else {
         await rendition.prev()
       }
-    } catch {
-      // Fall through to explicit spine fallback below
-    }
-
-    const afterLoc = safeGetRenditionLocation(rendition)
-    const afterCfi: string = afterLoc?.start?.cfi || ''
-    const afterScrollLeft = container?.scrollLeft ?? 0
-    const afterScrollTop = container?.scrollTop ?? 0
-
-    const didMove =
-      (afterCfi && afterCfi !== beforeCfi) ||
-      Math.abs(afterScrollLeft - beforeScrollLeft) > 2 ||
-      Math.abs(afterScrollTop - beforeScrollTop) > 2
-
-    if (!didMove && epub?.spine?.spineItems?.length) {
-      const spineItems: any[] = epub.spine.spineItems
-      const curIdx = beforeIdx >= 0 ? beforeIdx : (typeof afterLoc?.start?.index === 'number' ? afterLoc.start.index : 0)
-      const targetIdx = direction === 'next' ? curIdx + 1 : curIdx - 1
-      if (targetIdx >= 0 && targetIdx < spineItems.length) {
-        const targetItem = spineItems[targetIdx]
-        if (targetItem?.href) {
-          try {
-            await rendition.display(targetItem.href)
-          } catch {
-            // Ignore display error on unrenderable spine item
-          }
-        }
-      }
+    } catch (err) {
+      console.warn('Navigation step error:', err)
     }
   }, [])
   navigateStepRef.current = navigateStep
@@ -3140,7 +3064,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         {/* EPUB Mount Point (kept completely empty of React children so 3rd-party DOM cleanup never collides with React fiber reconciler) */}
         <div
           ref={viewerRef}
-          className="w-full h-full max-w-6xl mx-auto relative"
+          className="w-full h-full max-w-6xl mx-auto relative overflow-hidden"
         />
 
         {/* Center Gutter Divider for Dual Page Mode (Horizontal Paginated mode) */}
