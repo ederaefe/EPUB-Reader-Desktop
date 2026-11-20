@@ -1043,6 +1043,12 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         }}
       />
 
+      {/* Auto-Scroll Dwell-Timer Overlay for PDF */}
+      <AdaptiveScrollOverlay
+        isActive={isAutoscrollActive}
+        onClose={() => setAutoscrollActive(false)}
+      />
+
       {/* Subtle Persistent Liquid Climax Progress Bar (hidden in immersive fullscreen or when toggled off in settings) */}
       {!isImmersiveFullscreen && settings.showProgressBar !== false && (
         <FluidClimaxProgressBar
