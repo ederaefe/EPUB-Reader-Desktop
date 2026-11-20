@@ -3,24 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Semply Ebook Reader — User Documentation</title>
+  <title>Semply Ebook Reader — Official User Documentation &amp; Guide</title>
   <meta
     name="description"
-    content="Official user guide for Semply Ebook Reader — the free, distraction-free desktop reader for EPUB, PDF (with offline MuPDF reflow), MOBI, and TXT books."
+    content="Official documentation for Semply Ebook Reader: learn how to import books, reflow dense PDFs offline with MuPDF, use Smart Pace Auto-Scroll, configure book typography, take notes, and back up your library."
   />
-  <meta name="theme-color" content="#0a0a0a" />
-  <meta property="og:title" content="Semply Ebook Reader — User Documentation" />
+  <meta name="keywords" content="Semply, ebook reader, user guide, documentation, EPUB reader, PDF reflow, offline reading, Auto-Scroll, book typography, open source reader" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <link rel="canonical" href="https://semply.vercel.app/documentations/index.html" />
+  <meta name="theme-color" content="#080809" />
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Semply Ebook Reader" />
+  <meta property="og:title" content="Semply Ebook Reader — Official User Documentation &amp; Guide" />
   <meta
     property="og:description"
-    content="Learn how to organize your library, reflow PDFs offline, highlight and export notes, search across books, use Smart Auto-Scroll, and back up your collection."
+    content="Learn how to organize your library, reflow PDFs offline with MuPDF, highlight in six styles, use Smart Pace Auto-Scroll, and protect your private collection."
   />
-  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://semply.vercel.app/documentations/index.html" />
+  <meta property="og:image" content="https://semply.vercel.app/assets/app-preview.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="720" />
+  <meta property="og:image:alt" content="Semply Ebook Reader deep reading session showing typography and footnotes" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Semply Ebook Reader — Official User Documentation &amp; Guide" />
+  <meta
+    name="twitter:description"
+    content="Official user guide for Semply: offline PDF reflow, Smart Pace Auto-Scroll, 77 bookmaker fonts, annotations, footnotes, and complete library privacy."
+  />
+  <meta name="twitter:image" content="https://semply.vercel.app/assets/app-preview.png" />
+
   <link rel="icon" href="./assets/favicon.ico" />
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="./sitemap.xml" />
   <link rel="alternate" type="text/markdown" title="Complete User Guide for AI Assistants (llms-full.txt)" href="./llms-full.txt" />
   <link rel="alternate" type="text/plain" title="AI Documentation Index (llms.txt)" href="./llms.txt" />
   <link rel="stylesheet" href="./styles.css" />
 
-  <!-- Structured Data for Search Engines and AI Agents -->
+  <!-- Structured Data for Search Engines, Crawlers, and AI Agents -->
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -30,6 +52,8 @@
           "name": "Semply Ebook Reader",
           "applicationCategory": "ReferenceApplication",
           "operatingSystem": "Windows, macOS, Linux",
+          "url": "https://semply.vercel.app/",
+          "downloadUrl": "https://github.com/ederaefe/EPUB-Reader-Desktop/releases",
           "offers": {
             "@type": "Offer",
             "price": "0",
@@ -45,6 +69,41 @@
             "Read Aloud text-to-speech with smart pronunciation rules",
             "Non-destructive inline footnote previews and warm blue light night filter",
             "Non-destructive additive JSON and ZIP library backup and sync"
+          ]
+        },
+        {
+          "@type": "TechArticle",
+          "headline": "Semply Ebook Reader — Official User Documentation & Guide",
+          "description": "Comprehensive user guide for Semply Ebook Reader. Learn how to import books, reflow dense PDFs offline, use Smart Pace Auto-Scroll, configure bookmaker typography, and back up your library.",
+          "url": "https://semply.vercel.app/documentations/index.html",
+          "inLanguage": "en-US",
+          "author": {
+            "@type": "Organization",
+            "name": "Semply Project Team",
+            "url": "https://semply.vercel.app/"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Semply",
+            "url": "https://semply.vercel.app/"
+          },
+          "mainEntityOfPage": "https://semply.vercel.app/documentations/index.html"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://semply.vercel.app/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Documentation",
+              "item": "https://semply.vercel.app/documentations/index.html"
+            }
           ]
         },
         {
@@ -101,8 +160,16 @@
         </svg>
       </button>
 
-      <a href="#overview" class="brand-link">
-        <img src="./assets/semply-logo.png" alt="Semply Ebook Reader logo" class="brand-logo" />
+      <a href="../index.html" class="topbar-home-btn" aria-label="Return to Semply homepage" title="Back to Semply Home">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Home</span>
+      </a>
+
+      <a href="../index.html" class="brand-link" aria-label="Semply Ebook Reader Home">
+        <img src="./assets/semply-logo.png" alt="Semply Ebook Reader logo" class="brand-logo" width="22" height="22" />
         <span>Semply</span>
         <span class="brand-tag">Docs</span>
       </a>
@@ -120,7 +187,7 @@
 
       <div class="theme-strip" role="group" aria-label="Switch documentation reading theme">
         <button type="button" class="theme-dot-btn" data-set-theme="obsidian" aria-pressed="true" title="Obsidian theme">
-          <span class="theme-swatch-chip" style="background: #0d0d0e;"></span>
+          <span class="theme-swatch-chip" style="background: #080809;"></span>
         </button>
         <button type="button" class="theme-dot-btn" data-set-theme="light" aria-pressed="false" title="Light theme">
           <span class="theme-swatch-chip" style="background: #ffffff;"></span>
@@ -134,6 +201,12 @@
       </div>
 
       <a href="./llms.txt" class="ai-link" title="AI-readable documentation index (llmstxt.org)">llms.txt</a>
+
+      <a href="https://github.com/ederaefe/EPUB-Reader-Desktop" target="_blank" rel="noopener noreferrer" class="topbar-github-link" aria-label="Semply on GitHub" title="Semply on GitHub">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"></path>
+        </svg>
+      </a>
     </div>
   </header>
 
@@ -189,6 +262,21 @@
 
     <!-- Main Documentation Column -->
     <main id="main-content" class="content">
+      <!-- Breadcrumb Navigation for Crawlers and Users -->
+      <nav class="docs-breadcrumb" aria-label="Breadcrumb navigation">
+        <ol itemscope itemtype="https://schema.org/BreadcrumbList">
+          <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <a itemprop="item" href="../index.html"><span itemprop="name">Home</span></a>
+            <meta itemprop="position" content="1" />
+          </li>
+          <span class="breadcrumb-separator" aria-hidden="true">/</span>
+          <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <span itemprop="name" aria-current="page">Documentation</span>
+            <meta itemprop="position" content="2" />
+          </li>
+        </ol>
+      </nav>
+
       <header id="overview" class="hero">
         <div class="hero-eyebrow">
           <span class="hero-eyebrow-dot" aria-hidden="true"></span>
@@ -198,6 +286,18 @@
         <p class="hero-lead">
           Semply Ebook Reader is a calm, native desktop reader for Windows, macOS, and Linux. Open EPUB, PDF, MOBI, and TXT books locally, reflow dense PDFs offline, annotate in six theme-aware styles, and keep your entire library under your own control.
         </p>
+
+        <!-- Quick Topic Jump Strip -->
+        <div class="topic-chips" aria-label="Popular topics">
+          <a href="#getting-started" class="topic-chip">Getting Started</a>
+          <a href="#library-and-import" class="topic-chip">Importing Books</a>
+          <a href="#pdf-and-reflow" class="topic-chip">PDF Reflow</a>
+          <a href="#auto-scroll" class="topic-chip">Smart Pace Auto-Scroll</a>
+          <a href="#notes-highlights-bookmarks" class="topic-chip">Notes &amp; Highlights</a>
+          <a href="#reading-experience" class="topic-chip">Typography &amp; Themes</a>
+          <a href="#keyboard-shortcuts" class="topic-chip">Shortcuts</a>
+          <a href="#faq" class="topic-chip">FAQ</a>
+        </div>
 
         <div class="hero-actions">
           <a href="#getting-started" class="btn-primary">Start reading in 2 minutes</a>

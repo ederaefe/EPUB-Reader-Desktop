@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://semply.app/sitemap.xml
-Sitemap: https://epub-reader-desktop.vercel.app/sitemap.xml
+Sitemap: https://semply.vercel.app/sitemap.xml
+Sitemap: https://semply.vercel.app/documentations/sitemap.xml

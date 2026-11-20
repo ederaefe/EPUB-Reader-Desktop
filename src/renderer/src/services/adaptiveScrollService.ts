@@ -9,7 +9,15 @@
 
 import type { AutoscrollMode } from '../db'
 
-export type SuspensionReason = 'blur' | 'hidden' | 'selection' | 'footnote' | 'drawer' | 'modal' | 'layout'
+export type SuspensionReason =
+  | 'blur'
+  | 'hidden'
+  | 'selection'
+  | 'footnote'
+  | 'drawer'
+  | 'modal'
+  | 'layout'
+  | 'manualScroll'
 export type PauseReason = 'user' | 'inactivity' | null
 
 export type SettingsSyncCallback = (settings: {
@@ -64,7 +72,7 @@ const MIN_ADAPTIVE_RATIO = 0.35
 const MIN_ADAPTIVE_MS = 2500 // Allow snappy 2.5s for genuine sparse pages (foreword, chapter title)
 const MAX_ADAPTIVE_MS = 600_000
 const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes away from app
-const TICK_INTERVAL_MS = 100
+const TICK_INTERVAL_MS = 1000 // 1 Hz energy-efficient tick interval for integer second countdowns
 
 // Physiological reading boundaries for the Skimming Protector:
 export const MIN_RECOGNITION_DWELL_MS = 800 // Below 800ms is pure accidental flip or key repeat
@@ -373,7 +381,7 @@ export class AdaptiveScrollEngine {
   }
 
   private ensureTickLoop(): void {
-    if (this.tickIntervalId !== null) return
+    if (this.tickIntervalId !== null || this.isPausedState()) return
     this.tickIntervalId = setInterval(() => {
       this.tick()
     }, TICK_INTERVAL_MS)
@@ -554,66 +562,56 @@ export class AdaptiveScrollEngine {
     // 1. Physical fixation minimum: Dwells under 800ms are accidental clicks or rapid key-repeats
     if (elapsedMs < MIN_RECOGNITION_DWELL_MS || wordCount <= 0) return
 
+    // Require sufficient words (>= 40) before modifying learned cadence, so title pages and brief section openers don't skew WPM
+    if (wordCount < 40) return
+
     const elapsedMinutes = elapsedMs / 60000
     const rawObserved = wordCount / elapsedMinutes
 
-    // 2. Skimming Protector: If observed speed exceeds plausible reading ceiling
-    // (e.g. 230 words in 3s or 10s gives 4,600 / 1,380 WPM)
+    // 2. Skimming Protector: If observed speed exceeds plausible reading ceiling (e.g. skimming through pages)
     if (rawObserved > MAX_PLAUSIBLE_READING_WPM) {
       this.isSkimming = true
       this.observedWpm = this.clampWpm(rawObserved)
-      // Do NOT corrupt the learned cadence! Preserve currentWpm and adaptiveBaseSec intact.
       this.notify()
       return
     }
 
     // 3. Idling / Inattention Protector: If observed speed is lower than 60 WPM (e.g. reader paused or stepped away)
     if (rawObserved < MIN_PLAUSIBLE_READING_WPM) {
-      // Do not pull learned reading cadence down to turtle pace
       return
     }
 
-    // 4. Normal Reading Cadence: User is reading within physiological bounds (even short pages like 5 words in 2s = 150 WPM)
+    // 4. Normal Reading Cadence: User is reading within physiological bounds
     this.isSkimming = false
     this.observedWpm = this.clampWpm(rawObserved)
     this.currentWpm = this.alpha * this.observedWpm + (1 - this.alpha) * this.currentWpm
     this.targetWpm = this.clampWpm(this.currentWpm)
-    // Synchronize adaptiveBaseSec with the learned WPM
-    this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / this.currentWpm) * 60)
     this.notify()
     this.triggerSettingsSync()
   }
 
-  // Behavioral Heuristic 1: Back-Scroll Detection (+15% slower in Adaptive mode)
+  // When a backward scroll occurs (re-reading), provide extra dwell time for the current page without mutating user's base settings
+  public extendCurrentPageDwell(factor = 1.25): void {
+    this.remainingMs = Math.min(MAX_ADAPTIVE_MS, Math.round(this.totalDurationMs * factor))
+    this.totalDurationMs = this.remainingMs
+    this.lastNotifiedSec = Math.ceil(this.remainingMs / 1000)
+    this.notify()
+  }
+
+  // Behavioral Heuristic 1: Back-Scroll Detection
   public onBackScrollDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
-    this.adaptiveBaseSec = this.clampCountdownSec(this.adaptiveBaseSec * 1.15)
-    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
-    this.targetWpm = derivedWpm
-    this.currentWpm = derivedWpm
-    if (this.isActive) {
-      this.recalibrateActiveDuration()
-    } else {
-      this.notify()
-    }
-    this.triggerSettingsSync()
+    this.extendCurrentPageDwell(1.25)
   }
 
-  // Behavioral Heuristic 2: Forward Nudge Detection (-10% faster in Adaptive mode)
+  // Behavioral Heuristic 2: Forward Nudge Detection
   public onForwardNudgeDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
-    this.adaptiveBaseSec = this.clampCountdownSec(this.adaptiveBaseSec * 0.9)
-    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
-    this.targetWpm = derivedWpm
-    this.currentWpm = derivedWpm
-    if (this.isActive) {
-      this.recalibrateActiveDuration()
-    } else {
-      this.notify()
-    }
-    this.triggerSettingsSync()
+    this.remainingMs = Math.max(1000, Math.round(this.remainingMs * 0.75))
+    this.lastNotifiedSec = Math.ceil(this.remainingMs / 1000)
+    this.notify()
   }
 
   // Adjust countdown seconds in Countdown Only mode (+5s slower / -5s faster)

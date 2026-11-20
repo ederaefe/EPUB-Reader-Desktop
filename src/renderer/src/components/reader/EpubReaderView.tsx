@@ -226,6 +226,24 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   const pageEnteredAtRef = useRef<number>(Date.now())
   const lastWordsOnPageRef = useRef<number>(180)
 
+  // Adaptive autoscroll page re-arming and manual scroll takeover refs
+  const armPageRef = useRef<() => void>(() => {})
+  const manualScrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const triggerManualScrollTakeover = useCallback(() => {
+    if (!useAppStore.getState().isAutoscrollActive) return
+    adaptiveScrollEngine.setSuspension('manualScroll', true)
+    if (manualScrollIdleTimerRef.current) {
+      clearTimeout(manualScrollIdleTimerRef.current)
+    }
+    manualScrollIdleTimerRef.current = setTimeout(() => {
+      adaptiveScrollEngine.setSuspension('manualScroll', false)
+      if (useAppStore.getState().isAutoscrollActive) {
+        armPageRef.current()
+      }
+    }, 400)
+  }, [])
+
   // Theme palettes aligned with Vercel/Geist Obsidian + Paper surfaces
   const themeStyles = {
     day: { bg: '#ffffff', text: '#121212', link: '#005cc5', bottomBg: '#fafafa', border: 'rgba(0,0,0,0.08)' },
@@ -433,7 +451,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       })
     })
 
-    // Feature 1: Cadence Behavioral Correction & Responsive Wheel Page-Turn Listener (blocks Ctrl+Wheel zoom)
+    // Feature 1: Manual Scroll Takeover & Responsive Wheel Navigation (blocks Ctrl+Wheel zoom)
     let lastWheelTime = 0
     contents.window.addEventListener(
       'wheel',
@@ -443,31 +461,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           return
         }
         adaptiveScrollEngine.recordUserActivity()
-        const now = Date.now()
-        if (now - lastWheelTime < 220) return
-        lastWheelTime = now
 
         const state = useAppStore.getState()
-        const mode =
-          state.settings.autoscrollMode ??
-          (state.settings.autoscrollAdaptive === false ? 'countdown' : 'adaptive')
-
         if (state.isAutoscrollActive) {
-          e.preventDefault()
-          if (mode === 'adaptive') {
-            if (e.deltaY < -25) {
-              // Back-scroll detected: User scrolled up -> decrease WPM (-15% slower)
-              adaptiveScrollEngine.onBackScrollDetected()
-            } else if (e.deltaY > 25) {
-              // Forward nudge detected: User scrolling forward -> increase WPM (+10% faster)
-              adaptiveScrollEngine.onForwardNudgeDetected()
-            }
-          } else {
-            // Countdown mode: wheel adjusts fixed seconds (+5s slower / -5s faster)
-            if (e.deltaY < -25) {
-              adaptiveScrollEngine.adjustCountdownSec(5)
-            } else if (e.deltaY > 25) {
-              adaptiveScrollEngine.adjustCountdownSec(-5)
+          // Manual scroll takeover: autoscroll pauses instantly, native scroll works freely,
+          // and the timer resets to 0 once the reader settles on the new position.
+          triggerManualScrollTakeover()
+
+          // In horizontal paginated mode, wheel steps pages naturally
+          if (scrollModeRef.current !== 'vertical') {
+            const now = Date.now()
+            if (now - lastWheelTime >= 220) {
+              lastWheelTime = now
+              if (e.deltaY > 24) {
+                navigateStepRef.current('next')
+              } else if (e.deltaY < -24) {
+                navigateStepRef.current('prev')
+              }
             }
           }
           return
@@ -486,6 +496,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         ) {
           return
         }
+        const now = Date.now()
+        if (now - lastWheelTime < 220) return
+        lastWheelTime = now
         if (e.deltaY > 24) {
           navigateStepRef.current('next')
         } else if (e.deltaY < -24) {
@@ -495,7 +508,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       { passive: false }
     )
 
-    // Throttled iframe user-activity feed & pointer-X forwarding for SideNavigation
+    // Throttled iframe user-activity feed (zero getBoundingClientRect() layout thrashing on cursor move)
     let lastIframeActivityAt = 0
     const recordIframeActivity = () => {
       const now = Date.now()
@@ -503,21 +516,21 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       lastIframeActivityAt = now
       adaptiveScrollEngine.recordUserActivity()
     }
-    let lastPointerEmitAt = 0
-    const forwardIframePointer = (e: MouseEvent) => {
-      recordIframeActivity()
-      const now = Date.now()
-      if (now - lastPointerEmitAt < 45) return
-      lastPointerEmitAt = now
-      const frameRect = (contents.window.frameElement as HTMLElement | null)?.getBoundingClientRect()
-        || viewerRef.current?.getBoundingClientRect()
-      const clientX = (frameRect?.left || 0) + e.clientX
-      window.dispatchEvent(new CustomEvent('semply:reader-pointer', { detail: { clientX } }))
-    }
-    contents.window.addEventListener('pointermove', forwardIframePointer, { passive: true })
+
+    contents.window.addEventListener('pointermove', recordIframeActivity, { passive: true })
     contents.window.addEventListener('mousedown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('keydown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('touchstart', recordIframeActivity, { passive: true })
+    contents.window.addEventListener(
+      'touchmove',
+      () => {
+        recordIframeActivity()
+        if (useAppStore.getState().isAutoscrollActive) {
+          triggerManualScrollTakeover()
+        }
+      },
+      { passive: true }
+    )
 
     // Clear any transient blur suspension whenever focus enters the EPUB iframe
     contents.window.addEventListener('focus', () => {
@@ -1146,15 +1159,38 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
               const startR = (renditionInstance as any)?.getRange?.(location.start.cfi) as Range | undefined
               const endR = (renditionInstance as any)?.getRange?.(location.end.cfi) as Range | undefined
               if (startR && endR && startR.startContainer?.ownerDocument) {
-                const doc = startR.startContainer.ownerDocument
-                const combined = doc.createRange()
-                combined.setStart(startR.startContainer, startR.startOffset)
-                combined.setEnd(endR.endContainer, endR.endOffset)
-                const frag = combined.cloneContents()
-                frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
-                const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
-                const cleanText = frag.textContent || combined.toString() || ''
-                visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+                const startDoc = startR.startContainer.ownerDocument
+                const endDoc = endR.endContainer?.ownerDocument
+                if (startDoc === endDoc) {
+                  const combined = startDoc.createRange()
+                  combined.setStart(startR.startContainer, startR.startOffset)
+                  combined.setEnd(endR.endContainer, endR.endOffset)
+                  const frag = combined.cloneContents()
+                  frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+                  const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
+                  const cleanText = frag.textContent || combined.toString() || ''
+                  visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+                } else {
+                  const r1 = startDoc.createRange()
+                  r1.setStart(startR.startContainer, startR.startOffset)
+                  if (startDoc.body) r1.setEndAfter(startDoc.body.lastChild || startDoc.body)
+                  const frag1 = r1.cloneContents()
+
+                  let frag2: DocumentFragment | null = null
+                  if (endDoc && endDoc.body) {
+                    const r2 = endDoc.createRange()
+                    r2.setStartBefore(endDoc.body.firstChild || endDoc.body)
+                    r2.setEnd(endR.endContainer, endR.endOffset)
+                    frag2 = r2.cloneContents()
+                  }
+
+                  frag1.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+                  if (frag2) frag2.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+
+                  const cleanText = (frag1.textContent || '') + ' ' + (frag2?.textContent || '')
+                  const hasImg = Boolean(frag1.querySelector('img, svg, figure, image') || frag2?.querySelector('img, svg, figure, image'))
+                  visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+                }
               }
             }
           } catch {}
@@ -1269,6 +1305,21 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
       adaptiveScrollEngine.setSuspension('layout', false)
       adaptiveScrollEngine.recordUserActivity()
+
+      // Wire vertical continuous scroll listener for manual scroll takeover
+      const container = (renditionInstance as any)?.manager?.container as HTMLElement | undefined
+      if (container && isVertical) {
+        container.addEventListener(
+          'scroll',
+          () => {
+            adaptiveScrollEngine.recordUserActivity()
+            if (useAppStore.getState().isAutoscrollActive) {
+              triggerManualScrollTakeover()
+            }
+          },
+          { passive: true }
+        )
+      }
 
       // Hydrate all saved annotations/highlights onto the rendition immediately
       if (bookIdRef.current && !isCancelled) {
@@ -1441,10 +1492,10 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       .catch(() => {})
   }, [settings.theme, book.id, annotationsVersion])
 
-  // Synchronize dynamic settings (theme, font size, line height, and downloaded/local font family)
+  // Synchronize dynamic settings (theme, font size, line height, font weight, and downloaded/local font family)
   useEffect(() => {
     if (!renditionRef.current) return
-    const fontFam = getFontCssFamily(settings.fontFamily)
+    adaptiveScrollEngine.setSuspension('layout', true)
 
     // Inject @font-face CSS and dynamic typography rules into any currently mounted EPUB iframes
     const applyFontAndTheme = async () => {
@@ -1462,6 +1513,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (!renditionRef.current) return
       renditionRef.current.themes.select(settings.theme)
       renditionRef.current.themes.fontSize(`${settings.fontSize}px`)
+
+      // Allow DOM reflow to settle, then lift suspension and re-arm the engine with new visible word metrics
+      setTimeout(() => {
+        adaptiveScrollEngine.setSuspension('layout', false)
+        if (useAppStore.getState().isAutoscrollActive) {
+          armPageRef.current()
+        }
+      }, 200)
     }
 
     applyFontAndTheme()
@@ -1489,10 +1548,20 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (direction === 'next' && !atBottom) {
         const step = Math.round(clientHeight * 0.85)
         container.scrollBy({ top: step, behavior: 'smooth' })
+        setTimeout(() => {
+          if (useAppStore.getState().isAutoscrollActive) {
+            armPageRef.current()
+          }
+        }, 350)
         return
       } else if (direction === 'prev' && !atTop) {
         const step = Math.round(clientHeight * 0.85)
         container.scrollBy({ top: -step, behavior: 'smooth' })
+        setTimeout(() => {
+          if (useAppStore.getState().isAutoscrollActive) {
+            armPageRef.current()
+          }
+        }, 350)
         return
       }
     }
@@ -1568,20 +1637,49 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         const startR = (renditionRef.current as any).getRange?.(loc.start.cfi) as Range | undefined
         const endR = (renditionRef.current as any).getRange?.(loc.end.cfi) as Range | undefined
         if (startR && endR && startR.startContainer?.ownerDocument) {
-          const doc = startR.startContainer.ownerDocument
-          const combined = doc.createRange()
-          combined.setStart(startR.startContainer, startR.startOffset)
-          combined.setEnd(endR.endContainer, endR.endOffset)
-          const frag = combined.cloneContents()
-          frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
-          const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
-          const cleanText = frag.textContent || combined.toString() || ''
-          visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+          const startDoc = startR.startContainer.ownerDocument
+          const endDoc = endR.endContainer?.ownerDocument
+          if (startDoc === endDoc) {
+            const combined = startDoc.createRange()
+            combined.setStart(startR.startContainer, startR.startOffset)
+            combined.setEnd(endR.endContainer, endR.endOffset)
+            const frag = combined.cloneContents()
+            frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+            const hasImg = Boolean(frag.querySelector('img, svg, figure, image'))
+            const cleanText = frag.textContent || combined.toString() || ''
+            visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
 
-          hasBreak = Boolean(
-            frag.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
-            /\*\s*\*\s*\*|\u2042|\u2041/.test(cleanText)
-          )
+            hasBreak = Boolean(
+              frag.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
+              /\*\s*\*\s*\*|\u2042|\u2041/.test(cleanText)
+            )
+          } else {
+            const r1 = startDoc.createRange()
+            r1.setStart(startR.startContainer, startR.startOffset)
+            if (startDoc.body) r1.setEndAfter(startDoc.body.lastChild || startDoc.body)
+            const frag1 = r1.cloneContents()
+
+            let frag2: DocumentFragment | null = null
+            if (endDoc && endDoc.body) {
+              const r2 = endDoc.createRange()
+              r2.setStartBefore(endDoc.body.firstChild || endDoc.body)
+              r2.setEnd(endR.endContainer, endR.endOffset)
+              frag2 = r2.cloneContents()
+            }
+
+            frag1.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+            if (frag2) frag2.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+
+            const cleanText = (frag1.textContent || '') + ' ' + (frag2?.textContent || '')
+            const hasImg = Boolean(frag1.querySelector('img, svg, figure, image') || frag2?.querySelector('img, svg, figure, image'))
+            visibleWords = computeEffectiveWordCount(cleanText, hasImg).words
+
+            hasBreak = Boolean(
+              frag1.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
+              frag2?.querySelector('hr, .section-break, .break, .separator, blockquote, .asterism') ||
+              /\*\s*\*\s*\*|\u2042|\u2041/.test(cleanText)
+            )
+          }
         }
       }
     } catch {}
@@ -1753,6 +1851,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
 
       const cfiBeforeTurn = currentCfiRef.current
+      const container = (renditionRef.current as any)?.manager?.container as HTMLElement | undefined
+      const scrollTopBeforeTurn = container?.scrollTop ?? 0
+
       adaptiveScrollEngine.startPageCountdown(
         visibleWords,
         hasBreak,
@@ -1767,12 +1868,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
               }, 400)
             })
 
-          // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI,
+          // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI (and no vertical movement occurred),
           // retry once after 1200ms so Auto-Scroll never freezes at 0s or skips multiple pages.
           if (recoveryTimer) clearTimeout(recoveryTimer)
           recoveryTimer = setTimeout(() => {
             if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-            if (currentCfiRef.current === cfiBeforeTurn) {
+            const currentScrollTop = container?.scrollTop ?? 0
+            const hasVerticalMovement =
+              scrollModeRef.current === 'vertical' && Math.abs(currentScrollTop - scrollTopBeforeTurn) > 30
+
+            if (currentCfiRef.current === cfiBeforeTurn && !hasVerticalMovement) {
               const check = analyzeVisiblePage()
               if (check.atEnd) {
                 adaptiveScrollEngine.stop()
@@ -1792,6 +1897,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       )
     }
 
+    armPageRef.current = armPage
     armPage()
 
     return () => {

@@ -5,27 +5,27 @@
 
 :root,
 [data-theme="obsidian"] {
-  --bg-canvas: #171a21;
-  --bg-rail: #171a21;
-  --bg-surface: #282c37;
-  --bg-elevated: #3c404d;
-  --bg-hover: rgba(60, 64, 77, 0.2);
-  --bg-active: #282c37;
-  --border-subtle: #3c404d;
-  --border-strong: #3c404d;
-  --ink-primary: #ededed;
-  --ink-secondary: #8b949e;
-  --ink-muted: #6e7681;
-  --accent: #2a69df;
-  --accent-soft: rgba(42, 105, 223, 0.14);
-  --accent-text: #3b79ef;
-  --cta-bg: #282c37;
-  --cta-ink: #ededed;
-  --cta-hover: #3c404d;
-  --kbd-bg: #282c37;
-  --kbd-border: #3c404d;
-  --shadow-modal: 0 24px 72px rgba(0, 0, 0, 0.78);
-  --shadow-toast: 0 12px 32px rgba(0, 0, 0, 0.65);
+  --bg-canvas: #080809;
+  --bg-rail: #0d0e12;
+  --bg-surface: #14151a;
+  --bg-elevated: #1e2027;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: #222530;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --ink-primary: #f3f4f6;
+  --ink-secondary: #9ca3af;
+  --ink-muted: #6b7280;
+  --accent: #0070f3;
+  --accent-soft: rgba(0, 112, 243, 0.14);
+  --accent-text: #38bdf8;
+  --cta-bg: #f3f4f6;
+  --cta-ink: #080809;
+  --cta-hover: #ffffff;
+  --kbd-bg: #14151a;
+  --kbd-border: rgba(255, 255, 255, 0.16);
+  --shadow-modal: 0 24px 72px rgba(0, 0, 0, 0.85);
+  --shadow-toast: 0 12px 32px rgba(0, 0, 0, 0.7);
   color-scheme: dark;
 }
 
@@ -180,7 +180,9 @@ a:hover {
   top: 0;
   z-index: 60;
   height: 56px;
-  background-color: var(--bg-rail);
+  background-color: rgba(13, 14, 18, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -189,11 +191,45 @@ a:hover {
   padding: 0 16px;
 }
 
+[data-theme="light"] .topbar {
+  background-color: rgba(250, 250, 250, 0.92);
+}
+
+[data-theme="paper"] .topbar {
+  background-color: rgba(239, 226, 198, 0.92);
+}
+
+[data-theme="dusk"] .topbar {
+  background-color: rgba(26, 21, 16, 0.92);
+}
+
 .topbar-left {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.topbar-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 140ms ease;
+}
+
+.topbar-home-btn:hover {
+  color: var(--ink-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  text-decoration: none;
 }
 
 .brand-link {
@@ -228,6 +264,89 @@ a:hover {
   background: var(--bg-surface);
   padding: 2px 7px;
   border-radius: 4px;
+}
+
+.topbar-github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--ink-secondary);
+  text-decoration: none;
+  transition: all 140ms ease;
+}
+
+.topbar-github-link:hover {
+  color: var(--ink-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  text-decoration: none;
+}
+
+/* Breadcrumb Navigation */
+.docs-breadcrumb {
+  margin-bottom: 20px;
+}
+
+.docs-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.docs-breadcrumb a {
+  color: var(--ink-secondary);
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.docs-breadcrumb a:hover {
+  color: var(--ink-primary);
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  color: var(--ink-muted);
+  font-size: 11px;
+}
+
+/* Quick Topic Jump Strip */
+.topic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.topic-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 13px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 140ms ease;
+}
+
+.topic-chip:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  transform: translateY(-1px);
+  text-decoration: none;
 }
 
 .topbar-actions {

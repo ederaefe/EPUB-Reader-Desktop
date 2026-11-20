@@ -393,4 +393,120 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  /* --------------------------------------------------------------------------
+     Mobile Navigation Controller (Adhering to /mobile-nav Architecture)
+     -------------------------------------------------------------------------- */
+  function initMobileNav() {
+    const body = document.body;
+    const drawer = document.getElementById('mobileDrawer');
+    const toggleBtn = document.querySelector('[data-action="toggle-navigation"]');
+    const closeBtns = document.querySelectorAll('[data-action="close-navigation"]');
+    const desktopMedia = window.matchMedia('(min-width: 860px)');
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    if (!drawer || !toggleBtn) return;
+
+    // Accessibility defaults
+    if ('inert' in drawer) drawer.inert = true;
+    drawer.setAttribute('aria-hidden', 'true');
+
+    function setBackgroundInert(isInert) {
+      document.querySelectorAll('main, footer').forEach((el) => {
+        if ('inert' in el) el.inert = isInert;
+      });
+    }
+
+    function openDrawer() {
+      body.classList.add('oc-navigation');
+      body.style.overflow = 'hidden';
+      setBackgroundInert(true);
+
+      if ('inert' in drawer) drawer.inert = false;
+      drawer.removeAttribute('aria-hidden');
+
+      toggleBtn.setAttribute('aria-expanded', 'true');
+      toggleBtn.classList.add('is-active');
+    }
+
+    function closeDrawer(immediate = false, restoreFocus = false) {
+      if (!immediate && !body.classList.contains('oc-navigation')) return;
+
+      body.classList.remove('oc-navigation');
+      body.style.overflow = '';
+      setBackgroundInert(false);
+
+      if ('inert' in drawer) drawer.inert = true;
+      drawer.setAttribute('aria-hidden', 'true');
+
+      toggleBtn.setAttribute('aria-expanded', 'false');
+      toggleBtn.classList.remove('is-active');
+
+      if (restoreFocus && typeof toggleBtn.focus === 'function') {
+        toggleBtn.focus();
+      }
+    }
+
+    // Toggle button click
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (body.classList.contains('oc-navigation')) {
+        closeDrawer();
+      } else {
+        openDrawer();
+      }
+    });
+
+    // Close buttons & scrim triggers
+    closeBtns.forEach((btn) => {
+      btn.addEventListener('click', () => closeDrawer());
+    });
+
+    // Close on drawer anchor link navigation
+    drawer.querySelectorAll('a[href]').forEach((link) => {
+      link.addEventListener('click', () => closeDrawer());
+    });
+
+    // Keyboard Escape dismissal
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && body.classList.contains('oc-navigation')) {
+        closeDrawer(false, true);
+      }
+    });
+
+    // Desktop breakpoint auto-dismissal
+    if (typeof desktopMedia.addEventListener === 'function') {
+      desktopMedia.addEventListener('change', (e) => {
+        if (e.matches) closeDrawer(true);
+      });
+    }
+
+    // Touch gesture swipe-to-dismiss (swipe right on right-anchored drawer)
+    drawer.addEventListener(
+      'touchstart',
+      (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      },
+      { passive: true }
+    );
+
+    drawer.addEventListener(
+      'touchend',
+      (e) => {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+        // Check horizontal intent: deltaX > 60 and more horizontal than vertical
+        if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 60) {
+          closeDrawer();
+        }
+      },
+      { passive: true }
+    );
+  }
+
+  initMobileNav();
 });

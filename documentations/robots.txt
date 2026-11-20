@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 
 # AI Assistant Discovery (llmstxt.org)
-# Index: /llms.txt
-# Complete Markdown Manual: /llms-full.txt
-Sitemap: ./sitemap.xml
+# Index: /documentations/llms.txt
+# Complete Markdown Manual: /documentations/llms-full.txt
+Sitemap: https://semply.vercel.app/documentations/sitemap.xml
+Sitemap: https://semply.vercel.app/sitemap.xml
