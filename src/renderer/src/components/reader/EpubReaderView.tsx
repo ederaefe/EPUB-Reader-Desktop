@@ -52,6 +52,17 @@ interface EpubReaderViewProps {
   onBack: () => void
 }
 
+const safeGetRenditionLocation = (rendition: any): any => {
+  try {
+    if (!rendition || !rendition.manager || typeof rendition.currentLocation !== 'function') {
+      return null
+    }
+    return rendition.currentLocation()
+  } catch {
+    return null
+  }
+}
+
 const isTargetInput = (target: EventTarget | null): boolean => {
   if (!target) return false
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true
@@ -1095,7 +1106,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           const items = buildResolvedToc(epubInstance, (nav as any)?.toc || [])
           tocRef.current = items
           setToc(items)
-          const curLoc = renditionInstance?.currentLocation?.() as any
+          const curLoc = safeGetRenditionLocation(renditionInstance)
           if (curLoc?.start) {
             syncActiveChapter(curLoc, items)
           }
@@ -1251,7 +1262,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (isCancelled) return
 
       // Immediately sync initial page/progress once displayed
-      const initialLoc = renditionInstance.currentLocation() as any
+      const initialLoc = safeGetRenditionLocation(renditionInstance)
       if (initialLoc?.start) {
         applyLocationState(initialLoc, false)
       }
@@ -1306,7 +1317,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
                 const total = locs.length()
                 setTotalPages(total)
                 await applyPendingProportionalSeek()
-                const curLoc = renditionInstance?.currentLocation() as any
+                const curLoc = safeGetRenditionLocation(renditionInstance)
                 if (curLoc?.start && !isScrubbingRef.current) {
                   applyLocationState(curLoc, false)
                 }
@@ -1354,7 +1365,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             }
 
             await applyPendingProportionalSeek()
-            const curLoc = renditionInstance?.currentLocation() as any
+            const curLoc = safeGetRenditionLocation(renditionInstance)
             if (curLoc?.start && !isScrubbingRef.current) {
               applyLocationState(curLoc, true)
             }
@@ -1368,6 +1379,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     return () => {
       isCancelled = true
       locationsReadyRef.current = false
+      renditionRef.current = null
+      epubBookRef.current = null
       // Stop the internal epub.js queue BEFORE destroy() so pending Rendition.start()
       // tasks never fire against an undefined book after unmount/StrictMode remount.
       const rendAny = renditionInstance as any
@@ -1480,7 +1493,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
     }
 
-    const beforeLoc = rendition.currentLocation?.() as any
+    const beforeLoc = safeGetRenditionLocation(rendition)
     const beforeCfi: string = beforeLoc?.start?.cfi || currentCfiRef.current || ''
     const beforeIdx: number = typeof beforeLoc?.start?.index === 'number' ? beforeLoc.start.index : -1
     const beforeScrollLeft = container?.scrollLeft ?? 0
@@ -1496,7 +1509,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       // Fall through to explicit spine fallback below
     }
 
-    const afterLoc = rendition.currentLocation?.() as any
+    const afterLoc = safeGetRenditionLocation(rendition)
     const afterCfi: string = afterLoc?.start?.cfi || ''
     const afterScrollLeft = container?.scrollLeft ?? 0
     const afterScrollTop = container?.scrollTop ?? 0
@@ -1533,7 +1546,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     hasBreak: boolean
     atEnd: boolean
   } => {
-    const loc = renditionRef.current?.currentLocation() as any
+    const loc = safeGetRenditionLocation(renditionRef.current)
     const spineItems = (epubBookRef.current?.spine as any)?.spineItems || []
     const spineLength = spineItems.length || (epubBookRef.current?.spine as any)?.length || 0
     const endIdx = loc?.end?.index ?? loc?.start?.index ?? 0
@@ -1910,7 +1923,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } finally {
         if (reqId === seekRequestIdRef.current) {
           isScrubbingRef.current = false
-          const loc = rendition.currentLocation() as any
+          const loc = safeGetRenditionLocation(rendition)
           if (loc?.start) {
             const { page, pct, total } = computeProgressMetrics(epub, loc)
             setTotalPages(total)

@@ -34,6 +34,69 @@ import { FontPicker } from '../ui/FontPicker'
 
 type FullSettingsTab = 'system' | 'reading' | 'vault' | 'hotkeys' | 'backup' | 'about'
 
+const TEXT_SIZE_PRESETS = [
+  { id: 'small', value: 15, label: 'Small', sizeClass: 'text-[11px]' },
+  { id: 'medium', value: 19, label: 'Medium', sizeClass: 'text-[14px]' },
+  { id: 'large', value: 24, label: 'Large', sizeClass: 'text-[18px]' }
+]
+
+const isTextSizeActive = (cur: number, val: number) => {
+  if (val === 15) return cur <= 16
+  if (val === 19) return cur > 16 && cur < 22
+  return cur >= 22
+}
+
+const LINE_SPACING_PRESETS = [
+  {
+    id: 'compact',
+    value: 1.25,
+    label: 'Compact',
+    icon: (
+      <svg className="w-4 h-2.5 text-current shrink-0" viewBox="0 0 16 10" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+        <line x1="2" y1="3" x2="14" y2="3" />
+        <line x1="2" y1="7" x2="14" y2="7" />
+      </svg>
+    )
+  },
+  {
+    id: 'balanced',
+    value: 1.5,
+    label: 'Balanced',
+    icon: (
+      <svg className="w-4 h-3 text-current shrink-0" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+        <line x1="2" y1="2.5" x2="14" y2="2.5" />
+        <line x1="2" y1="6" x2="14" y2="6" />
+        <line x1="2" y1="9.5" x2="14" y2="9.5" />
+      </svg>
+    )
+  },
+  {
+    id: 'relaxed',
+    value: 1.85,
+    label: 'Relaxed',
+    icon: (
+      <svg className="w-4 h-3.5 text-current shrink-0" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="2" y1="2" x2="14" y2="2" />
+        <line x1="2" y1="5.5" x2="14" y2="5.5" />
+        <line x1="2" y1="9" x2="14" y2="9" />
+        <line x1="2" y1="12.5" x2="14" y2="12.5" />
+      </svg>
+    )
+  }
+]
+
+const isLineSpacingActive = (cur: number, val: number) => {
+  if (val === 1.25) return cur <= 1.35
+  if (val === 1.5) return cur > 1.35 && cur <= 1.65
+  return cur > 1.65
+}
+
+const FONT_WEIGHT_PRESETS = [
+  { value: 400, label: 'Regular', weightClass: 'font-normal' },
+  { value: 500, label: 'Medium', weightClass: 'font-medium' },
+  { value: 600, label: 'Bold', weightClass: 'font-bold' }
+]
+
 const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
   { id: 'system', label: 'System' },
   { id: 'reading', label: 'Reading settings' },
@@ -94,6 +157,15 @@ export const FullSettingsModal: React.FC = () => {
         .getSecurityStatus()
         .then((st) => setSecurityStatus(st))
         .catch(() => {})
+    }
+  }, [isFullSettingsModalOpen])
+
+  useEffect(() => {
+    if (!isFullSettingsModalOpen) return
+    adaptiveScrollEngine.setSuspension('modal', true)
+    return () => {
+      adaptiveScrollEngine.setSuspension('modal', false)
+      adaptiveScrollEngine.recordUserActivity()
     }
   }, [isFullSettingsModalOpen])
 
@@ -495,36 +567,67 @@ export const FullSettingsModal: React.FC = () => {
                   <FontPicker inline />
                 </div>
 
+                {/* Text Size: 3 A's in varying sizes */}
                 <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
                   <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
                     Default Font Size
                   </span>
-                  <ValueStepper
-                    value={settings.fontSize}
-                    min={12}
-                    max={42}
-                    step={1}
-                    unit="px"
-                    ariaLabel="Default Font Size"
-                    onChange={(val) => updateSettings({ fontSize: val })}
-                  />
+                  <div
+                    className="glass-pill-track grid-cols-3 w-52"
+                    role="radiogroup"
+                    aria-label="Default Font Size"
+                  >
+                    {TEXT_SIZE_PRESETS.map((p) => {
+                      const active = isTextSizeActive(settings.fontSize, p.value)
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
+                          onClick={() => updateSettings({ fontSize: p.value })}
+                          className="glass-pill-btn !h-7 flex items-center justify-center"
+                          title={`${p.label} text size (${p.value}px)`}
+                        >
+                          <span className={`${p.sizeClass} font-serif font-bold leading-none`}>A</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
+                {/* Line Spacing: Illustrative 2, 3, or 4 line drawings */}
                 <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
                   <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
                     Line Spacing
                   </span>
-                  <ValueStepper
-                    value={Math.round(settings.lineHeight * 100)}
-                    min={100}
-                    max={250}
-                    step={10}
-                    unit="%"
-                    ariaLabel="Line Spacing"
-                    onChange={(val) => updateSettings({ lineHeight: val / 100 })}
-                  />
+                  <div
+                    className="glass-pill-track grid-cols-3 w-52"
+                    role="radiogroup"
+                    aria-label="Line Spacing"
+                  >
+                    {LINE_SPACING_PRESETS.map((p) => {
+                      const active = isLineSpacingActive(settings.lineHeight, p.value)
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
+                          onClick={() => updateSettings({ lineHeight: p.value })}
+                          className="glass-pill-btn !h-7 flex items-center justify-center"
+                          title={`${p.label} line spacing`}
+                        >
+                          {p.icon}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
+                {/* Text Weight: B preview glyphs in 3 weights */}
                 <div className="px-3.5 py-2.5 flex items-center justify-between gap-4">
                   <span className="text-[13px] font-bold text-[var(--app-text-strong)]">
                     Text Weight
@@ -534,11 +637,7 @@ export const FullSettingsModal: React.FC = () => {
                     role="radiogroup"
                     aria-label="Text Weight"
                   >
-                    {[
-                      { label: 'Normal', value: 400 },
-                      { label: 'Medium', value: 500 },
-                      { label: 'Bold', value: 600 }
-                    ].map((opt) => {
+                    {FONT_WEIGHT_PRESETS.map((opt) => {
                       const active = (settings.fontWeight || 400) === opt.value
                       return (
                         <button
@@ -548,9 +647,12 @@ export const FullSettingsModal: React.FC = () => {
                           aria-checked={active}
                           data-active={active ? 'true' : 'false'}
                           onClick={() => updateSettings({ fontWeight: opt.value })}
-                          className="glass-pill-btn !h-7 !text-[11.5px]"
+                          className="glass-pill-btn !h-7 flex items-center justify-center"
+                          title={`${opt.label} weight`}
                         >
-                          {opt.label}
+                          <span className={`text-[14px] font-serif ${opt.weightClass} leading-none`}>
+                            B
+                          </span>
                         </button>
                       )
                     })}

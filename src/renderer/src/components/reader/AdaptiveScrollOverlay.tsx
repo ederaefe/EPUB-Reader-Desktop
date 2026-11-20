@@ -8,7 +8,6 @@ import {
   Power,
   X,
   Clock,
-  Settings as SettingsIcon,
   Gauge
 } from 'lucide-react'
 import { adaptiveScrollEngine, type PacingMetrics } from '../../services/adaptiveScrollService'
@@ -116,19 +115,14 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     onClose()
   }
 
-  // Circular progress calculations for the quiet hairline SVG ring
-  const circleRadius = 13
-  const circumference = 2 * Math.PI * circleRadius
-  const strokeDashoffset = circumference * (1 - Math.max(0, Math.min(1, metrics.progress)))
-
   const triggerTooltip =
     metrics.pauseReason === 'inactivity'
-      ? `Auto-Scroll paused while away (${metrics.remainingSec}s left) - Click to resume`
+      ? `Auto-Scroll paused while away (${metrics.remainingSec}s left) — Click to configure`
       : metrics.isUserPaused
-      ? `Auto-Scroll paused (${metrics.remainingSec}s left) - Click to resume`
+      ? `Auto-Scroll paused (${metrics.remainingSec}s left) — Click to configure`
       : effectiveMode === 'adaptive'
-      ? `Smart Auto-Scroll: ${metrics.remainingSec}s left (${metrics.currentWpm} WPM) - Click to pause`
-      : `Fixed Auto-Scroll: ${metrics.remainingSec}s left - Click to pause`
+      ? `Smart Auto-Scroll: ${metrics.remainingSec}s left — Click to configure`
+      : `Fixed Auto-Scroll: ${metrics.remainingSec}s left — Click to configure`
 
   return (
     <>
@@ -325,77 +319,29 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
         </div>
       )}
 
-      {/* Ghost-Sync Quiet Floating Indicator: Hairline SVG Progress Ring + Center Seconds */}
-      <div
+      {/* Minimalist Muted Numeric Countdown Trigger — Bottom-Right (persists in Fullscreen) */}
+      <button
+        type="button"
+        onClick={() => setIsModalOpen((prev) => !prev)}
+        aria-label={triggerTooltip}
+        title={triggerTooltip}
         className={`fixed ${
           isImmersiveFullscreen ? 'bottom-4' : 'bottom-11'
-        } right-5 z-40 flex items-center gap-1 select-none`}
+        } right-5 z-40 h-7 min-w-[28px] px-1.5 flex items-center justify-center gap-1 rounded-[4px] font-mono tabular-nums text-[12.5px] tracking-tight transition-all duration-150 select-none cursor-pointer ${
+          isModalOpen
+            ? 'bg-[var(--app-surface)] border border-[var(--app-accent)] text-[var(--app-text-strong)] opacity-100 shadow-md'
+            : metrics.isUserPaused
+            ? 'bg-transparent text-[var(--app-text-muted)] opacity-55 hover:opacity-100 hover:bg-[var(--app-surface)]/80'
+            : 'bg-transparent text-[var(--app-text-muted)] opacity-60 hover:opacity-100 hover:bg-[var(--app-surface)]/80 hover:text-[var(--app-text-strong)]'
+        }`}
       >
-        <button
-          type="button"
-          onClick={handleTogglePause}
-          aria-label={triggerTooltip}
-          title={triggerTooltip}
-          className={`relative group h-8 min-w-[34px] px-1.5 flex items-center justify-center gap-1 rounded-full font-mono tabular-nums text-[12px] tracking-tight transition-all duration-150 cursor-pointer ${
-            metrics.isUserPaused
-              ? 'bg-[var(--app-surface)] text-[var(--app-text-muted)] border border-[var(--app-border)] shadow-md opacity-75 hover:opacity-100'
-              : 'bg-[var(--app-surface)] text-[var(--app-text-strong)] border border-[var(--app-border)] shadow-md hover:border-[var(--app-accent)]'
-          }`}
-        >
-          {/* Hairline SVG Circular Progress Ring */}
-          <svg
-            className="w-7 h-7 -rotate-90 pointer-events-none"
-            viewBox="0 0 32 32"
-          >
-            {/* Background ring */}
-            <circle
-              cx="16"
-              cy="16"
-              r={circleRadius}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="text-[var(--app-border)] opacity-60"
-            />
-            {/* Progress ring with smooth 100ms transitions */}
-            <circle
-              cx="16"
-              cy="16"
-              r={circleRadius}
-              fill="none"
-              stroke="var(--app-accent)"
-              strokeWidth="1.75"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-[stroke-dashoffset] duration-100 ease-linear"
-            />
-          </svg>
-
-          {/* Centered Content */}
-          <div className="absolute inset-0 flex items-center justify-center gap-0.5 pr-0.5">
-            {metrics.pauseReason === 'inactivity' ? (
-              <Clock className="w-3 h-3 text-amber-500" />
-            ) : metrics.isUserPaused ? (
-              <Play className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)] group-hover:text-[var(--app-text-strong)]" />
-            ) : null}
-            <span className="text-[11px] font-semibold leading-none">{metrics.remainingSec}</span>
-          </div>
-        </button>
-
-        {/* Quiet Settings Cog Button */}
-        <button
-          type="button"
-          onClick={() => setIsModalOpen((prev) => !prev)}
-          aria-label="Auto-Scroll Settings"
-          title="Auto-Scroll Settings"
-          className={`w-6 h-6 flex items-center justify-center rounded-full text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface)] transition-colors cursor-pointer ${
-            isModalOpen ? 'text-[var(--app-accent)] bg-[var(--app-surface)]' : ''
-          }`}
-        >
-          <SettingsIcon className="w-3 h-3" />
-        </button>
-      </div>
+        {metrics.pauseReason === 'inactivity' ? (
+          <Clock className="w-3 h-3 text-amber-500" />
+        ) : metrics.isUserPaused ? (
+          <Pause className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)]" />
+        ) : null}
+        <span>{metrics.remainingSec}</span>
+      </button>
     </>
   )
 }

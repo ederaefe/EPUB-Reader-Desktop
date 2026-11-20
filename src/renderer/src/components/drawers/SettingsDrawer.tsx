@@ -20,6 +20,7 @@ import type { AutoscrollMode } from '../../db'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
+import { DimnessSlider } from '../ui/DimnessSlider'
 
 type SettingsTab = 'display' | 'scroll' | 'more'
 
@@ -36,10 +37,67 @@ const THEME_SWATCHES: Array<{
   { id: 'night', label: 'Obsidian', bg: '#0c0c0d', ink: '#f5f7fa', border: 'rgba(255,255,255,0.12)' }
 ]
 
-const FONT_WEIGHT_OPTIONS: Array<{ label: string; value: number }> = [
-  { label: 'Normal', value: 400 },
-  { label: 'Medium', value: 500 },
-  { label: 'Bold', value: 600 }
+const TEXT_SIZE_PRESETS = [
+  { id: 'small', value: 15, label: 'Small', sizeClass: 'text-[11px]' },
+  { id: 'medium', value: 19, label: 'Medium', sizeClass: 'text-[14px]' },
+  { id: 'large', value: 24, label: 'Large', sizeClass: 'text-[18px]' }
+]
+
+const isTextSizeActive = (cur: number, val: number) => {
+  if (val === 15) return cur <= 16
+  if (val === 19) return cur > 16 && cur < 22
+  return cur >= 22
+}
+
+const LINE_SPACING_PRESETS = [
+  {
+    id: 'compact',
+    value: 1.25,
+    label: 'Compact',
+    icon: (
+      <svg className="w-4 h-2.5 text-current shrink-0" viewBox="0 0 16 10" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+        <line x1="2" y1="3" x2="14" y2="3" />
+        <line x1="2" y1="7" x2="14" y2="7" />
+      </svg>
+    )
+  },
+  {
+    id: 'balanced',
+    value: 1.5,
+    label: 'Balanced',
+    icon: (
+      <svg className="w-4 h-3 text-current shrink-0" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+        <line x1="2" y1="2.5" x2="14" y2="2.5" />
+        <line x1="2" y1="6" x2="14" y2="6" />
+        <line x1="2" y1="9.5" x2="14" y2="9.5" />
+      </svg>
+    )
+  },
+  {
+    id: 'relaxed',
+    value: 1.85,
+    label: 'Relaxed',
+    icon: (
+      <svg className="w-4 h-3.5 text-current shrink-0" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <line x1="2" y1="2" x2="14" y2="2" />
+        <line x1="2" y1="5.5" x2="14" y2="5.5" />
+        <line x1="2" y1="9" x2="14" y2="9" />
+        <line x1="2" y1="12.5" x2="14" y2="12.5" />
+      </svg>
+    )
+  }
+]
+
+const isLineSpacingActive = (cur: number, val: number) => {
+  if (val === 1.25) return cur <= 1.35
+  if (val === 1.5) return cur > 1.35 && cur <= 1.65
+  return cur > 1.65
+}
+
+const FONT_WEIGHT_PRESETS = [
+  { value: 400, label: 'Regular', weightClass: 'font-normal' },
+  { value: 500, label: 'Medium', weightClass: 'font-medium' },
+  { value: 600, label: 'Bold', weightClass: 'font-bold' }
 ]
 
 const TIMER_PRESETS = [10, 20, 30, 45]
@@ -93,8 +151,14 @@ export const SettingsDrawer: React.FC = () => {
 
   useEffect(() => {
     if (!isSettingsDrawerOpen) return
+    adaptiveScrollEngine.setSuspension('drawer', true)
     setAutoscrollMetrics(adaptiveScrollEngine.getMetrics())
-    return adaptiveScrollEngine.subscribe((m) => setAutoscrollMetrics(m))
+    const unsub = adaptiveScrollEngine.subscribe((m) => setAutoscrollMetrics(m))
+    return () => {
+      unsub()
+      adaptiveScrollEngine.setSuspension('drawer', false)
+      adaptiveScrollEngine.recordUserActivity()
+    }
   }, [isSettingsDrawerOpen])
 
   if (!isSettingsDrawerOpen) return null
@@ -305,36 +369,65 @@ export const SettingsDrawer: React.FC = () => {
 
               {/* Flat Typography Rows */}
               <div className="space-y-3.5">
+                {/* Text Size: 3 A's in varying sizes without text labels */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">Text size</span>
-                  <ValueStepper
-                    value={settings.fontSize}
-                    min={12}
-                    max={42}
-                    step={1}
-                    unit="px"
-                    ariaLabel="Font size"
-                    onChange={(val) => updateSettings({ fontSize: val })}
-                    compact
-                  />
+                  <div
+                    className="glass-pill-track grid-cols-3 w-[156px]"
+                    role="radiogroup"
+                    aria-label="Text size"
+                  >
+                    {TEXT_SIZE_PRESETS.map((p) => {
+                      const active = isTextSizeActive(settings.fontSize, p.value)
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
+                          onClick={() => updateSettings({ fontSize: p.value })}
+                          className="glass-pill-btn flex items-center justify-center"
+                          title={`${p.label} text size (${p.value}px)`}
+                        >
+                          <span className={`${p.sizeClass} font-serif font-bold leading-none`}>A</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
+                {/* Line Spacing: Illustrative 2, 3, or 4 line drawings */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">
                     Line spacing
                   </span>
-                  <ValueStepper
-                    value={Math.round(settings.lineHeight * 100)}
-                    min={100}
-                    max={250}
-                    step={10}
-                    unit="%"
-                    ariaLabel="Line spacing"
-                    onChange={(val) => updateSettings({ lineHeight: val / 100 })}
-                    compact
-                  />
+                  <div
+                    className="glass-pill-track grid-cols-3 w-[156px]"
+                    role="radiogroup"
+                    aria-label="Line spacing"
+                  >
+                    {LINE_SPACING_PRESETS.map((p) => {
+                      const active = isLineSpacingActive(settings.lineHeight, p.value)
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
+                          onClick={() => updateSettings({ lineHeight: p.value })}
+                          className="glass-pill-btn flex items-center justify-center"
+                          title={`${p.label} line spacing`}
+                        >
+                          {p.icon}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
+                {/* Text Weight: B preview glyphs in 3 weights without words */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">
                     Text weight
@@ -344,7 +437,7 @@ export const SettingsDrawer: React.FC = () => {
                     role="radiogroup"
                     aria-label="Text weight"
                   >
-                    {FONT_WEIGHT_OPTIONS.map((opt) => {
+                    {FONT_WEIGHT_PRESETS.map((opt) => {
                       const active = (settings.fontWeight || 400) === opt.value
                       return (
                         <button
@@ -354,15 +447,19 @@ export const SettingsDrawer: React.FC = () => {
                           aria-checked={active}
                           data-active={active ? 'true' : 'false'}
                           onClick={() => updateSettings({ fontWeight: opt.value })}
-                          className="glass-pill-btn"
+                          className="glass-pill-btn flex items-center justify-center"
+                          title={`${opt.label} weight`}
                         >
-                          {opt.label}
+                          <span className={`text-[13.5px] font-serif ${opt.weightClass} leading-none`}>
+                            B
+                          </span>
                         </button>
                       )
                     })}
                   </div>
                 </div>
 
+                {/* Page Layout: A4 Paper Dimension for Single, Book icon for Spread */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">
                     Page layout
@@ -378,9 +475,23 @@ export const SettingsDrawer: React.FC = () => {
                       aria-checked={settings.pageSpread === 'single'}
                       data-active={settings.pageSpread === 'single' ? 'true' : 'false'}
                       onClick={() => updateSettings({ pageSpread: 'single' })}
-                      className="glass-pill-btn gap-1"
+                      className="glass-pill-btn gap-1.5"
+                      title="Single Page (A4 Paper)"
                     >
-                      <Square className="w-2.5 h-2.5" />
+                      <svg
+                        className="w-3 h-3.5 text-current shrink-0"
+                        viewBox="0 0 14 18"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="2" y="1.5" width="10" height="15" rx="1.5" />
+                        <line x1="4.5" y1="5.5" x2="9.5" y2="5.5" strokeWidth="1.1" />
+                        <line x1="4.5" y1="8.5" x2="9.5" y2="8.5" strokeWidth="1.1" />
+                        <line x1="4.5" y1="11.5" x2="7.5" y2="11.5" strokeWidth="1.1" />
+                      </svg>
                       <span>Single</span>
                     </button>
                     <button
@@ -389,32 +500,36 @@ export const SettingsDrawer: React.FC = () => {
                       aria-checked={settings.pageSpread === 'double'}
                       data-active={settings.pageSpread === 'double' ? 'true' : 'false'}
                       onClick={() => updateSettings({ pageSpread: 'double' })}
-                      className="glass-pill-btn gap-1"
+                      className="glass-pill-btn gap-1.5"
+                      title="Two-Page Spread (Open Book)"
                     >
-                      <Columns className="w-2.5 h-2.5" />
+                      <svg
+                        className="w-3.5 h-3 text-current shrink-0"
+                        viewBox="0 0 16 14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M2 3C4 2 6 2.5 8 3.5C10 2.5 12 2 14 3V12C12 11 10 11.5 8 12.5C6 11.5 4 11 2 12V3Z" />
+                        <line x1="8" y1="3.5" x2="8" y2="12.5" />
+                      </svg>
                       <span>Spread</span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Flat Lighting Rows */}
+              {/* Flat Lighting Rows: Custom Dimness Slider */}
               <div className="space-y-3.5 pt-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-[var(--app-text)]">
-                    Screen dim
-                  </span>
-                  <ValueStepper
-                    value={settings.dimming}
-                    min={0}
-                    max={70}
-                    step={5}
-                    unit="%"
-                    ariaLabel="Screen dimming"
-                    onChange={(val) => updateSettings({ dimming: val })}
-                    compact
-                  />
-                </div>
+                <DimnessSlider
+                  value={settings.dimming ?? 0}
+                  min={0}
+                  max={70}
+                  step={5}
+                  onChange={(val) => updateSettings({ dimming: val })}
+                />
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
