@@ -13,3 +13,7 @@ These rules are permanent behavioral guidelines for coding agents working in thi
 
 ## 3. Documentation Invariants
 - Keep `documentation.md` (user-facing, no code internals) and `dev-documentations.md` (developer-facing, architectural deep-dive) updated and appended with every completed increment.
+
+## 4. Multi-Agent Coordination Protocol
+- Before starting work on any task, read `scratch/issues.md` to inspect recent agent activities, active file locks, and handoff warnings.
+- After completing any task or when claiming an active file lock, append a message entry to `scratch/issues.md` stating your agent username, status, touched files, what was done, and handoff notes so agents in different conversation sessions avoid duplicate or conflicting changes.
