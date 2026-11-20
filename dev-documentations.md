@@ -1533,3 +1533,205 @@ emove.
 5. **Bug 5: Text Weight Active State Desync for Stored `fontWeight: 700`**:
    - *Root cause*: Older books or imports could store `fontWeight: 700`. A strict equality `settings.fontWeight === 600` caused no button to be highlighted as active.
    - *Resolution*: Implemented boundary matching `isFontWeightActive(cur, val)` so 600 or 700 activates the bold `B` template, 500 activates medium, and 400 or undefined activates regular.
+
+---
+
+## Increment 41: Quiet Ghost Numeric Trigger, Real-Time Pacing Resynchronization & Antigravity Translucent Selection HUD (2026-11-20)
+
+### Architecture & Implementation
+1. **Quiet Ghost Numeric Auto-Scroll Trigger (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`)**:
+   - Replaced the circular SVG progress ring, background countdown pill, and external settings cog with a borderless, quiet ghost number button pinned to the lower right reading margin (`bottom-11 right-5`, shifting to `bottom-4 right-5` in immersive fullscreen).
+   - Styled with tabular figures (`tabular-nums font-mono text-[12px]`), muted opacity (`opacity-60` normal, `opacity-55` on pause), and zero background borders, preventing urgency or rushed reading.
+   - Preserves state indicators: displays an embedded `<Clock />` icon when paused via 5-minute inactivity watchdog, and a muted `<Pause />` icon when paused by the user.
+2. **Compact Theme-Adaptive Settings Popover (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`)**:
+   - Tapping the ghost numeric trigger mounts a `270px` floating settings popover (`bg-[rgba(18,20,24,0.92)]` with `backdrop-blur-2xl` and `border border-white/[0.10]`).
+   - Row 1: Playback & Lifecycle controls including `Resume/Pause` button, `Reset` (`RotateCcw`, restoring 20s fixed or 25s smart baseline), `Power off` (`Power`, completely stopping auto-scroll and tearing down engine loops), and `Close` (`X`).
+   - Row 2: Live Cadence Stat in Smart Mode displaying real-time WPM calculation (`metrics.currentWpm`) and `Skim Guard` badge when observed rate exceeds 750 WPM.
+   - Row 3: Segmented mode switcher between `Fixed` (pure countdown timer) and `Smart` (word-density adaptive pacing).
+   - Row 4: Mode-specific seconds control using `SecondsNumberInput` with 4 tabular preset pills (`15s`, `25s`, `35s`, `50s`), plus the `Pause at breaks` toggle.
+3. **Real-Time Pacing Resynchronization (`src/renderer/src/services/adaptiveScrollService.ts`)**:
+   - In `configure()`, updating `fixedCountdownSec` or `adaptiveBaseSec` now immediately resynchronizes active execution in lockstep: recalculates `remainingMs` and `totalDurationMs`, updates `lastNotifiedSec = Math.ceil(remainingMs / 1000)`, and broadcasts through `notify()`.
+   - Modifying stepper values or clicking presets in the popover, drawer, or modal updates the live countdown timer on screen instantly without requiring a page turn.
+4. **Antigravity Translucent Selection HUD (`src/renderer/src/components/reader/SelectionPopup.tsx`)**:
+   - Replaced plain white rectangular text pills with a floating translucent dual-hairline action bar (`backdrop-blur-2xl`, outer border + subtle inset hairline) and icon-only circular buttons (`StickyNote`, `Copy`/`Check`, `•••` overflow menu).
+   - Contextual Gating: Strictly restricted dictionary and Wikipedia lookup to single-word selections (`isSingleWord = selectedText.trim().split(/\s+/).filter(Boolean).length === 1`). Multi-word highlights display only Copy, Note, and Translate, eliminating UI clutter.
+   - Integrated Read Aloud voice narration from the selection menu directly into the persistent, minimizable `<ReaderAudioHUD />` component.
+5. **Reading Progress Bar Settings Toggle (`src/renderer/src/components/reader/SettingsDrawer.tsx`, `src/renderer/src/components/settings/FullSettingsModal.tsx`)**:
+   - Added `showProgressBar` boolean setting to `useAppStore` and `ReaderSettingsDB` schema, allowing users to toggle off the bottom reading progress bar.
+   - Calmed progress bar glow and saturation for distraction-free reading.
+
+---
+
+## Increment 42: Adaptive Manual Scroll Takeover, Reflow Resynchronization & Low-Power Engine Hardening (2026-11-20)
+
+### Architecture & Implementation
+1. **Reverse-Engineered Mobile Engine Gesture Model (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Extracted architectural principles from static analysis of `EPUB+Reader+for+all+books_9.4.21_APKPure.apk` (Librera Reader / Foobnix `AdvGuestureDetector.java` & `DocumentController.java`): non-blocking gesture delegation, decoupled reflow measurement, and event-driven power consumption.
+   - Eliminated `e.preventDefault()` wheel hijacking. Wheel events now pass through natively to the browser layout engine.
+   - Introduced `triggerManualScrollTakeover()`: user interaction (wheel, trackpad, touch swipe, or container scroll) immediately asserts `adaptiveScrollEngine.setSuspension('manualScroll', true)`.
+   - Debounced 400ms idle timer: once user scrolling ceases and the viewport settles, `setSuspension('manualScroll', false)` lifts the lock and `armPageRef.current()` re-reads visible words and restarts the countdown from 0 seconds for the new position.
+2. **Typography & Layout Reflow Resynchronization (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Bound typography changes (`fontSize`, `fontFamily`, `lineHeight`, `fontWeight`, `pageSpread`) to layout suspension: `adaptiveScrollEngine.setSuspension('layout', true)`.
+   - Injected `@font-face` CSS and applied dynamic typography rules to mounted iframe documents.
+   - Scheduled post-reflow settlement (200ms) to clear the `'layout'` suspension and invoke `armPageRef.current()`, re-measuring visible words in the new layout and recalculating dwell time without requiring a manual page turn.
+3. **Continuous Vertical Scroll Stabilization (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - In vertical continuous mode, `navigateStep('next')` advances the viewport by 85% of container height via `container.scrollBy({ top: step, behavior: 'smooth' })`. Scheduled `armPageRef.current()` 350ms after scroll completion to re-measure visible words for the newly visible slice.
+   - Updated the stall recovery watchdog to record `scrollTopBeforeTurn` and verify `hasVerticalMovement`, suppressing false stall detections when intra-chapter continuous vertical scrolling occurs.
+   - Attached a passive `scroll` listener to the continuous vertical manager container to trigger `triggerManualScrollTakeover()` during user scrollbar drags.
+4. **Multi-Document Cross-Iframe Range Exception Hardening (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - In `analyzeVisiblePage` and `applyLocationState`, verified document equality (`startDoc === endDoc`) before calling `combined.setEnd(endR.endContainer, endR.endOffset)`.
+   - For ranges spanning across adjacent chapter iframes, split extraction between source documents (`startR` to end of `startDoc.body`, and start of `endDoc.body` to `endR`), preventing unhandled `DOMException: WrongDocumentError`.
+5. **Zero-Thrash CPU & Battery Optimization (`src/renderer/src/services/adaptiveScrollService.ts`, `src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Scaled `TICK_INTERVAL_MS` from 100ms (10 Hz) to 1000ms (1 Hz) for integer second countdown displays, slashing timer wakeups by 90%.
+   - Guarded `ensureTickLoop()`: completely clears interval timers when paused, suspended, or inactive, bringing background CPU consumption to 0%.
+   - Removed `forwardIframePointer` and the unconsumed `semply:reader-pointer` custom event, replacing `pointermove` inside the iframe with a throttled 1000ms user activity ping without `getBoundingClientRect()` queries.
+   - Replaced mutating `onBackScrollDetected()` with `extendCurrentPageDwell(1.25)` to provide gentle re-reading dwell without corrupting stored user settings.
+
+### Five Concrete Bugs Identified & Resolved:
+1. **Bug 1: Manual Scroll Wheel Lockout & Delta Hijacking**:
+   - *Root cause*: `contents.window.addEventListener('wheel')` called `e.preventDefault()`, intercepting mouse wheel input to adjust WPM or countdown seconds, freezing continuous vertical scroll and preventing manual reading.
+   - *Resolution*: Removed `e.preventDefault()` for reading scrolls and implemented `triggerManualScrollTakeover()`, pausing auto-scroll during manual gestures and re-arming the timer from 0 when settled on the new page.
+2. **Bug 2: Typography & Layout Reflow Stale Dwell Time & Word Drift**:
+   - *Root cause*: Auto-scroll lifecycle effect was keyed solely on `[isAutoscrollActive, currentCfi]`. Changing text size, line spacing, or weight reflowed the DOM, but auto-scroll continued running with stale word counts and obsolete dwell durations.
+   - *Resolution*: Wrapped typography updates in layout suspension (`'layout'`), re-arming the engine via `armPageRef.current()` once layout settles to recalculate dwell duration matching the new typography.
+3. **Bug 3: Continuous Vertical Scroll Stalling & False Recovery Watchdog Positives**:
+   - *Root cause*: In vertical continuous mode, `container.scrollBy({ top: step, behavior: 'smooth' })` does not immediately update `currentCfi`, causing the stall recovery watchdog (`cfiBeforeTurn === currentCfi`) to falsely trigger duplicate page-turns.
+   - *Resolution*: Scheduled `armPageRef.current()` 350ms post-scroll, and added `hasVerticalMovement` checks to the recovery watchdog to verify actual scroll position before assuming a stall.
+4. **Bug 4: Multi-Document Range Exception (`WrongDocumentError`) Across Chapters**:
+   - *Root cause*: When continuous scrolling or spine transitioning bridges across two EPUB sections, `loc.start.cfi` and `loc.end.cfi` resolve to nodes in different iframe documents. Calling `combined.setEnd()` across documents threw a `DOMException (WrongDocumentError)`, silently falling back to crude whole-chapter word estimates.
+   - *Resolution*: Verified `startDoc === endDoc`, gracefully splitting range extraction across document boundaries when spanning multi-iframe chapters.
+5. **Bug 5: 100ms Tick Polling & Cursor Pointermove Layout Thrashing**:
+   - *Root cause*: 100ms interval timer ran unthrottled in background, and `forwardIframePointer` on `pointermove` called `getBoundingClientRect()` on every cursor movement across the reader iframe to emit an unconsumed window event.
+   - *Resolution*: Reduced tick frequency to 1 Hz (1000ms), halted intervals while paused/inactive, and replaced `pointermove` with a throttled 1000ms activity ping without layout queries.
+
+---
+
+## Increment 43: Single-Word Web Navigation, Accessible Off-Canvas Drawer & Crawler Optimization (2026-11-20)
+
+### Architecture & Implementation
+1. **Single-Word Semantic Anchors (`index.html`, `documentations/index.html`)**:
+   - Modernized website header and footer navigation into concise, high-authority single-word labels: **Ownership**, **Sanctuary**, **Features**, **Comparison**, **FAQ**, and **Docs**.
+   - Preserved exact section link destinations (`#ownership`, `#sanctuary`, `#features`, `#comparison`, `#faq`, and `documentations/index.html`).
+2. **Accessible Mobile Navigation Drawer (`landing.css`, `landing.js`)**:
+   - Implemented a zero-dependency off-canvas side drawer (`#mobileNavDrawer`) with a dark translucent sheet (`rgba(10, 10, 12, 0.96)`), backdrop blur (`blur(24px)`), and a smooth cubic-bezier sliding transition (`transform: translateX(100%)` to `0`).
+   - Backdrop scrim (`#mobileNavOverlay`) with smooth fade and tap-to-dismiss.
+   - 3-phase kinetic morphing hamburger button (three horizontal dots transitioning to cross icon on active state).
+   - Accessibility & focus trapping: toggles `aria-expanded`, prevents background page scrolling (`overflow: hidden` on body), handles `Escape` key dismissal, and closes automatically upon clicking navigation links or swiping right.
+3. **Crawler-Optimized Documentation Portal (`documentations/index.html`, `documentations/styles.css`, `sitemap.xml`, `robots.txt`)**:
+   - Redesigned documentation portal layout with dark obsidian glassmorphism, responsive breadcrumbs, quick-jump topic pills, and syntax-highlighted code cards.
+   - Added canonical tags, complete OpenGraph and Twitter card metadata, and rich JSON-LD schemas (`TechArticle`, `BreadcrumbList`, and `FAQPage`).
+   - Updated `sitemap.xml` and `robots.txt` with canonical domain mappings and AI assistant documentation discovery (`llms.txt`).
+
+---
+
+## Increment 44: Two-Page Book Spread Multi-Column Layout Architecture (2026-11-20)
+
+### Architecture & Implementation
+1. **Authoritative Multi-Column CSS Injection (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Injected explicit CSS multi-column rules into iframe `#semply-reader-dynamic-style` when `pageSpread === 'double'` and `scrollMode !== 'vertical'`:
+     ```css
+     column-count: 2 !important;
+     column-gap: 64px !important;
+     column-fill: auto !important;
+     column-rule: none !important;
+     height: 100% !important;
+     box-sizing: border-box !important;
+     ```
+2. **Publisher Stylesheet & Section Element Neutralization (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Injected overriding rules targeting publisher wrapper containers (`.galley-rw`, `section`, `article`, `div.body-rw`, `main`, `div[class*="content"]`, `div[class*="chapter"]`):
+     ```css
+     max-width: none !important;
+     width: auto !important;
+     ```
+   - Enforced `column-span: none !important` on headings (`h1` through `h6`) to ensure section titles flow naturally inside the left column rather than spanning across both columns and breaking the two-page spread formatting.
+3. **Zero-Threshold Spread Calculation (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Eliminated the arbitrary `minSpreadWidth: 800` parameter during `epubInstance.renderTo` initialization, ensuring that whenever spread is set to `'always'`, epub.js reliably applies `divisor = 2` without depending on pre-render viewport measurement timings.
+4. **Centered Hardcover Binding Gutter Divider (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Relocated the central gutter hairline divider inside the viewer content frame (`max-w-6xl`) with subtle dual-sided box shadows (`-1px 0 6px rgba(0,0,0,0.3)` and `1px 0 6px rgba(0,0,0,0.3)`), creating a tactile, symmetrical spine divider that visually emulates an open hardcover book.
+5. **Dynamic Spread Synchronization (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Connected `settings.pageSpread` and `settings.scrollMode` directly to the active rendition's live layout method (`rendition.spread()`) and dynamic style injector, enabling instant transitions between single-page and dual-page reading without layout lag or reader re-initialization desync.
+
+---
+
+## Increment 41: Adaptive Autoscroll Manual Takeover, 1 Hz Tick Loop & Cadence Protection (2026-11-20)
+
+### Architecture & Implementation
+1. **Manual Scroll Takeover Engine (`EpubReaderView.tsx`, `adaptiveScrollService.ts`)**:
+   - Implemented `triggerManualScrollTakeover()` to decouple native scrolling from automated page pacing.
+   - When a user inputs wheel, trackpad, touch swipe, or keyboard navigation, `adaptiveScrollEngine.setSuspension('manualScroll', true)` immediately halts the countdown without blocking browser scroll physics.
+   - A debounced 400ms idle timer (`manualScrollIdleTimerRef`) detects when the user's viewport has settled, lifts the suspension (`setSuspension('manualScroll', false)`), and invokes `armPageRef.current()` to re-measure visible text and restart the timer from 0 seconds.
+2. **Typography & Layout Reflow Resynchronization (`EpubReaderView.tsx`)**:
+   - Modifying font size, line spacing, text weight, or page spread immediately suspends the engine under `'layout'`.
+   - After dynamic stylesheet injection and layout recalculations settle (~200ms), the suspension clears and the active page re-arms with updated word counts and dwell durations.
+3. **1 Hz Integer Tick Loop & Battery Conservation (`adaptiveScrollService.ts`)**:
+   - Scaled countdown tick interval from 100ms (10 Hz) to 1000ms (1 Hz) (`TICK_INTERVAL_MS = 1000`) for integer second displays.
+   - Suppressed tick timer initialization when paused, suspended, or inactive (`if (this.tickIntervalId !== null || this.isPausedState()) return`), dropping background CPU usage to 0%.
+   - Replaced continuous `pointermove` layout boundary checks (`getBoundingClientRect()`) with throttled activity notifications.
+4. **Cadence & Skimming Protection (`adaptiveScrollService.ts`)**:
+   - Added minimum word threshold (`wordCount < 40 return`) to prevent title pages, section breaks, and chapter openings from distorting the learned reading cadence.
+   - Isolated backward scroll detection to non-mutating page dwell extension (`extendCurrentPageDwell(1.25)`), granting extra time on the current spread without corrupting the baseline WPM preference.
+
+---
+
+## Increment 42: Modern Translucent Action Bar & Selection Gating (2026-11-20)
+
+### Architecture & Implementation
+1. **Translucent Action Micro-Pill (`SelectionPopup.tsx`)**:
+   - Re-architected selection toolbar from opaque stark white rectangles to a floating translucent micro-bar with `backdrop-blur-2xl`, outer border, and subtle inset hairline.
+   - Applied progressive disclosure with a compact 3-dot (`•••`) popover for secondary actions (Dictionary, Wikipedia, Translate, Read Aloud).
+2. **Contextual Action Gating (`SelectionPopup.tsx`)**:
+   - Enforced strict word-count gating (`selectedText.trim().split(/\s+/).length === 1`) for Dictionary and Wikipedia actions. Multi-word selections cleanly conceal dictionary lookup to eliminate menu clutter.
+3. **Persistent Audio HUD Integration (`SelectionPopup.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Invoking "Read aloud" from the selection bar triggers speech synthesis and automatically mounts the draggable `<ReaderAudioHUD>` with synced Play/Pause/Stop controls across both EPUB and PDF reading modes.
+
+---
+
+## Increment 43: In-Place Operating System Switcher & Landing Moat Refactoring (2026-11-20)
+
+### Architecture & Implementation
+1. **In-Place Platform Switcher (`index.html`, `landing.js`, `landing.css`)**:
+   - Built interactive platform pills (`.platform-pill[data-os]`) featuring verified inline SVG brand logos for Windows, macOS, Linux, and All Releases.
+   - Implemented dynamic in-place switching: tapping any platform pill dynamically updates the primary hero download button (`.btn-hero-primary`), OS label (`#detectedOsName`), download URL, and active state without page reloads or external GitHub redirection.
+2. **Moat Hierarchy & Noise Reduction (`index.html`, `landing.css`)**:
+   - Promoted Adaptive Auto-Scroll ("Smart Pace") into `#ownership` with plain-language benefit framing.
+   - Removed the legacy 70+ fonts card from `#features` and eliminated muted system instruction cards for a focused, book-first landing presentation.
+   - Embedded authentic high-resolution *The Fifth Season* reading session screenshot (`assets/app-preview.png`) in `README.md`.
+
+---
+
+## Increment 44: Mobile-Nav Side-Panel Drawer Architecture (2026-11-20)
+
+### Architecture & Implementation
+1. **Mobile Drawer Navigation (`index.html`, `landing.js`, `landing.css`)**:
+   - Root cause: `.header-nav` was hidden with `display: none` under 860px with no alternative mobile menu element.
+   - Implemented the `/mobile-nav` architecture:
+     - Kinetic Scissor Morph toggle button (`.menu-toggle-btn` with 3 lines smoothly transforming into a crisp X) with `touch-action: manipulation`, `-webkit-tap-highlight-color: transparent`, and `pointer-events: none` on child bars.
+     - Frosted backdrop scrim (`.drawer-backdrop` with `backdrop-filter: blur(10px)`).
+     - Right-sliding accessible dialog drawer (`#mobileDrawer` with `role="dialog"`, `aria-modal="true"`, `inert`).
+     - Staggered link entry animations (`.drawer-link` nth-child delay stagger).
+2. **Accessible Focus Trapping & Gesture Dismissal (`landing.js`)**:
+   - Applied HTML `inert` to `<main>` and `<footer>` when the drawer is open to lock background focus.
+   - Applied `body.style.overflow = 'hidden'` to eliminate background scroll chaining.
+   - Integrated keyboard `Escape` dismissal, link-click auto-close, touch swipe-to-close gesture handling (`deltaX > 60`), and desktop breakpoint auto-dismissal (`(min-width: 860px)`).
+
+---
+
+## Increment 45: Documentation Portal Redesign & Search Crawler Infrastructure (2026-11-20)
+
+### Architecture & Implementation
+1. **Standardized Docs Naming (`index.html`, `documentations/index.html`, `README.md`)**:
+   - Replaced all instances of "User Manual" with "Docs" / "Documentation" across navigation links, eyebrow banners, resource tables, and repository references.
+2. **Modern Typography Hierarchy (`documentations/styles.css`)**:
+   - Replaced serif headings (`Georgia, Times New Roman`) on `.hero h1`, `.doc-section h2`, and `.doc-section h3` with modern sans-serif typography (`Geist`, `Inter`, system UI with `-0.035em` tracking).
+   - Preserved bookmaker typography (`Libre Baskerville`, `Georgia`) strictly inside the in-browser reading preview (`.theme-specimen-page`).
+3. **Elevated UI Components (`documentations/styles.css`)**:
+   - Transformed `.card` into responsive 2-column cards with 12px rounded borders, subtle elevation shadows, and hover micro-lifts.
+   - Upgraded `.callout` boxes with accent borders and elevated backgrounds.
+   - Enhanced tables (`.table-wrap`, `th`, `td`) with elevated headers (`--bg-elevated`), uppercase tracking, and row-hover highlights.
+   - Added custom 5px sidebar scrollbar and active link accent indicator.
+   - Integrated sticky frosted header with `← Home` back-navigation and topic jump chips.
+4. **Search Crawler Infrastructure (`documentations/index.html`, `documentations/sitemap.xml`, `documentations/robots.txt`)**:
+   - Injected canonical URL tags (`https://semply.vercel.app/documentations/index.html`) and open robots directives.
+   - Formatted OpenGraph and Twitter card metadata with absolute preview image URLs.
+   - Embedded JSON-LD structured data graph containing `SoftwareApplication`, `TechArticle`, `BreadcrumbList` (Home > Documentation), and `FAQPage`.
+   - Updated XML sitemaps and `robots.txt` with canonical production domain URLs.
