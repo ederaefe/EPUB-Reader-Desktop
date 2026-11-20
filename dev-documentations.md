@@ -1776,3 +1776,48 @@ Establish a strict separation between public website documentation and internal 
    - `dev-documentations.md`: Houses all low-level technical architecture, IPC event catalogs, reflow engine synchronization logic, and historical build increments for open-source contributors working within the Git workspace.
    - `documentation.md`: High-level, user-centric, implementation-agnostic permanent reference document for end-user functionality and readers.
    - `/documentations/`: Static web documentation portal hosted on Vercel containing semantic guide chapters, keyboard shortcut tables, and `llmstxt.org` AI assistant indexes.
+
+
+---
+
+## Increment 48: Dual-Page Spread Multi-Column Hardening & Fiber Reconciliation Crash Elimination (2026-11-20)
+
+### Problem Description
+1. **React Fiber Reconciliation Crash (`NotFoundError: Failed to execute 'removeChild' on 'Node'`)**:
+   - Toggling page spread between Single and Double (or adjusting reader settings) triggered an unhandled DOM exception caught by the reader Error Boundary.
+   - React reported: `NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.` inside `commitDeletionEffectsOnFiber` during tree mutation passes.
+2. **Spread Layout Multi-Column Collapse**:
+   - In horizontal paginated mode with Page Layout set to "Spread", reflowable EPUB paragraphs failed to divide into two balanced columns. Instead, paragraphs spanned across the entire reader width (~1088px - 1152px), overflowing behind open settings drawers and breaking the two-page book metaphor.
+
+### Root Cause Analysis
+1. **3rd-Party DOM Mutation Collision with React Fiber Tree**:
+   - In `EpubReaderView.tsx`, the center gutter divider (`<div className="absolute left-1/2..." />`) was rendered as a direct JSX child inside `<div ref={viewerRef}>`.
+   - When reader re-initialization or chapter swapping occurred, `viewerRef.current.innerHTML = ''` or epub.js's internal `attachTo` pipeline wiped all DOM children from `viewerRef.current`.
+   - When React subsequently attempted to reconcile, unmount, or re-order child fibers on state changes, `parent.removeChild(child)` threw `NotFoundError` because the underlying DOM node had already been destroyed outside React's knowledge.
+2. **Multi-Column Width Override in Expanding Iframe**:
+   - Reflowable EPUB pagination in epub.js relies on an expanding iframe (e.g. `width: 5760px` for multi-column chapters) where `contents.columns()` calculates and sets inline styles: `column-width: 512px`, `column-gap: 64px`, `column-fill: auto`.
+   - Previous dynamic stylesheets injected `column-count: 2 !important; column-width: auto !important;` (and `column-count: 1 !important;` in single mode).
+   - Because `!important` stylesheet rules override element inline styles, Chromium ignored the 512px column width clamp and divided the expanding multi-page container into two massive 2848px columns, resulting in single-column text spanning across the entire viewport.
+3. **Unnecessary Full Reader Remount on Spread Toggle**:
+   - `settings.pageSpread` was included in the dependency array of `initReader`. Toggling spread mode unnecessarily destroyed and recreated `epubInstance` and `renditionInstance` from disk/buffers, triggering DOM resets and race conditions with live CFI position tracking.
+
+### Engineering Solution & Subsystems
+1. **Zero-Child Isolation for 3rd-Party Mount Points (`EpubReaderView.tsx`)**:
+   - Self-closed `<div ref={viewerRef} className="w-full h-full max-w-6xl mx-auto relative" />` with strictly zero React children.
+   - Relocated the center gutter divider to be a sibling element within the parent relative reader stage, rendering at `z-20` only in dual-page horizontal mode.
+   - Guaranteed that epub.js stage initialization and `innerHTML = ''` DOM flushes can never touch React fiber DOM nodes.
+2. **In-Memory Dynamic Spread Recalculation (`EpubReaderView.tsx`)**:
+   - Removed `settings.pageSpread` from `initReader`'s remount triggers so reader re-mounts only occur on actual book identity, format, or vertical/horizontal layout changes.
+   - Delegated dynamic spread toggling to `applyFontAndTheme` using epub.js's built-in `rendition.spread(isDbl ? 'always' : 'none', 0)`.
+   - Automatically re-applies dynamic CSS rules and refreshes active content layouts in memory without reloading the file or losing the user's reading position.
+3. **Strict Multi-Column CSS Geometry Containment (`EpubReaderView.tsx`)**:
+   - Eliminated `column-count` and `column-width: auto` overrides on `body`, allowing epub.js to cleanly set `column-width: 512px` (double spread) or `column-width: 1152px` (single page).
+   - Injected authoritative `column-gap: 64px !important`, `column-fill: auto !important`, and `column-rule: none !important` in spread mode.
+   - Enforced `column-span: none !important; -webkit-column-span: none !important;` and `max-width: 100% !important; width: auto !important;` on wrapper tags (`.galley-rw`, `section`, `article`, `div.body-rw`, `main`, `h1`-`h6`) so dropcaps, book headings, and justified text blocks strictly fragment inside their 512px column boundaries without spilling across the gutter.
+
+### Verification & Automated Testing
+- Verified through Electron testing scripts (`scratch/test_complete_spread_flow.js`, `scratch/test_full.js`, `scratch/test_rects.js`):
+  - In Single mode: `columnWidth: 1152px`, paragraph width: `1088px` (bounded by 48px padding).
+  - In Double Spread mode: `columnWidth: 512px`, `columnGap: 64px`. Paragraphs on the left page measure `left: 2336, right: 2848, width: 512`; paragraphs on the right page measure `left: 2912, right: 3424, width: 512`.
+  - Confirmed that toggling Single and Spread back and forth executes in-memory with 0 DOM exceptions and 0 React fiber errors.
+- Verified TypeScript compilation (`npm run typecheck`) and complete Electron production build (`npm run build`) passing cleanly.
