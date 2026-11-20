@@ -2034,3 +2034,32 @@ Establish a strict separation between public website documentation and internal 
 - `npm run typecheck`: Passed with zero errors (`tsc --noEmit`).
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
 - Automated layout test suite (`scratch/test_reader_layout_modes.js`): All test cases (TC-1, TC-2, TC-3, TC-4) verified passing.
+
+---
+
+## Increment 31: PDF Autoscroll Dwell Engine, Neo-Styled Zoom Presets & Dual-Page Hardening
+
+### Problem Description
+1. **Compilation Failure in Feedback Subsystem**: `NativeFeedbackHost.tsx` attempted to render native toast notifications without importing `AlertCircle`, `CheckCircle2`, `Info`, `X`, `toast`, and `clearToast` from `useAppStore`, breaking the TypeScript build (`tsc --noEmit`).
+2. **Missing Text Layer on Right Page in Dual PDF View**: In `PdfReaderView.tsx`, `renderSingleCanvas` was invoked with `textLayerDiv = null` for `currentPage + 1`, and the secondary canvas lacked a corresponding DOM text layer container. Consequently, text selection, copying, highlights, and note creation were impossible on the right page in dual spread mode.
+3. **Annotation Page Number Misattribution**: In `PdfReaderView.tsx`, `handlePdfTextSelection` hardcoded `setSelectedPageNum(currentPage)` unconditionally, permanently binding annotations created on the right-hand canvas to the preceding odd page.
+4. **PDF Render Task Cancellation Race**: In `PdfReaderView.tsx`, `renderSingleCanvas` performed early returns on boundary or canvas unmount conditions *before* executing `taskRef.current.cancel()`, leaving orphaned PDF.js worker rendering operations running against unmounted canvases.
+5. **Autoscroll PDF Hard-Lock & Book Transition Leakage**: `useAppStore.ts` artificially rejected autoscroll activation for PDF books (`if (active && s.activeBook?.format === 'pdf') return { isAutoscrollActive: false }`), and `setActiveBook` failed to cancel active autoscroll timers when switching between books.
+
+### Architectural Solution
+1. **Restored Native Feedback Subsystem**: Imported all requisite icons and store bindings in `NativeFeedbackHost.tsx`, re-enabling accessible, non-intrusive contextual toast notifications.
+2. **Dual-Page Text Layer Architecture**: Added `textLayerRightRef` alongside `canvasRightRef` in `PdfReaderView.tsx`. Both left and right canvases now mount absolute selectable text layers populated via `page.getTextContent()`, granting full annotation parity across dual pages.
+3. **Container-Aware Selection Resolution**: Enhanced `handlePdfTextSelection` to query `textLayerRightRef.current?.contains(range.commonAncestorContainer)`. Selections originating from the right page dynamically resolve to `currentPage + 1`.
+4. **Preemptive Render Task Cancellation**: Restructured `renderSingleCanvas` to cancel and nullify `taskRef.current` prior to checking canvas presence or document boundaries, preventing unhandled worker exceptions and memory leaks.
+5. **Unified Dwell-Based PDF Auto-Scroll**:
+   - Lifted format restrictions in `useAppStore.ts`, routing autoscroll through `adaptiveScrollEngine` in deterministic `countdown` mode without WPM dependency.
+   - Initialized layout-aware dwell durations: **25s** for single-page reading and **45s** for dual-page spreads, persisting to `pdfCountdownSecSingle` and `pdfCountdownSecDual`.
+   - Subscribed both `SettingsDrawer.tsx` and `<AdaptiveScrollOverlay>` directly to `adaptiveScrollEngine`, ensuring telemetry and countdown values remain 100% in sync without counter drift.
+   - Enforced automatic suspension on drawer/modal/selection open and clean auto-termination on document completion.
+6. **Neo-Themed PDF Zoom Stepper & Dimension Presets**:
+   - Implemented a tactile `-[size]+` glass-stepper in `SettingsDrawer.tsx` linked directly to desktop shortcuts (`Ctrl + -` / `Ctrl + =`).
+   - Standardized three immediate dimension presets: **Fit** (85%), **Default** (120%), and **Full** (160%) alongside continuous 50%–300% fine stepping.
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
