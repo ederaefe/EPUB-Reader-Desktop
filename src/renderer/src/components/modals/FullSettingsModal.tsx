@@ -31,6 +31,7 @@ import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
+import { DimnessSlider } from '../ui/DimnessSlider'
 
 type FullSettingsTab = 'system' | 'reading' | 'vault' | 'hotkeys' | 'backup' | 'about'
 
@@ -96,6 +97,13 @@ const FONT_WEIGHT_PRESETS = [
   { value: 500, label: 'Medium', weightClass: 'font-medium' },
   { value: 600, label: 'Bold', weightClass: 'font-bold' }
 ]
+
+const isFontWeightActive = (cur: number | undefined, val: number) => {
+  const current = cur || 400
+  if (val === 400) return current <= 450
+  if (val === 500) return current > 450 && current < 600
+  return current >= 600
+}
 
 const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
   { id: 'system', label: 'System' },
@@ -454,22 +462,12 @@ export const FullSettingsModal: React.FC = () => {
                   />
                 </div>
 
-                <div className="settings-card px-3.5 py-2.5 rounded-lg flex items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[13px] font-bold text-[var(--app-text-strong)] block">
-                      Screen Dimming
-                    </span>
-                    <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                      Soften overall window brightness
-                    </span>
-                  </div>
-                  <ValueStepper
-                    value={settings.dimming}
+                <div className="settings-card px-3.5 py-3 rounded-lg">
+                  <DimnessSlider
+                    value={settings.dimming ?? 0}
                     min={0}
-                    max={75}
+                    max={70}
                     step={5}
-                    unit="%"
-                    ariaLabel="Dimming"
                     onChange={(val) => updateSettings({ dimming: val })}
                   />
                 </div>
@@ -638,7 +636,7 @@ export const FullSettingsModal: React.FC = () => {
                     aria-label="Text Weight"
                   >
                     {FONT_WEIGHT_PRESETS.map((opt) => {
-                      const active = (settings.fontWeight || 400) === opt.value
+                      const active = isFontWeightActive(settings.fontWeight, opt.value)
                       return (
                         <button
                           key={opt.value}

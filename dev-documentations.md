@@ -1494,3 +1494,42 @@ emove.
    - Implemented `isForwardKey` handling `Alt + ArrowRight` (and `Alt + >` / `Alt + .`) in `EpubReaderView.tsx` (both iframe and outer window event listeners) and `PdfReaderView.tsx` to advance to the next page.
    - Implemented `Alt + ArrowLeft` (`Alt + Left` / `Alt + <` / `Alt + X`) in `SettingsDrawer.tsx` and `SearchDrawer.tsx` for immediate drawer dismissal without trapping keyboard focus.
    - Updated hotkey legends and shortcut cheat sheets to display `Alt + Left` / `Esc` for back/close and `Alt + Right` for forward.
+
+---
+
+## Increment 40: Iconographic Display Selectors, Theme-Adaptive Dimness Slider & Diagnostic Error Logging (2026-11-20)
+
+### Architecture & Implementation
+1. **Iconographic Visual Selectors (`SettingsDrawer.tsx`, `FullSettingsModal.tsx`)**:
+   - **Text Size**: Replaced numeric stepper with a 3-tier glassmorphic selector displaying the letter `A` at 3 sizes: Small (`15px`), Medium (`19px`, default), and Large (`24px`).
+   - **Line Spacing**: Replaced percentage stepper with illustrative horizontal line SVG drawings representing 2 lines (compact leading, `1.25`), 3 lines (balanced leading, `1.50`), and 4 lines (relaxed leading, `1.85`).
+   - **Text Weight**: Removed text labels ("Normal", "Medium", "Bold") and replaced them with visual preview templates displaying the letter `B` in Regular (`400`), Medium (`500`), and Bold (`600`/`700`) weights.
+   - **Page Layout**: Upgraded single and spread buttons with high-definition SVG icons: a crisp vertical A4 paper sheet for Single and an open dual-page book for Spread.
+2. **Tactile Dimness Slider (`DimnessSlider.tsx`)**:
+   - Built a theme-adaptive slider component with a 5px pill track, active progress fill, and a concentric donut thumb knob (18px slate-800 outer disc with an inner 6px solid white dot).
+   - Embedded interactive small and large moon click targets on the left and right ends to step dimness up and down.
+3. **Defensive Location Guard & Autoscroll Isolation (`EpubReaderView.tsx`, `adaptiveScrollService.ts`)**:
+   - Introduced `safeGetRenditionLocation(rendition)` that safely verifies `rendition?.manager` and wraps `currentLocation()` calls in a try-catch, returning `null` when a rendition is unmounted.
+   - Cleared `renditionRef.current = null` on reader cleanup.
+   - Added `'layout'` to `SuspensionReason` in `adaptiveScrollService.ts` and suspended autoscroll while renditions re-initialize, preventing countdown desync and location crashes across layout or spread switches.
+   - Suspended autoscroll while `SettingsDrawer` or `FullSettingsModal` are open.
+4. **Enhanced Diagnostic Error Boundary (`ErrorBoundary.tsx`)**:
+   - Added a **Copy error logs** button that formats app version (`1.0.3`), environment (`navigator.userAgent`), error name/message, stack trace, and component hierarchy to the clipboard with visual feedback.
+   - Added a **Report on GitHub** action that launches `https://github.com/elrazortheodore/Semply/issues/new` directly in the user's default browser.
+
+### Five Concrete Bugs Identified & Resolved:
+1. **Bug 1: Light Theme Donut Knob Invisibility in `DimnessSlider.tsx`**:
+   - *Root cause*: The inner dot was white (`#ffffff`) and the outer disc used `--app-surface-3`. On light themes, `--app-surface-3` rendered as light gray or white, rendering the center dot invisible due to zero contrast.
+   - *Resolution*: Hardened the outer donut disc with high-contrast slate-800 (`#1e293b`) with a crisp white center dot, ensuring sharp contrast against light and dark tracks across all 4 themes.
+2. **Bug 2: Unmounted Rendition Auto-Scroll Desync on Layout/Spread Switch in `EpubReaderView.tsx`**:
+   - *Root cause*: When `pageSpread` or `scrollMode` changed, `analyzeVisiblePage()` ran before the new rendition finished mounting, falling back to a dummy 150-word count and arming the countdown against a non-existent DOM.
+   - *Resolution*: Added `'layout'` suspension to `adaptiveScrollEngine` during book initialization, releasing it only after `applyLocationState(initialLoc)` completes to re-arm the countdown with actual displayed spread word density.
+3. **Bug 3: Dimming Overlay Covering Settings Drawer in `App.tsx`**:
+   - *Root cause*: `App.tsx` positioned the app-wide dimming overlay at `z-[95]`, while `SettingsDrawer.tsx` was at `z-50`. As readers adjusted dimness up to 70%, the drawer itself was darkened by 70%, making controls unreadable.
+   - *Resolution*: Elevated `SettingsDrawer` backdrop to `z-[96]` and panel to `z-[97]` so interactive settings controls remain bright and legible while the reading canvas beneath dims.
+4. **Bug 4: FullSettingsModal System Tab Legacy Stepper Desync in `FullSettingsModal.tsx`**:
+   - *Root cause*: `FullSettingsModal.tsx` System tab still used the legacy `ValueStepper` for Screen Dimming while Reader Settings used the new `DimnessSlider`.
+   - *Resolution*: Replaced the legacy stepper in `FullSettingsModal.tsx` System tab with `DimnessSlider`, ensuring unified dimming controls across the app.
+5. **Bug 5: Text Weight Active State Desync for Stored `fontWeight: 700`**:
+   - *Root cause*: Older books or imports could store `fontWeight: 700`. A strict equality `settings.fontWeight === 600` caused no button to be highlighted as active.
+   - *Resolution*: Implemented boundary matching `isFontWeightActive(cur, val)` so 600 or 700 activates the bold `B` template, 500 activates medium, and 400 or undefined activates regular.

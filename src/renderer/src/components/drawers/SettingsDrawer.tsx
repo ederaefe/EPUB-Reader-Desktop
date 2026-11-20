@@ -100,6 +100,13 @@ const FONT_WEIGHT_PRESETS = [
   { value: 600, label: 'Bold', weightClass: 'font-bold' }
 ]
 
+const isFontWeightActive = (cur: number | undefined, val: number) => {
+  const current = cur || 400
+  if (val === 400) return current <= 450
+  if (val === 500) return current > 450 && current < 600
+  return current >= 600
+}
+
 const TIMER_PRESETS = [10, 20, 30, 45]
 const SMART_SEC_PRESETS = [15, 25, 35, 50]
 const TTS_SPEEDS = [0.8, 1.0, 1.2, 1.5, 2.0]
@@ -249,12 +256,12 @@ export const SettingsDrawer: React.FC = () => {
     <>
       {/* Subtle backdrop */}
       <div
-        className="fixed inset-0 top-8 bg-black/45 backdrop-blur-[1px] z-40 transition-opacity"
+        className="fixed inset-0 top-8 bg-black/45 backdrop-blur-[1px] z-[96] transition-opacity"
         onClick={() => toggleSettingsDrawer(false)}
       />
 
       {/* Calm, Borderless Reading Settings Panel */}
-      <aside className="fixed top-10 right-3 bottom-3 w-[320px] bg-[var(--app-surface)] border border-[var(--app-border)] rounded-[10px] z-50 flex flex-col justify-between shadow-[0_24px_64px_rgba(0,0,0,0.55)] select-none app-no-drag overflow-hidden animate-in slide-in-from-right-2 fade-in duration-150">
+      <aside className="fixed top-10 right-3 bottom-3 w-[320px] bg-[var(--app-surface)] border border-[var(--app-border)] rounded-[10px] z-[97] flex flex-col justify-between shadow-[0_24px_64px_rgba(0,0,0,0.55)] select-none app-no-drag overflow-hidden animate-in slide-in-from-right-2 fade-in duration-150">
         {/* Header + Borderless 3-Tab Navigation (Display | Scroll | More) */}
         <div className="px-4 pt-3.5 pb-0 shrink-0">
           <div className="flex items-center justify-between mb-3">
@@ -438,7 +445,7 @@ export const SettingsDrawer: React.FC = () => {
                     aria-label="Text weight"
                   >
                     {FONT_WEIGHT_PRESETS.map((opt) => {
-                      const active = (settings.fontWeight || 400) === opt.value
+                      const active = isFontWeightActive(settings.fontWeight, opt.value)
                       return (
                         <button
                           key={opt.value}

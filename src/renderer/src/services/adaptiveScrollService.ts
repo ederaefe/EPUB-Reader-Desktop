@@ -9,7 +9,7 @@
 
 import type { AutoscrollMode } from '../db'
 
-export type SuspensionReason = 'blur' | 'hidden' | 'selection' | 'footnote' | 'drawer' | 'modal'
+export type SuspensionReason = 'blur' | 'hidden' | 'selection' | 'footnote' | 'drawer' | 'modal' | 'layout'
 export type PauseReason = 'user' | 'inactivity' | null
 
 export type SettingsSyncCallback = (settings: {

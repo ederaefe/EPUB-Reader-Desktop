@@ -883,6 +883,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   useEffect(() => {
     let isCancelled = false
     let epubInstance: EpubBook | null = null
+    adaptiveScrollEngine.setSuspension('layout', true)
     let renditionInstance: Rendition | null = null
     locationsReadyRef.current = false
     isScrubbingRef.current = false
@@ -1266,6 +1267,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       if (initialLoc?.start) {
         applyLocationState(initialLoc, false)
       }
+      adaptiveScrollEngine.setSuspension('layout', false)
+      adaptiveScrollEngine.recordUserActivity()
 
       // Hydrate all saved annotations/highlights onto the rendition immediately
       if (bookIdRef.current && !isCancelled) {
@@ -1381,6 +1384,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       locationsReadyRef.current = false
       renditionRef.current = null
       epubBookRef.current = null
+      adaptiveScrollEngine.setSuspension('layout', false)
       // Stop the internal epub.js queue BEFORE destroy() so pending Rendition.start()
       // tasks never fire against an undefined book after unmount/StrictMode remount.
       const rendAny = renditionInstance as any
