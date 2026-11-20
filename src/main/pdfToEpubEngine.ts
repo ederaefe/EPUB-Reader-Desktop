@@ -448,7 +448,7 @@ export async function convertPdfToEpub(
             },
             endLine() {
               if (activeBlock && activeLine && activeLine.spans.length > 0) {
-                activeBlock.lines!.push(activeLine)
+                activeBlock.lines?.push(activeLine)
               }
               activeLine = null
               activeSpan = null

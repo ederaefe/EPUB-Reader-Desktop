@@ -76,7 +76,16 @@ export const SettingsDrawer: React.FC = () => {
   useEffect(() => {
     if (!isSettingsDrawerOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') toggleSettingsDrawer(false)
+      const isClose =
+        e.key === 'Escape' ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === 'ArrowLeft' || e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        ))
+      if (isClose) {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleSettingsDrawer(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -331,7 +340,7 @@ export const SettingsDrawer: React.FC = () => {
                     Text weight
                   </span>
                   <div
-                    className="grid grid-cols-3 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[144px]"
+                    className="glass-pill-track grid-cols-3 w-[156px]"
                     role="radiogroup"
                     aria-label="Text weight"
                   >
@@ -343,12 +352,9 @@ export const SettingsDrawer: React.FC = () => {
                           type="button"
                           role="radio"
                           aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
                           onClick={() => updateSettings({ fontWeight: opt.value })}
-                          className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                            active
-                              ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                              : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                          }`}
+                          className="glass-pill-btn"
                         >
                           {opt.label}
                         </button>
@@ -362,7 +368,7 @@ export const SettingsDrawer: React.FC = () => {
                     Page layout
                   </span>
                   <div
-                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[144px]"
+                    className="glass-pill-track grid-cols-2 w-[156px]"
                     role="radiogroup"
                     aria-label="Page layout"
                   >
@@ -370,12 +376,9 @@ export const SettingsDrawer: React.FC = () => {
                       type="button"
                       role="radio"
                       aria-checked={settings.pageSpread === 'single'}
+                      data-active={settings.pageSpread === 'single' ? 'true' : 'false'}
                       onClick={() => updateSettings({ pageSpread: 'single' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
-                        settings.pageSpread === 'single'
-                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                      }`}
+                      className="glass-pill-btn gap-1"
                     >
                       <Square className="w-2.5 h-2.5" />
                       <span>Single</span>
@@ -384,12 +387,9 @@ export const SettingsDrawer: React.FC = () => {
                       type="button"
                       role="radio"
                       aria-checked={settings.pageSpread === 'double'}
+                      data-active={settings.pageSpread === 'double' ? 'true' : 'false'}
                       onClick={() => updateSettings({ pageSpread: 'double' })}
-                      className={`h-6 rounded-[4px] flex items-center justify-center gap-1 text-[10.5px] font-semibold transition-all ${
-                        settings.pageSpread === 'double'
-                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                      }`}
+                      className="glass-pill-btn gap-1"
                     >
                       <Columns className="w-2.5 h-2.5" />
                       <span>Spread</span>
@@ -530,7 +530,7 @@ export const SettingsDrawer: React.FC = () => {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[12px] font-semibold text-[var(--app-text)]">Direction</span>
                 <div
-                  className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[152px]"
+                  className="glass-pill-track grid-cols-2 w-[164px]"
                   role="radiogroup"
                   aria-label="Scroll direction"
                 >
@@ -547,12 +547,9 @@ export const SettingsDrawer: React.FC = () => {
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        data-active={active ? 'true' : 'false'}
                         onClick={() => setScrollMode(dir.id)}
-                        className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                          active
-                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                            : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                        }`}
+                        className="glass-pill-btn"
                       >
                         {dir.label}
                       </button>
@@ -581,11 +578,7 @@ export const SettingsDrawer: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleToggleAutoScrollPause}
-                        className={`h-6 px-2 rounded-md flex items-center gap-1 text-[11px] font-semibold transition-colors cursor-pointer ${
-                          autoscrollMetrics.isUserPaused
-                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                            : 'bg-[var(--app-surface-2)] text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)]'
-                        }`}
+                        className="glass-action-pill !h-6 !px-2.5 !text-[11px]"
                       >
                         {autoscrollMetrics.isUserPaused ? (
                           <>
@@ -629,7 +622,7 @@ export const SettingsDrawer: React.FC = () => {
                     Pacing
                   </span>
                   <div
-                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[132px]"
+                    className="glass-pill-track grid-cols-2 w-[140px]"
                     role="radiogroup"
                     aria-label="Auto-scroll pacing mode"
                   >
@@ -646,12 +639,9 @@ export const SettingsDrawer: React.FC = () => {
                           type="button"
                           role="radio"
                           aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
                           onClick={() => handleModeChange(m.id)}
-                          className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                            active
-                              ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                              : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                          }`}
+                          className="glass-pill-btn"
                         >
                           {m.label}
                         </button>
@@ -697,12 +687,9 @@ export const SettingsDrawer: React.FC = () => {
                           <button
                             key={sec}
                             type="button"
+                            data-active={active ? 'true' : 'false'}
                             onClick={() => handleCountdownChange(sec)}
-                            className={`h-6 rounded-[4px] text-[10.5px] font-mono tabular-nums transition-colors ${
-                              active
-                                ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] font-semibold'
-                                : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                            }`}
+                            className="glass-preset-btn"
                           >
                             {sec}s
                           </button>
@@ -746,12 +733,9 @@ export const SettingsDrawer: React.FC = () => {
                           <button
                             key={sec}
                             type="button"
+                            data-active={active ? 'true' : 'false'}
                             onClick={() => handleAdaptiveSecChange(sec)}
-                            className={`h-6 rounded-[4px] text-[10.5px] font-mono tabular-nums transition-colors ${
-                              active
-                                ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] font-semibold'
-                                : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                            }`}
+                            className="glass-preset-btn"
                           >
                             {sec}s
                           </button>
@@ -819,10 +803,10 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleToggleTTS}
-                      className={`h-6 px-2.5 rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors ${
+                      className={`glass-action-pill ${
                         isTTSActive
-                          ? 'bg-[var(--app-accent)] text-white'
-                          : 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
+                          ? '!bg-[var(--app-accent)] !border-[var(--app-accent)] !text-white'
+                          : ''
                       }`}
                     >
                       {isTTSActive ? (
@@ -835,19 +819,16 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-5 gap-1">
+                <div className="grid grid-cols-5 gap-1.5">
                   {TTS_SPEEDS.map((sp) => {
                     const active = Math.abs(settings.ttsSpeed - sp) < 0.05
                     return (
                       <button
                         key={sp}
                         type="button"
+                        data-active={active ? 'true' : 'false'}
                         onClick={() => updateSettings({ ttsSpeed: sp })}
-                        className={`h-6 rounded-[4px] text-[10px] font-mono tabular-nums transition-colors ${
-                          active
-                            ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] font-semibold'
-                            : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                        }`}
+                        className="glass-preset-btn text-[10px]"
                       >
                         {sp.toFixed(1)}×
                       </button>
@@ -876,7 +857,7 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
 
                   <div
-                    className="grid grid-cols-2 p-0.5 bg-[var(--app-surface-2)] rounded-md w-[124px] shrink-0"
+                    className="glass-pill-track grid-cols-2 w-[136px] shrink-0"
                     role="radiogroup"
                     aria-label="View format"
                   >
@@ -884,16 +865,11 @@ export const SettingsDrawer: React.FC = () => {
                       type="button"
                       role="radio"
                       aria-checked={isPdf ? pdfViewMode === 'original' : false}
+                      data-active={isPdf && pdfViewMode === 'original' ? 'true' : 'false'}
                       disabled={!isPdf || isConvertingPdf}
                       onClick={() => handleSelectPdfView('original')}
                       title={!isPdf ? 'Native EPUB book' : undefined}
-                      className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                        isPdf && pdfViewMode === 'original'
-                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                          : !isPdf
-                          ? 'text-[var(--app-text-subtle)] opacity-40'
-                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                      }`}
+                      className="glass-pill-btn disabled:opacity-40"
                     >
                       PDF
                     </button>
@@ -901,13 +877,10 @@ export const SettingsDrawer: React.FC = () => {
                       type="button"
                       role="radio"
                       aria-checked={!isPdf || pdfViewMode === 'reflow'}
+                      data-active={!isPdf || pdfViewMode === 'reflow' ? 'true' : 'false'}
                       disabled={isConvertingPdf}
                       onClick={() => handleSelectPdfView('reflow')}
-                      className={`h-6 rounded-[4px] text-[10.5px] font-semibold transition-all ${
-                        !isPdf || pdfViewMode === 'reflow'
-                          ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                          : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                      }`}
+                      className="glass-pill-btn disabled:opacity-40"
                     >
                       {isConvertingPdf ? '...' : 'EPUB'}
                     </button>

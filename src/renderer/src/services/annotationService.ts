@@ -181,12 +181,12 @@ export function removeAnnotationFromRendition(
 ): void {
   if (!rendition || !cfiRange) return
   try {
-    rendition.annotations.remove(cfiRange, 'highlight')
+    rendition.annotations?.remove(cfiRange, 'highlight')
   } catch {
     // Ignore if not registered as highlight
   }
   try {
-    rendition.annotations.remove(cfiRange, 'underline')
+    rendition.annotations?.remove(cfiRange, 'underline')
   } catch {
     // Ignore if not registered as underline
   }
@@ -221,9 +221,9 @@ export function applyAnnotationToRendition(
 
   try {
     if (annotation.color === 'underline') {
-      rendition.annotations.underline(annotation.cfiRange, data, cb, className, styles)
+      rendition.annotations?.underline(annotation.cfiRange, data, cb, className, styles)
     } else {
-      rendition.annotations.highlight(annotation.cfiRange, data, cb, className, styles)
+      rendition.annotations?.highlight(annotation.cfiRange, data, cb, className, styles)
     }
   } catch (err) {
     console.warn('Failed to attach annotation mark:', annotation.cfiRange, err)

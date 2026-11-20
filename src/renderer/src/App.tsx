@@ -481,7 +481,7 @@ export const App: React.FC = () => {
         }
         return
       }
-      const firstPath = (firstFile as any).path as string | undefined
+      const firstPath = (firstFile as any)?.path as string | undefined
       if (firstPath) {
         await openLocalBookPath(firstPath)
       }

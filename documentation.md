@@ -85,3 +85,4 @@ All future updates appended to `documentation.md` must follow these rules:
   - `Ctrl + /` or `?`: Open the hotkeys and navigation cheatsheet from anywhere in the app.
   - `r` or `F10`: Toggle between single-page and dual-page book spread.
   - `/` or `Ctrl + F`: Jump directly into the Library search bar when viewing your bookshelf.
+- **Defensive Error Handling & Null-Safety Hardening**: Hardened file imports and book loading against unexpected errors so folder scans and file selections always clear loading indicators cleanly. Protected reading components and text selections against detached window lifecycles and secured network response parsing.

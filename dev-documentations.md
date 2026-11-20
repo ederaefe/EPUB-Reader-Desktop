@@ -1455,3 +1455,26 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
    - **Bug 5: Off-screen annotation Undo/Redo failure & Rendition desync**:
      *Root cause*: Undoing or redoing an annotation in another chapter threw unhandled rendition exceptions when attempting to locate unmounted DOM nodes, crashing the history service and leaving Dexie out of sync.
      *Resolution*: Wrapped all rendition CFI manipulations in defensive try-catches in `readerHistoryService.ts`, ensuring the database state always commits cleanly, and triggered `bumpAnnotationsVersion()` to re-render visible marks.
+
+---
+
+## Increment 38: Comprehensive Null-Safety Hardening & Asynchronous Exception Resilience (2026-11-20)
+
+### Architecture & Implementation
+1. **Reader Initialization Null Guard (src/renderer/src/components/reader/EpubReaderView.tsx)**:
+   - Added safe type-coercion on ookFilePathRef.current before evaluating URI protocol checks (startsWith), preventing unhandled TypeError: Cannot read properties of undefined (reading 'startsWith') when initializing books with missing or non-string paths.
+2. **Text Selection Lifecycle Protection (src/renderer/src/components/reader/EpubReaderView.tsx)**:
+   - Added optional chaining across contents?.window?.getSelection?.() and contents?.window?.frameElement, protecting the selection handler from throwing when selection events fire during chapter unloading or DOM disposal.
+3. **Library View Import Error Recovery (src/renderer/src/components/library/LibraryView.tsx)**:
+   - Enclosed handleImportFiles and handleImportFolder within 	ry ... catch ... finally blocks. Ensures setIsLoading(false) and setStatusMessage(null) reliably execute regardless of IPC rejections or folder permission failures, eliminating infinite UI loading lockups.
+4. **Drag-and-Drop Path Safety (src/renderer/src/App.tsx)**:
+   - Coerced (firstFile as any)?.path with safe navigation in window drop handlers, preventing undefined dereferences on non-file drop transfers.
+5. **Main Process Network Gateway JSON Hardening (src/main/networkService.ts)**:
+   - Enclosed JSON.parse in etchJsonStrict within a dedicated 	ry / catch returning 
+ull, protecting against unhandled SyntaxError crashes on malformed upstream API payloads.
+6. **PDF Structured Text & Annotation Safe Navigation (src/main/pdfToEpubEngine.ts, src/renderer/src/services/annotationService.ts, src/renderer/src/services/pdfViewService.ts)**:
+   - Replaced non-null assertion ctiveBlock.lines!.push with optional navigation ctiveBlock.lines?.push during MuPDF structured text line walking.
+   - Added optional chaining across 
+endition.annotations?.underline, highlight, and 
+emove.
+   - Verified available desktop conversion IPC before triggering PDF reflow transforms in pdfViewService.ts.

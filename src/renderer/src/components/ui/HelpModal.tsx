@@ -26,7 +26,8 @@ export const HelpModal: React.FC = () => {
   if (!isHelpModalOpen) return null
 
   const shortcuts = [
-    { key: 'Alt + < / Esc', desc: 'Back to Library / Close modal / drawer' },
+    { key: 'Alt + Left / Esc', desc: 'Back to Library / Close modal / drawer' },
+    { key: 'Alt + Right', desc: 'Navigate forward / next page' },
     { key: 'Ctrl + Z', desc: 'Undo annotation or bookmark' },
     { key: 'Ctrl + Y / Ctrl+Shift+Z', desc: 'Redo annotation or bookmark' },
     { key: 'Ctrl + B / Ctrl + D', desc: 'Bookmark current page' },

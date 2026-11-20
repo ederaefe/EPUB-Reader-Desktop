@@ -623,39 +623,47 @@ export const LibraryView: React.FC = () => {
   // Import Files Handler
   const handleImportFiles = async () => {
     const targetCatId = activeCustomCategory?.id ?? null
-    const targetCatName = activeCustomCategory?.name ?? null
     setIsLoading(true)
     setStatusMessage('Selecting files...')
-    const paths = await window.desktopAPI?.openFiles()
-    if (paths && paths.length > 0) {
-      let importedCount = 0
-      for (const p of paths) {
-        if (await processAndAddFile(p, targetCatId)) importedCount++
+    try {
+      const paths = await window.desktopAPI?.openFiles()
+      if (paths && paths.length > 0) {
+        let importedCount = 0
+        for (const p of paths) {
+          if (await processAndAddFile(p, targetCatId)) importedCount++
+        }
+        await loadData()
       }
-      await loadData()
+    } catch (err: any) {
+      showToast(err?.message || 'File selection failed', 'error')
+    } finally {
+      setIsLoading(false)
+      setStatusMessage(null)
     }
-    setIsLoading(false)
-    setStatusMessage(null)
   }
 
   // Bulk Folder Import Handler
   const handleImportFolder = async () => {
     const targetCatId = activeCustomCategory?.id ?? null
-    const targetCatName = activeCustomCategory?.name ?? null
     setIsLoading(true)
     setStatusMessage('Scanning folder...')
-    const folder = await window.desktopAPI?.openFolder()
-    if (folder) {
-      const files = await window.desktopAPI.scanFolder(folder)
-      setStatusMessage(`Found ${files.length} books. Importing...`)
-      let importedCount = 0
-      for (const f of files) {
-        if (await processAndAddFile(f, targetCatId)) importedCount++
+    try {
+      const folder = await window.desktopAPI?.openFolder()
+      if (folder && window.desktopAPI?.scanFolder) {
+        const files = await window.desktopAPI.scanFolder(folder)
+        setStatusMessage(`Found ${files.length} books. Importing...`)
+        let importedCount = 0
+        for (const f of files) {
+          if (await processAndAddFile(f, targetCatId)) importedCount++
+        }
+        await loadData()
       }
-      await loadData()
+    } catch (err: any) {
+      showToast(err?.message || 'Folder scan failed', 'error')
+    } finally {
+      setIsLoading(false)
+      setStatusMessage(null)
     }
-    setIsLoading(false)
-    setStatusMessage(null)
   }
 
   // Bulk assign existing library books into the active custom category

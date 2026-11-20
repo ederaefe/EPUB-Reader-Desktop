@@ -543,6 +543,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
         return
       }
+      const isForwardKey =
+        e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
+        )
+      if (isForwardKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        navigateStepRef.current('next')
+        return
+      }
       // Keep bare Control key and destructive/zoom Ctrl combos unresponsive
       if (e.key === 'Control' || e.key === 'F5') {
         e.preventDefault()
@@ -875,24 +885,26 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           ? reflowEpubBuffer
           : activeBookBuffer
       if (!sourceData) {
+        const currentPath = typeof bookFilePathRef.current === 'string' ? bookFilePathRef.current : ''
         if (
           window.desktopAPI?.readFileBuffer &&
-          !bookFilePathRef.current.startsWith('http://') &&
-          !bookFilePathRef.current.startsWith('https://') &&
-          !bookFilePathRef.current.startsWith('/assets/') &&
-          !bookFilePathRef.current.startsWith('assets/')
+          currentPath &&
+          !currentPath.startsWith('http://') &&
+          !currentPath.startsWith('https://') &&
+          !currentPath.startsWith('/assets/') &&
+          !currentPath.startsWith('assets/')
         ) {
           try {
-            sourceData = await window.desktopAPI.readFileBuffer(bookFilePathRef.current)
+            sourceData = await window.desktopAPI.readFileBuffer(currentPath)
           } catch {
-            sourceData = bookFilePathRef.current
+            sourceData = currentPath
           }
-        } else {
+        } else if (currentPath) {
           try {
-            const resp = await fetch(bookFilePathRef.current)
+            const resp = await fetch(currentPath)
             sourceData = await resp.arrayBuffer()
           } catch {
-            sourceData = bookFilePathRef.current
+            sourceData = currentPath
           }
         }
       }
@@ -1167,12 +1179,14 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
       renditionInstance.on('selected', (cfiRange: string, contents: any) => {
         if (isCancelled) return
-        const selection = contents.window.getSelection()
+        const win = contents?.window
+        if (!win) return
+        const selection = win.getSelection?.()
         const text = selection?.toString().trim()
         if (text && selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0)
           const rect = range.getBoundingClientRect()
-          const frameEl = contents.window.frameElement as HTMLElement | null
+          const frameEl = win.frameElement as HTMLElement | null
           const iframeRect = frameEl?.getBoundingClientRect() || viewerRef.current?.getBoundingClientRect()
 
           selectedIceRangeRef.current = captureIceRange(range, contents.document, currentHrefRef.current)
@@ -1947,6 +1961,16 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         } else {
           onBackRef.current()
         }
+        return
+      }
+      const isForwardKey =
+        e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
+        )
+      if (isForwardKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        navigateStepRef.current('next')
         return
       }
 

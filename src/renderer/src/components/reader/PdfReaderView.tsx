@@ -446,6 +446,17 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         return
       }
 
+      const isForwardKey =
+        e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
+        )
+      if (isForwardKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        handleNext()
+        return
+      }
+
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
           ;(e.target as HTMLElement)?.blur?.()

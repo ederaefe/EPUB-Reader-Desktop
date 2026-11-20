@@ -45,7 +45,8 @@ const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
 
 const HOTKEYS_LEFT: Array<{ label: string; keys: string[] }> = [
   { label: 'Show hotkeys', keys: ['F1', 'Ctrl + /', '?'] },
-  { label: 'Back / Close modal or drawer', keys: ['Alt + <', 'Esc'] },
+  { label: 'Back / Close modal or drawer', keys: ['Alt + Left', 'Esc'] },
+  { label: 'Forward in history', keys: ['Alt + Right'] },
   { label: 'Undo annotation / bookmark', keys: ['Ctrl + Z'] },
   { label: 'Redo annotation / bookmark', keys: ['Ctrl + Y', 'Ctrl+Shift+Z'] },
   { label: 'Go to previous page', keys: ['Left', 'PgUp', 'k'] },
@@ -63,7 +64,7 @@ const HOTKEYS_RIGHT: Array<{ label: string; keys: string[] }> = [
   { label: 'Switch theme', keys: ['F9'] },
   { label: 'Switch column count', keys: ['F10', 'r'] },
   { label: 'Switch fullscreen', keys: ['F11'] },
-  { label: 'Back to library', keys: ['Alt + <', 'Alt + X'] }
+  { label: 'Back to library', keys: ['Alt + Left', 'Alt + X'] }
 ]
 
 export const FullSettingsModal: React.FC = () => {
@@ -529,7 +530,7 @@ export const FullSettingsModal: React.FC = () => {
                     Text Weight
                   </span>
                   <div
-                    className="grid grid-cols-3 p-0.5 bg-[var(--app-bg)] rounded-md border border-[var(--app-border)] w-48"
+                    className="glass-pill-track grid-cols-3 w-52"
                     role="radiogroup"
                     aria-label="Text Weight"
                   >
@@ -545,12 +546,9 @@ export const FullSettingsModal: React.FC = () => {
                           type="button"
                           role="radio"
                           aria-checked={active}
+                          data-active={active ? 'true' : 'false'}
                           onClick={() => updateSettings({ fontWeight: opt.value })}
-                          className={`h-7 rounded-[4px] text-[11.5px] font-semibold transition-all ${
-                            active
-                              ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)]'
-                              : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                          }`}
+                          className="glass-pill-btn !h-7 !text-[11.5px]"
                         >
                           {opt.label}
                         </button>
@@ -748,12 +746,12 @@ export const FullSettingsModal: React.FC = () => {
                     </div>
 
                     {/* Segmented Mode Selector */}
-                    <div className="grid grid-cols-2 gap-1 p-1 bg-[var(--app-surface-2)] rounded-lg border border-[var(--app-border)]">
+                    <div className="glass-pill-track grid-cols-2 p-1">
                       <button
                         type="button"
                         data-active={effectiveMode === 'countdown' ? 'true' : 'false'}
                         onClick={() => handleModeChange('countdown')}
-                        className="settings-segment-btn h-7 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
+                        className="glass-pill-btn !h-7 gap-1.5 !text-[12px] font-semibold"
                       >
                         <Timer className="w-3.5 h-3.5" />
                         <span>Fixed Timer</span>
@@ -763,7 +761,7 @@ export const FullSettingsModal: React.FC = () => {
                         type="button"
                         data-active={effectiveMode === 'adaptive' ? 'true' : 'false'}
                         onClick={() => handleModeChange('adaptive')}
-                        className="settings-segment-btn h-7 rounded-md flex items-center justify-center gap-1.5 text-[12px] font-bold cursor-pointer"
+                        className="glass-pill-btn !h-7 gap-1.5 !text-[12px] font-semibold"
                       >
                         <Zap className="w-3.5 h-3.5" />
                         <span>Smart Pace</span>

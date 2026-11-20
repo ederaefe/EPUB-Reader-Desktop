@@ -121,7 +121,11 @@ async function fetchJsonStrict(
 
     const buf = Buffer.from(await resp.arrayBuffer())
     if (buf.byteLength > MAX_JSON_BYTES) return null
-    return JSON.parse(buf.toString('utf-8'))
+    try {
+      return JSON.parse(buf.toString('utf-8'))
+    } catch {
+      return null
+    }
   } finally {
     clearTimeout(timer)
   }

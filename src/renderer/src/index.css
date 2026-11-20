@@ -1148,6 +1148,165 @@ html[data-theme="dark-sepia"] .settings-btn-danger,
 }
 
 /* ============================================================================
+   Glassmorphic Pill Segmented Selectors & Micro-Interactions
+   ============================================================================ */
+.glass-pill-track {
+  display: grid;
+  padding: 3px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-pill-track {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.glass-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--app-text-muted, rgba(255, 255, 255, 0.65));
+  background-color: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-pill-btn:hover:not([data-active="true"]) {
+  color: var(--app-text-strong, #ffffff);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-pill-btn:hover:not([data-active="true"]) {
+  color: #111827;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.glass-pill-btn:active {
+  transform: scale(0.96);
+}
+
+.glass-pill-btn[data-active="true"] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.12) 100%);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-pill-btn[data-active="true"] {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.glass-preset-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--app-text-muted, rgba(255, 255, 255, 0.6));
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  user-select: none;
+  transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-preset-btn:hover:not([data-active="true"]) {
+  color: var(--app-text-strong, #ffffff);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-preset-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-preset-btn:hover:not([data-active="true"]) {
+  color: #111827;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.glass-preset-btn:active {
+  transform: scale(0.95);
+}
+
+.glass-preset-btn[data-active="true"] {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.12) 100%);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-preset-btn[data-active="true"] {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+  border-color: rgba(0, 0, 0, 0.14);
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), inset 0 1px 0 #ffffff;
+}
+
+.glass-action-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  user-select: none;
+  transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.glass-action-pill:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0.14) 100%);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.glass-action-pill:active {
+  transform: scale(0.96);
+}
+
+:is(html[data-theme="day"], html[data-theme="light-sepia"]) .glass-action-pill {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #111827;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 #ffffff;
+}
+
+/* ============================================================================
    One-Time Narrative Climax Crimson Lightsaber Glow (3 Pulses)
    ============================================================================ */
 @keyframes climax-saber-aura {

@@ -17,11 +17,17 @@ export async function loadCachedReflowEpub(
     store.setPdfConversionState(true, { percent: 8, stage: 'Preparing EPUB view...' })
   }
   try {
+    if (!window.desktopAPI?.convertToEpub) {
+      if (showProgressOverlay) {
+        store.showToast('Desktop conversion engine is not available.', 'error')
+      }
+      return null
+    }
     const res = await window.desktopAPI.convertToEpub({
       pdfPath,
       mode: 'reflow-cache'
     })
-    if (res.success && res.epubPath) {
+    if (res.success && res.epubPath && window.desktopAPI?.readFileBuffer) {
       return await window.desktopAPI.readFileBuffer(res.epubPath)
     }
     if (showProgressOverlay) {
