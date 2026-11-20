@@ -284,31 +284,35 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         ? `body, body p, body div, body span, body li, body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 { font-family: ${fontFam} !important; }`
         : ''
 
-    // Base layout and scrollbar suppression rules (preserves epub.js native 2-column calculation)
+    // Layout and scrollbar suppression rules (preserves epub.js native multi-column inline expansion)
     const baseLayoutRule = `
       html, body {
-        overflow: hidden !important;
-        overflow-x: hidden !important;
-        overflow-y: hidden !important;
         box-sizing: border-box !important;
-      }
-      body {
-        overflow: hidden !important;
-        overflow-x: hidden !important;
-        overflow-y: hidden !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
       }
       ::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
         height: 0 !important;
       }
+      *::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
       .galley-rw, section, article, div.body-rw, main {
-        max-width: 100% !important;
+        max-width: none !important;
         width: auto !important;
       }
       h1, h2, h3, h4, h5, h6 {
         column-span: none !important;
         -webkit-column-span: none !important;
+      }
+      img, svg, figure {
+        max-width: 100% !important;
+        max-height: 90vh !important;
+        object-fit: contain !important;
       }
     `
 

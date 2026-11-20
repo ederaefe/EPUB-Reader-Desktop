@@ -2277,3 +2277,76 @@ Establish a strict separation between public website documentation and internal 
 
 
 
+
+
+---
+
+## Increment 36: Architectural Forensic Audit of Manual Page-Turning & Autoscroll Concurrency
+> **Agent**: @Agent-AutoscrollForensics | **Status**: AUDIT & ARCHITECTURAL REFERENCE
+
+### Problem Statement (10-Point Reader Engine Concurrency Audit)
+1. **Stale-Countdown Double-Flip (Desync on Manual Next)** (`EpubReaderView.tsx` line 1267): Manual page navigation calls `rendition.next()`, firing `relocated`. However, `applyLocationState()` in `relocated` updates metrics without re-arming `armPageRef.current()`. The active `adaptiveScrollEngine` timer continues decrementing `remainingMs` from the prior page and fires `handleNext()`, causing a rapid double page-flip.
+2. **The Rewind Trap (Backwards Navigation Override)** (`EpubReaderView.tsx` line 1570): Navigating backwards (`navigateStep('prev')` or Left Arrow) does not reset or disarm the active forward autoscroll timer closure. The timer expires shortly after rewinding and forcibly flips the reader forward again.
+3. **Browsing Cadence Inflation (Learned WPM Skewing)** (`EpubReaderView.tsx` line 1189): `applyLocationState` invokes `adaptiveScrollEngine.recordManualReading(prevWords, elapsedMs)` on every manual turn when autoscroll is inactive. Quick browsing dwells (e.g. 5-8 seconds across short sections) calculate plausible-looking speeds (600-750 WPM) that permanently accelerate the learned reading rate.
+4. **Edge Hitbox Occlusion & Bulky Arrow Styling** (`SideNavigation.tsx` lines 29-34, 69): The hover detection column spans `Math.min(220, width * 0.22)` (up to 220px), occluding margin text, footnote citations, and text selections. Furthermore, the navigation arrows render inside bulky pill backgrounds (`bg-[var(--app-surface)]/85 border shadow-md`), cluttering the reading canvas.
+5. **Recovery Watchdog Multi-Skip (1200ms Ghost Flip)** (`EpubReaderView.tsx` line 1856): When the autoscroll timer elapses, `handleNext()` fires and starts a 1200ms recovery timer. The recovery callback calls `handleNext()` a second time without checking if the page CFI already advanced, causing an accidental two-page skip whenever page rendering takes >400ms.
+6. **End-of-Book Arrow State Desync** (`EpubReaderView.tsx` line 3028): `isRightDisabled` evaluates `progressPercent >= 100 && currentPage >= totalPages`. Because EPUB pagination is synthetic, the final page often reports 98-99% progress. The arrow remains enabled and the countdown loops against the terminal boundary.
+7. **Spacebar Dual-Command Collision in PDF Mode** (`PdfReaderView.tsx` line 641): In PDF reading mode, `Space` is mapped unconditionally to `handleNext()`, overriding universal expectation and EPUB parity where Space toggles autoscroll Play/Pause.
+8. **Rapid Arrow Click Queue Deadlock** (`EpubReaderView.tsx` line 1570): Rapidly clicking the Next or Prev arrow invokes concurrent promises against epub.js's internal queue (`rendition.q`). An unhandled rejection or layout race stalls the queue worker permanently, freezing page turns until remount.
+9. **Navigation Button Hysteresis Perimeter Flicker** (`SideNavigation.tsx` line 29): Hover detection lacks an enter/exit hysteresis band. Moving the mouse along the 220px perimeter toggles `visibleSide` between active and null on every mousemove event.
+10. **Dual-to-Single Spread Dwell Mismatch** (`EpubReaderView.tsx`, `PdfReaderView.tsx`): Switching between Single and Dual layouts keeps the old countdown's `remainingMs` and `totalDurationMs` active instead of dynamically re-arming with the appropriate single-page or dual-page duration.
+
+### Architectural Invariants & Guidance for Engine Upgrades
+Future engine architectures (whether refactored or replaced with a new engine) should treat the above 10 points as an **Acceptance & Validation Checklist**:
+- **Clean Per-Page Countdown Resets**: Whenever a page changes (manually via arrow, keyboard, or automatically), the timer must cleanly reset and start fresh for that page.
+- **Cadence Recalibration Milestones**: Autoscroll speed should remain stable and predictable. In adaptive mode, the reading speed should not fluctuate erratically on every page; it recalibrates in stable batches (e.g., every 10-11 pages, with a formal calibration milestone at the 20th page).
+- **Subtle, Un-Pilled Navigation Chevron**: Side navigation arrows must remove the heavy pill background container (`rounded-full`, opaque surface, border, shadow). The chevrons should be subtle, slightly bolder (`strokeWidth={2.5}`), and restricted to a tight edge trigger margin (`<= 64px`) so text, margin notes, and footnote links are completely unhindered.
+- **Async Navigation Mutex**: Any low-level rendition call must be gated by an asynchronous navigation lock to prevent internal queue deadlocks during rapid clicking.
+
+### Touched Files
+- `dev-documentations.md`
+
+### Verification Matrix
+- Documentation audit increment appended. Working tree untouched to maintain concurrency safety for parallel agents.
+
+### Handoff Notes
+- This increment acts as an architectural reference. If an incoming engine overhaul inherently solves or replaces these mechanisms at a higher abstraction level, the agent should not spend time micro-patching legacy components; simply verify that the new engine satisfies the acceptance criteria above and proceed.
+
+---
+
+## Increment 37: EPUB Multi-Column Inline Expansion Restoration, Blank-Page Elimination & Scrollbar Neutralization
+> **Agent**: @Agent-LayoutMaster | **Status**: [COMPLETED]
+
+### What Was Done
+Eliminated blank pages, phantom spreads, and chapter skipping during EPUB dual-page navigation by removing restrictive `overflow-x: hidden` from iframe `html, body`, restoring native multi-column `contents.textWidth()` inline expansion across all chapters, establishing application-level and iframe-level pseudo-element scrollbar suppression (`::-webkit-scrollbar`), and guaranteeing clean 2-page spread advancement.
+
+### Problem Statement
+In Increment 35, `overflow: hidden !important; overflow-x: hidden !important; overflow-y: hidden !important;` was injected on `html` and `body` inside `applyDynamicStylesToDoc`. While this hid the native Windows horizontal scrollbar, in Chromium it critically clipped `range.getBoundingClientRect()` inside `epub.js`'s `contents.textWidth()`. Consequently, chapters with multi-column spreads had their calculated widths collapsed to the viewport width (1152px). When the user clicked Next (`>`), `left = scrollLeft + offsetWidth + delta` immediately exceeded `container.scrollWidth` on the first spread, forcing epub.js to jump to `section.next()` (skipping pages 1 -> 4 -> 12 -> 20 -> 31). Furthermore, all columns beyond the first spread were clipped by Chromium's compositor, rendering spreads completely blank.
+
+### Technical Fix
+1. **Restored Native Multi-Column Expansion (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Removed `overflow: hidden !important`, `overflow-x: hidden !important`, and `overflow-y: hidden !important` overrides from `applyDynamicStylesToDoc`.
+   - Allowed `range.selectNodeContents(content).getBoundingClientRect()` in `epub.js`'s `contents.textWidth()` to measure the uninhibited horizontal breadth of all multi-column text across the entire chapter.
+   - Restored `iframe.style.width` expansion to the full chapter dimension (`width = ceil(textWidth / pageWidth) * pageWidth`), ensuring `container.scrollWidth` accurately reflects total chapter pages and allows `left <= container.scrollWidth` to smoothly advance 2-page spreads without premature chapter skips.
+2. **Pseudo-Element Scrollbar Neutralization (`EpubReaderView.tsx`, `index.css`)**:
+   - Replaced heavy `overflow-x: hidden` clipping with strict pseudo-element scrollbar hiding (`::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }` and `*::-webkit-scrollbar`).
+   - Added `scrollbar-width: none !important; -ms-overflow-style: none !important;` for complete cross-platform coverage.
+   - Injected application-level `.epub-container::-webkit-scrollbar` and `.epub-view::-webkit-scrollbar` suppression rules in `src/renderer/src/index.css`.
+3. **Image & Header Constrainment**:
+   - Bound reflowable images (`img, svg, figure`) to `max-width: 100% !important; max-height: 90vh !important; object-fit: contain !important;` to prevent large publisher assets from spanning into adjacent columns or forcing empty placeholder columns.
+   - Enforced `column-span: none !important` on headings to keep chapter openers neatly inside the active column.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/index.css`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 errors across main, preload, and renderer TypeScript sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 12.43s.
+- Verified absence of `overflow-x: hidden` in iframe DOM injector.
+- Verified `reflow.css` compatibility and image fitting.
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, never inject `overflow-x: hidden` or `overflow: hidden` into the iframe `body` or `html`. Doing so breaks Chromium's multi-column Range measurement in `epub.js`, collapsing chapters to 1 page and causing chapter-skip thrashing. Scrollbar suppression must always be achieved through `::-webkit-scrollbar` pseudo-element rules and the outer `viewerRef` container.

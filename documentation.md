@@ -164,4 +164,6 @@
   - **Pixel-Perfect 2-Page Spreads**: Dual-page mode displays exactly two balanced columns per spread with an optical central binding divider, eliminating column overflow, clipped margins, or third columns bleeding into the reading view.
   - **Zero Scrollbar Distraction**: Completely suppressed OS scrollbar tracks and controls within the reading canvas so you enjoy an uninterrupted, paper-like reading surface.
   - **Smooth Backward & Forward Navigation**: Page turns forward and backward transition smoothly between spreads without stalling on blank pages.
+  - **Continuous Intra-Chapter Page Progression**: Readers advance cleanly across all pages within every chapter without unexpected chapter skips, ensuring chapters unfold 2 pages at a time with full text visibility.
+  - **Zero-Blank Spreads**: Eliminated blank beige screens caused by layout clipping, ensuring all chapter text and illustrations render smoothly from cover to colophon.
 

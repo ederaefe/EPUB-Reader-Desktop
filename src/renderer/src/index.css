@@ -533,6 +533,23 @@ input[type="checkbox"]:indeterminate::after,
   background: var(--app-scrollbar-thumb-hover);
 }
 
+/* Neutralize scrollbars inside EPUB & PDF reading viewports */
+.epub-container,
+.epub-container *,
+.epub-view,
+.epub-view * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.epub-container::-webkit-scrollbar,
+.epub-container *::-webkit-scrollbar,
+.epub-view::-webkit-scrollbar,
+.epub-view *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* ============================================================================
    App-Wide Semantic Theme Remapping for Non-Night Themes
    (Day, Light Sepia, Dark Sepia)
