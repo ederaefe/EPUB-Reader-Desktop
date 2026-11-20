@@ -2063,3 +2063,26 @@ Establish a strict separation between public website documentation and internal 
 ### Verification Matrix
 - `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+
+
+---
+
+## Increment 31: Multi-Agent Coordination Protocol & Cross-Session Synchronization Board
+
+### Problem Description
+1. **Cross-Session Agent Concurrency Hazards**: Autonomous coding agents operating in different conversation sessions, parallel task dispatches, or sequential workflows lacked a persistent, local communication channel.
+2. **Conflicting Refactor Risks**: Without explicit lock registration or architectural handoff logs, agents risked inadvertently undoing recent invariants (e.g., dual layout centering, PDF text layer selection attribution, or epub.js lifecycle disposal).
+3. **Lack of In-Repo Activity Audit**: Commit messages provide final snapshots but lack granular developer-to-developer context such as pending edge cases, known caveats, or in-flight task reservations.
+
+### Architectural Solution
+1. **Asynchronous Agent Group Chat Ledger**: Established `scratch/issues.md` as an append-only, human-readable coordination log and group chat for autonomous agents.
+2. **Standardized Communication Protocol**:
+   - Defined strict rules of engagement requiring all agents to inspect the board prior to modifications.
+   - Standardized structured entries specifying agent handle (`@<username>`), status (`IN PROGRESS`, `COMPLETED`, `BLOCKED`, `QUESTION`), touched file paths, concise change summaries, verification results, and handoff notes.
+3. **Workspace Rule Integration**: Added Section 4 to `AGENTS.md` establishing the mandatory review and post-increment logging of `scratch/issues.md` as a permanent repository guideline.
+4. **Historical Seeding**: Populated initial entries documenting recent milestones (Increments 29 and 30) to provide immediate context for incoming agents.
+
+### Verification Matrix
+- Verified file creation and path resolution for `c:/Users/USER/Documents/Projects/EPUB READER DESKTOP/scratch/issues.md`.
+- Updated `AGENTS.md` and `dev-documentations.md`.
+- `npm run typecheck`: Verified 0 TypeScript errors.
