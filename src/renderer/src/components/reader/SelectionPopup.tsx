@@ -9,7 +9,8 @@ import {
   ExternalLink,
   X,
   Languages,
-  MoreHorizontal
+  MoreHorizontal,
+  StickyNote
 } from 'lucide-react'
 import {
   DICT_PROVIDERS,
@@ -98,7 +99,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   }, [onClose, showDictModal, showWikiModal])
 
   // Precision Viewport Clamping (Subtle Micro-Pill Positioning)
-  const barWidth = 240
+  const barWidth = 200
   const barHalfWidth = barWidth / 2
   const clampedX = Math.max(barHalfWidth + 12, Math.min(window.innerWidth - barHalfWidth - 12, position.x))
 
@@ -216,32 +217,37 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
           <div className="w-px h-3 bg-white/[0.10]" />
 
-          {/* Note Toggle Pill Button */}
+          {/* Note Toggle Icon Button */}
           <button
             type="button"
             onClick={() => {
               setShowNoteComposer((prev) => !prev)
               setShowMoreMenu(false)
             }}
-            className={`h-[22px] px-2.5 rounded-full text-[11px] font-medium tracking-tight transition-all cursor-pointer ${
+            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               showNoteComposer
                 ? 'bg-[var(--app-accent)] text-white shadow-xs'
-                : 'text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06]'
+                : 'text-neutral-400 hover:text-white hover:bg-white/[0.08]'
             }`}
             title="Attach Note"
+            aria-label="Attach Note"
           >
-            Note
+            <StickyNote className="w-3.5 h-3.5" />
           </button>
 
-          {/* Copy Pill Button */}
+          {/* Copy Icon Button */}
           <button
             type="button"
             onClick={handleCopy}
-            className="h-[22px] px-2.5 rounded-full text-[11px] font-medium tracking-tight text-neutral-300 hover:text-white bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.06] flex items-center gap-1 transition-all cursor-pointer"
-            title="Copy selection"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+            title={copied ? 'Copied' : 'Copy selection'}
+            aria-label="Copy selection"
           >
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : null}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
           </button>
 
           <div className="w-px h-3 bg-white/[0.10]" />

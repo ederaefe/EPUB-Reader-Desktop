@@ -403,6 +403,7 @@ export class AdaptiveScrollEngine {
     if (rawDeltaMs > 3000) {
       this.isUserPaused = true
       this.pauseReason = 'inactivity'
+      this.clearTickLoop()
       this.notify()
       return
     }
@@ -413,12 +414,18 @@ export class AdaptiveScrollEngine {
     if (!this.isUserPaused && now - this.lastUserActivityAt >= this.inactivityTimeoutMs) {
       this.isUserPaused = true
       this.pauseReason = 'inactivity'
+      this.clearTickLoop()
       this.notify()
       return
     }
 
     // Freeze countdown while paused, suspended, or micro-pausing
-    if (this.isPausedState() || this.isMicroPausing) return
+    if (this.isPausedState() || this.isMicroPausing) {
+      if (this.isPausedState()) {
+        this.clearTickLoop()
+      }
+      return
+    }
 
     const deltaMs = Math.min(rawDeltaMs, 1000)
     this.remainingMs = Math.max(0, this.remainingMs - deltaMs)
@@ -469,11 +476,16 @@ export class AdaptiveScrollEngine {
     this.isUserPaused = paused
     this.pauseReason = paused ? 'user' : null
     this.lastTickAt = now
-    if (!paused) {
+    if (paused) {
+      this.clearTickLoop()
+    } else {
       this.lastUserActivityAt = now
       // Clear any stale transient hover/blur locks when user explicitly resumes
       this.suspensionReasons.delete('blur')
       this.suspensionReasons.delete('footnote')
+      if (this.isActive && !this.isPausedState()) {
+        this.ensureTickLoop()
+      }
     }
     this.notify()
   }
@@ -484,6 +496,9 @@ export class AdaptiveScrollEngine {
     this.suspensionReasons.delete('hidden')
     this.suspensionReasons.delete('footnote')
     this.lastTickAt = this.nowFn()
+    if (this.isActive && !this.isPausedState()) {
+      this.ensureTickLoop()
+    }
     this.notify()
   }
 
@@ -502,6 +517,7 @@ export class AdaptiveScrollEngine {
       if ((reason === 'blur' || reason === 'hidden') && this.awayStartedAt === null) {
         this.awayStartedAt = now
       }
+      this.clearTickLoop()
     } else {
       this.suspensionReasons.delete(reason)
     }
@@ -514,9 +530,14 @@ export class AdaptiveScrollEngine {
       if (this.isActive && awayDuration >= this.inactivityTimeoutMs) {
         this.isUserPaused = true
         this.pauseReason = 'inactivity'
+        this.clearTickLoop()
       } else {
         this.lastUserActivityAt = now
       }
+    }
+
+    if (this.isActive && !this.isPausedState()) {
+      this.ensureTickLoop()
     }
 
     this.lastTickAt = now

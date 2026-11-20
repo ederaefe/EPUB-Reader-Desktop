@@ -1517,7 +1517,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     let lastActivityAt = 0
     const recordActivity = () => {
       const now = Date.now()
-      if (now - lastActivityAt < 1000) return
+      if (now - lastActivityAt < 2000) return
       lastActivityAt = now
       adaptiveScrollEngine.recordUserActivity()
     }
@@ -1525,7 +1525,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     window.addEventListener('blur', handleBlur)
     window.addEventListener('focus', handleFocus)
     document.addEventListener('visibilitychange', handleVisibility)
-    window.addEventListener('pointermove', recordActivity, { passive: true })
     window.addEventListener('mousedown', recordActivity, { passive: true })
     window.addEventListener('keydown', recordActivity, { passive: true })
     window.addEventListener('wheel', recordActivity, { passive: true })
@@ -1536,7 +1535,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       window.removeEventListener('blur', handleBlur)
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
-      window.removeEventListener('pointermove', recordActivity)
       window.removeEventListener('mousedown', recordActivity)
       window.removeEventListener('keydown', recordActivity)
       window.removeEventListener('wheel', recordActivity)
