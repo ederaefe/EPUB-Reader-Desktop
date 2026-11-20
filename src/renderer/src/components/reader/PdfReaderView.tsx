@@ -384,7 +384,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       }
     }
 
-    const isDouble = settings.pageSpread === 'double'
+    const isDouble = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
     renderSingleCanvas(currentPage, canvasLeftRef.current, renderTaskLeftRef, textLayerLeftRef.current)
     if (isDouble) {
       renderSingleCanvas(currentPage + 1, canvasRightRef.current, renderTaskRightRef, null)
@@ -416,9 +416,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     return () => {
       cancelled = true
     }
-  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageSpread, book.id, syncActiveBookProgress, annotationsVersion])
+  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageLayout, settings.pageSpread, book.id, syncActiveBookProgress, annotationsVersion])
 
-  const step = settings.pageSpread === 'double' ? 2 : 1
+  const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+  const step = isDual ? 2 : 1
 
   const handleNext = useCallback(() => {
     setCurrentPage((p) => Math.min(totalPages, p + step))
@@ -504,8 +505,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         }
         if (k === 'r') {
           e.preventDefault()
+          const nextDual = !isDual
           updateSettings({
-            pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+            pageLayout: nextDual ? 'dual' : 'single',
+            pageSpread: nextDual ? 'double' : 'single'
           })
           return
         }
@@ -545,8 +548,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         setCurrentPage(totalPages)
       } else if (e.key === 'F10') {
         e.preventDefault()
+        const nextDual = !isDual
         updateSettings({
-          pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+          pageLayout: nextDual ? 'dual' : 'single',
+          pageSpread: nextDual ? 'double' : 'single'
         })
       } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault()
@@ -562,8 +567,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         setPdfZoom(1.0)
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
+        const nextDual = !isDual
         updateSettings({
-          pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+          pageLayout: nextDual ? 'dual' : 'single',
+          pageSpread: nextDual ? 'double' : 'single'
         })
       } else if (e.key === 'Escape') {
         e.preventDefault()
@@ -878,8 +885,8 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
               />
             </div>
 
-            {/* Second Page for Double Page Spread */}
-            {settings.pageSpread === 'double' && currentPage + 1 <= totalPages && (
+            {/* Second Page for Dual Page Layout */}
+            {isDual && currentPage + 1 <= totalPages && (
               <div
                 className="relative shadow-2xl bg-white"
                 style={{ filter: currentTheme.pageFilter }}

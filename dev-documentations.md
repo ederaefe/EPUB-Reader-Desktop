@@ -1886,3 +1886,88 @@ Establish a strict separation between public website documentation and internal 
 - Verified with `npm run typecheck` (`tsc --noEmit`): 0 TypeScript errors.
 - Verified with `npm run build` (`electron-vite build`): Main, preload, and renderer packages bundled successfully for production.
 - Verified that switching books between EPUB and PDF dynamically enables and disables auto-scroll controls without regressions.
+
+
+---
+
+## Increment 50: Deterministic Reader Layout Snapshot-and-Remount Engine (2026-11-20)
+
+### Problem Description
+1. **Black Screen on Vertical-to-Horizontal Direction Switch**:
+   - Switching Direction from Vertical continuous scroll to Horizontal paginated mode caused the reading surface to become completely black and unpainted.
+2. **Page Layout "Spread" Failing to Split into Two Columns**:
+   - Selecting "Spread" while reading in horizontal mode left text formatted as a single column spanning across the entire window rather than splitting into two balanced pages.
+
+### Root Cause Analysis
+1. **Dual Queue Execution Deadlock**:
+   - When `scrollMode` changed, `initReader` started rebuilding the paginated manager while `applyFontAndTheme` simultaneously grabbed `renditionRef.current` and called `rendition.spread()`.
+   - In `epub.js`, calling layout mutation methods while a view is mounting deadlocks the internal queue runner (`q.running`), halting the display pipeline and leaving the horizontal canvas empty.
+2. **In-Place Spread Reflow Limitation & `minSpreadWidth` Bug**:
+   - In `epub.js`, `rendition.spread()` updates layout properties but does not re-slice the active iframe's multi-column DOM view.
+   - Furthermore, `rendition.spread(spread, min)` has an internal bug where passing `0` fails the `if (min)` truthiness check (`if (0) -> false`), leaving `minSpreadWidth` stuck at `800px`. With the settings drawer open, container width dropped below this threshold and epub.js silently fell back to single-column mode (`divisor = 1`).
+
+### Engineering Solution & Subsystems
+1. **Single-Authority Snapshot-and-Remount (`EpubReaderView.tsx`)**:
+   - Placed both `settings.scrollMode` and `settings.pageSpread` into `initReader`'s dependency array.
+   - Before unmounting, the reader captures the exact live reading position from `currentCfiRef.current`.
+   - `initReader` cleanly tears down running queues, clears the viewer container, and mounts a fresh rendition with target layout properties locked from turn zero:
+     - `spread: isDouble ? 'always' : 'none'`
+     - Hardcoded `minSpreadWidth: 0` directly on `renditionInstance.settings` and `(renditionInstance as any)._layout._minSpreadWidth = 0` so drawers never trigger single-column fallback.
+     - `flow: isVertical ? 'scrolled' : 'paginated'`
+     - `manager: isVertical ? 'continuous' : 'default'`
+     - `gap: 64`
+   - Immediately displays at the snapshotted CFI, resuming seamlessly at the user's exact reading spot.
+2. **Styling Isolation in `applyFontAndTheme` (`EpubReaderView.tsx`)**:
+   - Stripped `settings.scrollMode`, `settings.pageSpread`, and `rendition.spread()` out of `applyFontAndTheme`.
+   - `applyFontAndTheme` now exclusively manages typography and theme rules, eliminating queue deadlocks and black screen stalls entirely.
+
+### Verification
+- Tested via Electron harness (`scratch/test_dual_switch_solution.js`):
+  - Single Mode: `columnWidth: 1152px`.
+  - Spread Mode: `columnWidth: 512px`, `columnGap: 64px`, paragraphs split across Column 1 (`left: 32, width: 512`) and Column 2 (`left: 608, width: 512`).
+  - Vertical-to-Horizontal Switch: Iframe paints immediately with zero black screens (`hasIframe: true`, `iframeWidth: 5760px`).
+- Passed `npm run typecheck` and `npm run build` with zero errors.
+
+---
+
+## Increment 51: Horizontal Reader Standardization, "Dual" Layout Architecture & Occlusion-Free Dynamic Resizing (2026-11-20)
+
+### Problem Description
+1. **Vertical Continuous Scroll Deadlocks & Thrashing**:
+   - The dual existence of continuous vertical scroll (`flow: 'scrolled'`, `manager: 'continuous'`) and horizontal paginated flow (`flow: 'paginated'`, `manager: 'default'`) introduced asynchronous queue collisions in `epubjs@0.3.93`.
+   - Continuous scroll emitted intra-section CFIs that failed pre-flight resolution during paginated initial display (`Error: No Section Found`), causing `rendition.displaying` to deadlock on a rejected promise and rendering the reading surface completely blank.
+2. **"Spread" Terminology Ambiguity & Layout Collapsing**:
+   - The term "Spread" was confusing compared to standard single/dual page reading.
+   - In spread mode, opening the 380px Settings Drawer overlapped Column 2 (the right-hand page), causing users to perceive that the second column had failed to render.
+   - `epub.js`'s built-in `minSpreadWidth` check silently collapsed two-column views into single-column views whenever available viewport width dropped below 800px.
+
+### Architectural Solution & Subsystems
+1. **Complete Deprecation of Vertical Continuous Mode**:
+   - Standardized Semply Reader exclusively on **Horizontal Paginated Mode** (`flow: 'paginated'`, `manager: 'default'`).
+   - Removed the "Direction" toggle from `SettingsDrawer.tsx` (Scroll tab).
+   - Removed all continuous-scroll manager handlers, manual scroll listeners, multi-iframe wheel interceptors, and scrollTop synchronizers from `EpubReaderView.tsx`.
+   - Retained `scrollMode: 'horizontal'` in database schemas and backup structures solely for backward compatibility with existing user databases.
+2. **Standardized "Dual" Page Layout Architecture**:
+   - Renamed all UI controls, button labels, and accessibility tags from "Single | Spread" to **"Single | Dual"** (with A4 sheet and open book icons).
+   - Migrated settings state and database interface from `pageSpread: 'single' | 'double'` to `pageLayout: 'single' | 'dual'`.
+   - Updated center gutter divider (`[data-testid="dual-page-gutter-divider"]`) to activate strictly on `pageLayout === 'dual'`.
+   - Updated hotkeys (`r` and `F10`) and `HelpModal.tsx` descriptions to "Toggle single / dual page layout".
+3. **Zero-Lag Snapshot-and-Remount Engine**:
+   - Placed `settings.pageLayout` in `initReader`'s dependency array.
+   - When the user toggles Single <-> Dual mode, the engine captures `currentCfiRef.current`, safely destroys running queues, and instantiates the target rendition with locked layout properties:
+     - Single Mode: `spread: 'none'`, 1 column centered, `column-span: none !important`.
+     - Dual Mode: `spread: 'always'`, `minSpreadWidth: 0`, `gap: 64`, 2 equal columns, `column-span: none !important`.
+   - Pre-validates `startLocation` against `epubInstance.spine.get(validStartLocation)`. If invalid, falls back to `currentHrefRef.current` or chapter index 0.
+   - On display failure, automatically clears `(renditionInstance as any).displaying = undefined` before executing fallback display, preventing queue lockup and eliminating black screens.
+   - Decoupled `applyFontAndTheme` so it never calls `.spread()` or triggers rendition reloads.
+4. **Dynamic Container Resizing & Anti-Occlusion Engine**:
+   - Subscribed `EpubReaderView.tsx` to right-side drawer states (`isSettingsDrawerOpen || isNotesDrawerOpen || isBookmarksDrawerOpen || isSearchDrawerOpen`) and left drawer state (`isTOCDrawerOpen`).
+   - Applied smooth CSS margin contraction (`transition-[margin] duration-200 mr-[380px]`) to `#reader-wrapper`.
+   - Bound a debounced `rendition.resize()` listener to drawer toggle events. When any drawer opens, the reading canvas contracts to the remaining available window width and re-centers there. Both pages of Dual mode remain 100% visible and unoccluded.
+
+### Automated Testing Matrix (`scratch/test_reader_layout_modes.js`)
+- **TC-1 (Horizontal Single, 1920px)**: 1 centered column, no horizontal overflow (`pass: true`).
+- **TC-2 (Horizontal Dual, 1920px)**: 2 balanced columns, 64px gap, center gutter divider visible (`pass: true`).
+- **TC-3 (Horizontal Dual, Drawer Open)**: Dual mode retained, container width cleanly constrained to remaining viewport without collapsing to 1 column (`pass: true`).
+- **TC-4 (Single <-> Dual Switch)**: Exact CFI preserved across transition (`cfiBefore === cfiAfter`), zero black screens, seamless text rendering (`pass: true`).
+- **Build Verification**: `npm run typecheck` (`tsc --noEmit`) and `npm run build` (`electron-vite build`) passed with zero errors.

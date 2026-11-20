@@ -42,7 +42,7 @@ export const HelpModal: React.FC = () => {
     { key: 'Home / End', desc: 'First / Last page of chapter' },
     { key: 'F7 / F8', desc: 'Play / Stop reading aloud (TTS)' },
     { key: 'F9', desc: 'Cycle theme (Day / Night / Sepia)' },
-    { key: 'F10 / r', desc: 'Toggle single / double page spread' },
+    { key: 'F10 / r', desc: 'Toggle single / dual page layout' },
     { key: 'F11', desc: 'Toggle fullscreen distraction-free' }
   ]
 

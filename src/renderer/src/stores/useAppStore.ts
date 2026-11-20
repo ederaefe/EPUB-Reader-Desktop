@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   lineHeight: 1.5,
   marginWidth: 40,
   dimming: 0,
+  pageLayout: 'dual',
   pageSpread: 'double',
   ttsSpeed: 1.0,
   ttsPitch: 1.0,
@@ -431,6 +432,14 @@ export const useAppStore = create<AppState>((set) => ({
   updateSettings: (newSettings) =>
     set((s) => {
       const merged: UserSettings = { ...s.settings, ...newSettings, id: 1 }
+      // Synchronize pageLayout and legacy pageSpread
+      if (newSettings.pageLayout !== undefined) {
+        merged.pageSpread = newSettings.pageLayout === 'dual' ? 'double' : 'single'
+      } else if (newSettings.pageSpread !== undefined) {
+        merged.pageLayout = newSettings.pageSpread === 'double' ? 'dual' : 'single'
+      }
+      // Always enforce horizontal mode in settings
+      merged.scrollMode = 'horizontal'
       // Keep legacy autoscrollAdaptive flag synchronized with autoscrollMode
       if (newSettings.autoscrollMode !== undefined) {
         merged.autoscrollAdaptive = newSettings.autoscrollMode === 'adaptive'

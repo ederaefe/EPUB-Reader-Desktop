@@ -467,7 +467,7 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Page Layout: A4 Paper Dimension for Single, Book icon for Spread */}
+                {/* Page Layout: Single (1 column) vs Dual (2 columns) */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">
                     Page layout
@@ -480,11 +480,11 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       role="radio"
-                      aria-checked={settings.pageSpread === 'single'}
-                      data-active={settings.pageSpread === 'single' ? 'true' : 'false'}
-                      onClick={() => updateSettings({ pageSpread: 'single' })}
+                      aria-checked={(settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'single'}
+                      data-active={(settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'single' ? 'true' : 'false'}
+                      onClick={() => updateSettings({ pageLayout: 'single', pageSpread: 'single' })}
                       className="glass-pill-btn gap-1.5"
-                      title="Single Page (A4 Paper)"
+                      title="Single Page"
                     >
                       <svg
                         className="w-3 h-3.5 text-current shrink-0"
@@ -505,11 +505,11 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       role="radio"
-                      aria-checked={settings.pageSpread === 'double'}
-                      data-active={settings.pageSpread === 'double' ? 'true' : 'false'}
-                      onClick={() => updateSettings({ pageSpread: 'double' })}
+                      aria-checked={(settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'}
+                      data-active={(settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual' ? 'true' : 'false'}
+                      onClick={() => updateSettings({ pageLayout: 'dual', pageSpread: 'double' })}
                       className="glass-pill-btn gap-1.5"
-                      title="Two-Page Spread (Open Book)"
+                      title="Dual Page"
                     >
                       <svg
                         className="w-3.5 h-3 text-current shrink-0"
@@ -523,7 +523,7 @@ export const SettingsDrawer: React.FC = () => {
                         <path d="M2 3C4 2 6 2.5 8 3.5C10 2.5 12 2 14 3V12C12 11 10 11.5 8 12.5C6 11.5 4 11 2 12V3Z" />
                         <line x1="8" y1="3.5" x2="8" y2="12.5" />
                       </svg>
-                      <span>Spread</span>
+                      <span>Dual</span>
                     </button>
                   </div>
                 </div>
@@ -649,38 +649,6 @@ export const SettingsDrawer: React.FC = () => {
           {/* ===================== TAB 2: SCROLL ===================== */}
           {activeTab === 'scroll' && (
             <div className="space-y-6">
-              {/* Scroll Direction */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[12px] font-semibold text-[var(--app-text)]">Direction</span>
-                <div
-                  className="glass-pill-track grid-cols-2 w-[164px]"
-                  role="radiogroup"
-                  aria-label="Scroll direction"
-                >
-                  {(
-                    [
-                      { id: 'horizontal', label: 'Horizontal' },
-                      { id: 'vertical', label: 'Vertical' }
-                    ] as const
-                  ).map((dir) => {
-                    const active = (settings.scrollMode || 'horizontal') === dir.id
-                    return (
-                      <button
-                        key={dir.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        data-active={active ? 'true' : 'false'}
-                        onClick={() => setScrollMode(dir.id)}
-                        className="glass-pill-btn"
-                      >
-                        {dir.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Auto-Scroll (Flat, Subtle Controls) */}
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between gap-2">

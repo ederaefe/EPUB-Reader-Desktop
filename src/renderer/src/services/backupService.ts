@@ -149,8 +149,12 @@ export function sanitizeSettings(raw: unknown): Partial<UserSettings> {
   if (marginWidth !== undefined) out.marginWidth = Math.round(marginWidth)
   const dimming = clampFinite(raw.dimming, 0, 80)
   if (dimming !== undefined) out.dimming = Math.round(dimming)
-  if (raw.pageSpread === 'single' || raw.pageSpread === 'double') {
+  if (raw.pageLayout === 'single' || raw.pageLayout === 'dual') {
+    out.pageLayout = raw.pageLayout
+    out.pageSpread = raw.pageLayout === 'dual' ? 'double' : 'single'
+  } else if (raw.pageSpread === 'single' || raw.pageSpread === 'double') {
     out.pageSpread = raw.pageSpread
+    out.pageLayout = raw.pageSpread === 'double' ? 'dual' : 'single'
   }
   const ttsSpeed = clampFinite(raw.ttsSpeed, 0.5, 2.5)
   if (ttsSpeed !== undefined) out.ttsSpeed = Number(ttsSpeed.toFixed(2))

@@ -107,7 +107,9 @@ export interface UserSettings {
   lineHeight: number
   marginWidth: number
   dimming: number
-  pageSpread: 'single' | 'double'
+  pageLayout?: 'single' | 'dual'
+  /** @deprecated Use pageLayout instead ('single' | 'dual') */
+  pageSpread?: 'single' | 'double'
   ttsSpeed: number
   ttsPitch: number
   ttsVoice: string | null
