@@ -207,6 +207,7 @@ export const SettingsDrawer: React.FC = () => {
   }
 
   const handleToggleAutoScroll = () => {
+    if (isPdf) return
     const next = !isAutoscrollActive
     if (!next) {
       adaptiveScrollEngine.stop()
@@ -686,17 +687,17 @@ export const SettingsDrawer: React.FC = () => {
                   <div>
                     <div className="text-[12px] font-semibold text-[var(--app-text-strong)] flex items-center gap-1.5">
                       <span>Auto-Scroll</span>
-                      {isAutoscrollActive && (
+                      {!isPdf && isAutoscrollActive && (
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]" />
                       )}
                     </div>
                     <div className="text-[10.5px] font-normal text-[var(--app-text-subtle)]">
-                      Hands-free page turning
+                      {isPdf ? 'Disabled for PDF documents' : 'Hands-free page turning'}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {isAutoscrollActive && (
+                    {!isPdf && isAutoscrollActive && (
                       <button
                         type="button"
                         onClick={handleToggleAutoScrollPause}
@@ -718,29 +719,40 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={isAutoscrollActive}
+                      aria-checked={!isPdf && isAutoscrollActive}
                       data-preserve-theme="true"
+                      disabled={isPdf}
                       onClick={handleToggleAutoScroll}
                       style={{
-                        backgroundColor: isAutoscrollActive
+                        backgroundColor: !isPdf && isAutoscrollActive
                           ? 'var(--app-accent)'
                           : 'var(--app-border-strong)'
                       }}
-                      className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 cursor-pointer"
-                      title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                      className={`w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 ${
+                        isPdf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                      title={
+                        isPdf
+                          ? 'Auto-Scroll is disabled for PDF documents'
+                          : isAutoscrollActive
+                            ? 'Turn off Auto-Scroll'
+                            : 'Turn on Auto-Scroll'
+                      }
                     >
                       <span
                         className={`w-3 h-3 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
-                          isAutoscrollActive ? 'translate-x-4' : 'translate-x-0'
+                          !isPdf && isAutoscrollActive ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
                     </button>
                   </div>
                 </div>
 
-                {/* Small Inline Mode Switcher */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                {!isPdf && (
+                  <>
+                    {/* Small Inline Mode Switcher */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
                     Pacing
                   </span>
                   <div
@@ -890,6 +902,8 @@ export const SettingsDrawer: React.FC = () => {
                       </button>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
               </div>
 

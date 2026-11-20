@@ -144,6 +144,7 @@ export const FullSettingsModal: React.FC = () => {
   const {
     isFullSettingsModalOpen,
     toggleFullSettingsModal,
+    activeBook,
     isAutoscrollActive,
     setAutoscrollActive,
     settings,
@@ -153,6 +154,8 @@ export const FullSettingsModal: React.FC = () => {
     bumpLibraryVersion,
     setIsOnline
   } = useAppStore()
+
+  const isPdf = activeBook?.format === 'pdf'
 
   const [activeTab, setActiveTab] = useState<FullSettingsTab>('system')
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
@@ -811,18 +814,22 @@ export const FullSettingsModal: React.FC = () => {
                           </span>
                         </div>
                         <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
-                          {effectiveMode === 'countdown'
-                            ? 'Turns page automatically on a fixed timer'
-                            : 'Scales your base seconds dynamically to each page word count'}
+                          {isPdf
+                            ? 'Auto-Scroll is disabled for PDF documents'
+                            : effectiveMode === 'countdown'
+                              ? 'Turns page automatically on a fixed timer'
+                              : 'Scales your base seconds dynamically to each page word count'}
                         </p>
                       </div>
 
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={isAutoscrollActive}
+                        aria-checked={!isPdf && isAutoscrollActive}
                         data-preserve-theme="true"
+                        disabled={isPdf}
                         onClick={() => {
+                          if (isPdf) return
                           const next = !isAutoscrollActive
                           if (!next) {
                             adaptiveScrollEngine.stop()
@@ -832,22 +839,32 @@ export const FullSettingsModal: React.FC = () => {
                           setAutoscrollActive(next)
                         }}
                         style={{
-                          backgroundColor: isAutoscrollActive
+                          backgroundColor: !isPdf && isAutoscrollActive
                             ? 'var(--app-accent)'
                             : 'var(--app-border-strong)'
                         }}
-                        className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
-                        title={isAutoscrollActive ? 'Turn off Auto-Scroll' : 'Turn on Auto-Scroll'}
+                        className={`settings-switch w-10 h-5 rounded-full p-0.5 flex items-center shrink-0 ${
+                          isPdf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                        }`}
+                        title={
+                          isPdf
+                            ? 'Auto-Scroll is disabled for PDF documents'
+                            : isAutoscrollActive
+                              ? 'Turn off Auto-Scroll'
+                              : 'Turn on Auto-Scroll'
+                        }
                       >
                         <span
                           className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
-                            isAutoscrollActive ? 'translate-x-5' : 'translate-x-0'
+                            !isPdf && isAutoscrollActive ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>
                     </div>
 
-                    {/* Segmented Mode Selector */}
+                    {!isPdf && (
+                      <>
+                        {/* Segmented Mode Selector */}
                     <div className="glass-pill-track grid-cols-2 p-1">
                       <button
                         type="button"
@@ -959,6 +976,8 @@ export const FullSettingsModal: React.FC = () => {
                           </button>
                         </div>
                       </div>
+                    )}
+                      </>
                     )}
                   </div>
                 )

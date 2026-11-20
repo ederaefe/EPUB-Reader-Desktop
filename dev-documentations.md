@@ -1846,3 +1846,43 @@ Establish a strict separation between public website documentation and internal 
    - `documentations/index.html`: Added a dedicated issue reporting & developer contact entry under Section 12 FAQ, along with footer support links.
    - `documentations/app.js`: Added click handler for `#copy-support-email-btn` to copy `efeoghene@proton.me` to the clipboard with contextual toast feedback.
    - `documentations/llms.txt` & `documentations/llms-full.txt`: Documented official `/issues/new` and email inquiry endpoints for external AI assistants.
+
+---
+
+## Increment 50: Complete Disablement of Auto-Scroll Engine & Controls for PDF Documents (2026-11-20)
+
+### Problem Description
+1. The Auto-Scroll engine (`adaptiveScrollEngine`) was originally architected for reflowable EPUB chapters where DOM range measurement (`getRange`), visible word counts, and synthetic page navigation (`handleNext` / vertical delta scrolling) operate directly on parsed XHTML trees.
+2. In PDF mode (whether rendered via the native canvas-based `PdfReaderView` or reflowed via `EpubReaderView`), auto-scroll page turning is conceptually incompatible and introduces unexpected reading behavior:
+   - Native PDF documents do not expose reflowable text range bounding boxes in the same manner, and continuous or paginated reading on PDFs is driven by viewport scale, manual panning, and visual canvas rendering.
+   - Reflowed PDFs can suffer desynchronization if synthetic auto-scroll page turns trigger on variable-height converted chapters without user intent.
+3. Prior to this increment, keyboard shortcuts (`a` or `Shift+A`), Spacebar pause/resume, the right-click context menu, and the settings drawer/modal could inadvertently activate the auto-scroll engine while viewing a PDF document.
+
+### Architectural Solution & Subsystem Hardening
+1. **Centralized Store-Level Guard (`useAppStore.ts`)**:
+   - In `setActiveBook(book, buffer, options)`: Added an authoritative check `const isPdf = book?.format === 'pdf'`. Whenever an opened book is a PDF, the store immediately halts the active engine (`adaptiveScrollEngine.stop()`) and ensures `isAutoscrollActive: false`.
+   - In `setAutoscrollActive(active)`: Intercepted any activation attempt. If `active === true` and `s.activeBook?.format === 'pdf'`, the engine is immediately stopped and the store explicitly rejects the mutation, enforcing `{ isAutoscrollActive: false }`.
+2. **Reader View Safeguards (`EpubReaderView.tsx` & `PdfReaderView.tsx`)**:
+   - In `PdfReaderView.tsx`: Injected a component mount lifecycle hook that executes `adaptiveScrollEngine.stop()` and `useAppStore.getState().setAutoscrollActive(false)` to tear down any residual countdown timers or store flags.
+   - In `EpubReaderView.tsx`:
+     - Hardened `triggerManualScrollTakeover` to return early if `book.format === 'pdf'`.
+     - In the auto-scroll countdown lifecycle effect (`useEffect`), updated the bail-out condition to `if (!isAutoscrollActive || book.format === 'pdf') { adaptiveScrollEngine.stop(); return; }`, ensuring no countdown timers are scheduled for reflowed PDFs.
+     - In both the container and inner iframe keydown listeners, restricted the `a` / `Shift+A` hotkeys and Spacebar autoscroll pause/resume to `book.format !== 'pdf'`.
+     - Gated the context menu item `id: 'autoscroll'` with `...(book.format !== 'pdf' ? [ ... ] : [])`.
+     - Skipped rendering `<AdaptiveScrollOverlay>` when `book.format === 'pdf'`.
+3. **Settings Panels Visual Feedback (`SettingsDrawer.tsx` & `FullSettingsModal.tsx`)**:
+   - In `SettingsDrawer.tsx` (Scroll tab):
+     - Updated the Auto-Scroll subtitle to display `"Disabled for PDF documents"` when reading a PDF.
+     - Set `disabled={isPdf}` on the toggle switch with visual opacity reduction (`opacity-40 cursor-not-allowed`) and a clear tooltip (`"Auto-Scroll is disabled for PDF documents"`).
+     - Guarded `handleToggleAutoScroll` with `if (isPdf) return`.
+     - Completely hid pacing mode options, countdown seconds, adaptive base seconds, and micro-pause toggles when `isPdf` is true.
+   - In `FullSettingsModal.tsx` (Reading tab):
+     - Extracted `activeBook` from `useAppStore()` and derived `const isPdf = activeBook?.format === 'pdf'`.
+     - Updated the header description paragraph to state `"Auto-Scroll is disabled for PDF documents"` when viewing a PDF.
+     - Disabled the toggle switch with `disabled={isPdf}` and `opacity-40 cursor-not-allowed`.
+     - Concealed segmented pacing controls and input rows for PDF books.
+
+### Verification & Automated Testing
+- Verified with `npm run typecheck` (`tsc --noEmit`): 0 TypeScript errors.
+- Verified with `npm run build` (`electron-vite build`): Main, preload, and renderer packages bundled successfully for production.
+- Verified that switching books between EPUB and PDF dynamically enables and disables auto-scroll controls without regressions.

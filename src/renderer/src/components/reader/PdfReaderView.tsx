@@ -12,6 +12,7 @@ import {
   Settings
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
+import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { db, type Annotation, type Book, type Bookmark as BookmarkItem, type NoteColor } from '../../db'
 import { ReaderTopBar } from './ReaderTopBar'
 import { SideNavigation } from './SideNavigation'
@@ -125,6 +126,11 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   bookIdRef.current = book.id
   bookFilePathRef.current = book.filePath
   bookTotalPagesRef.current = book.totalPages || 1
+
+  useEffect(() => {
+    adaptiveScrollEngine.stop()
+    useAppStore.getState().setAutoscrollActive(false)
+  }, [])
 
   useEffect(() => {
     if (!book.id) return

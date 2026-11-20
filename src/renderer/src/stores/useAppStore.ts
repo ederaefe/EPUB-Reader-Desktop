@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { db, type Book, type NoteColor, type UserSettings } from '../db'
+import { adaptiveScrollEngine } from '../services/adaptiveScrollService'
 
 const SETTINGS_STORAGE_KEY = 'semply_user_settings_v1'
 
@@ -276,14 +277,20 @@ export const useAppStore = create<AppState>((set) => ({
       persistSettings(merged)
       return { viewMode: mode, settings: merged }
     }),
-  setActiveBook: (book, buffer = null, options) =>
+  setActiveBook: (book, buffer = null, options) => {
+    const isPdf = book?.format === 'pdf'
+    if (isPdf) {
+      adaptiveScrollEngine.stop()
+    }
     set({
       activeBook: book,
       activeBookBuffer: buffer,
       pdfViewMode: options?.pdfViewMode ?? 'original',
       reflowEpubBuffer: options?.reflowEpubBuffer ?? null,
-      pendingSeekPercent: null
-    }),
+      pendingSeekPercent: null,
+      ...(isPdf ? { isAutoscrollActive: false } : {})
+    })
+  },
   updateActiveBook: (patch) =>
     set((s) =>
       s.activeBook
@@ -364,7 +371,14 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),
   setTTSMuted: (muted) => set({ isTTSMuted: muted }),
-  setAutoscrollActive: (active) => set({ isAutoscrollActive: active }),
+  setAutoscrollActive: (active) =>
+    set((s) => {
+      if (active && s.activeBook?.format === 'pdf') {
+        adaptiveScrollEngine.stop()
+        return { isAutoscrollActive: false }
+      }
+      return { isAutoscrollActive: active }
+    }),
   setActiveTTSWord: (word) => set({ activeTTSWord: word }),
   setAdaptiveWpm: (wpm) => set({ adaptiveWpm: wpm }),
   setImmersiveFullscreen: (active) =>
