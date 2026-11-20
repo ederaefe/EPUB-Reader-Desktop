@@ -10,8 +10,7 @@ release/
 .DS_Store
 Thumbs.db
 
-scratch/*
-!scratch/issues.md
+scratch/
 .worktrees/
 .agents/*
 !.agents/skills/

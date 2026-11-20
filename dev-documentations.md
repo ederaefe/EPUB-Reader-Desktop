@@ -6,30 +6,42 @@
 
 ### Appending Rules
 1. **Audience**: Software engineers and future AI agents working on Electron, React, TypeScript, and CSS.
-2. **Depth & Precision**: Must cite exact file paths (`src/...`), component names, function signatures, data structures/schemas, state stores, and architectural trade-offs.
-3. **Append-Only Sequence**: Check the last increment number at the end of the file (e.g. Increment 31), and title your section `## Increment N+1: <Descriptive Title>`.
-4. **Mandatory Sections**: Every increment must contain:
-   - `### Problem Description`: Clear numbered list of bugs, requirements, or regressions addressed.
-   - `### Architectural Solution`: Concrete breakdown of how each problem was solved with file citations.
-   - `### Verification Matrix`: Exact commands run and pass criteria (`npm run typecheck`, `npm run build`).
+2. **Multi-Agent Coordination Protocol**: All agents across different conversations must consult the latest increments in this document before starting tasks to verify active locks, recent architectural invariants, and handoff directives.
+3. **Depth & Precision**: Must cite exact file paths (`src/...`), component names, function signatures, data structures/schemas, state stores, and architectural trade-offs.
+4. **Append-Only Sequence**: Check the last increment number at the end of the file, and title your section `## Increment N+1: <Descriptive Title>`.
+5. **Mandatory Sections**: Every increment and issue handoff must include:
+   - **Agent Handle & Status**: Header declaring `@<username> | Status: [IN PROGRESS / COMPLETED]`.
+   - **Problem Statement**: Clear numbered list of root causes, bugs, or feature requirements addressed.
+   - **Technical Fix**: Concrete breakdown of how each problem was solved with file citations and code mechanics.
+   - **Touched Files**: Exact list of files created or modified.
+   - **Verification Matrix**: Exact commands run and pass criteria (`npm run typecheck`, `npm run build`).
+   - **Handoff Notes**: Critical invariants preserved and instructions for subsequent agents.
 
 ### Append Template
 ```markdown
 ---
 
 ## Increment <N>: <Feature / Fix Title>
+> **Agent**: @<username> | **Status**: COMPLETED
 
-### Problem Description
+### Problem Statement
 1. **<Issue / Requirement Name>**: Detail the exact defect, race condition, state leak, or feature request. Cite files where the issue manifested.
 2. **<Second Issue Name>**: Detail additional bugs or requirements.
 
-### Architectural Solution
+### Technical Fix
 1. **<Subsystem / Component Name>** (`path/to/File.tsx`): Describe the architectural resolution, exact state changes, and component lifecycle fixes.
 2. **<Second Subsystem>** (`path/to/OtherFile.ts`): Describe further changes and cross-process telemetry synchronization.
+
+### Touched Files
+- `path/to/file1.ts`
+- `path/to/file2.tsx`
 
 ### Verification Matrix
 - `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.
+
+### Handoff Notes
+- Invariants preserved, potential side effects, or directives for the next agent.
 ```
 
 ### Example Entry
@@ -2109,38 +2121,44 @@ Establish a strict separation between public website documentation and internal 
 
 ---
 
-## Increment 31: Multi-Agent Coordination Protocol & Cross-Session Synchronization Board
+## Increment 32: Multi-Agent Coordination Protocol & Centralized Documentation System
+> **Agent**: @Agent-Coordinator | **Status**: COMPLETED
 
-### Problem Description
-1. **Cross-Session Agent Concurrency Hazards**: Autonomous coding agents operating in different conversation sessions, parallel task dispatches, or sequential workflows lacked a persistent, local communication channel.
-2. **Conflicting Refactor Risks**: Without explicit lock registration or architectural handoff logs, agents risked inadvertently undoing recent invariants (e.g., dual layout centering, PDF text layer selection attribution, or epub.js lifecycle disposal).
-3. **Lack of In-Repo Activity Audit**: Commit messages provide final snapshots but lack granular developer-to-developer context such as pending edge cases, known caveats, or in-flight task reservations.
+### Problem Statement
+1. **Fragmented Cross-Session Agent Tracking**: Autonomous coding agents operating across disparate conversation sessions lacked a unified, persistent coordination log, risking conflicting refactors and duplicate work.
+2. **Scattered Scratch Files**: Storing synchronization logs in ephemeral scratch files (`scratch/issues.md`) risked accidental deletion, `.gitignore` pollution, and isolation from the permanent architectural record.
 
-### Architectural Solution
-1. **Asynchronous Agent Group Chat Ledger**: Established `scratch/issues.md` as an append-only, human-readable coordination log and group chat for autonomous agents.
-2. **Standardized Communication Protocol**:
-   - Defined strict rules of engagement requiring all agents to inspect the board prior to modifications.
-   - Mandated two standardized logging templates:
-     - `[IN PROGRESS]`: Requires declaring Agent Handle (`@<username>`), Status (`IN PROGRESS`), "What I Am Doing", the root-cause "Problem Statement", and locked file paths.
-     - `[COMPLETED]`: Requires declaring Agent Handle, Status (`COMPLETED`), "What Was Done", the underlying "Problem Statement", the granular "Technical Fix" (architecture/code mechanics), touched files, verification results, and handoff caveats.
-3. **Workspace Rule Integration**: Added Section 4 to `AGENTS.md` establishing the mandatory review and post-increment logging of `scratch/issues.md` with explicit Problem Statement and Technical Fix fields as a permanent repository guideline.
-4. **Historical Seeding**: Populated initial entries documenting recent milestones (Increments 29 and 30) to provide immediate context for incoming agents.
+### Technical Fix
+1. **Centralized Protocol in Core Developer Documentation**: Consolidated the entire Multi-Agent Coordination Protocol directly into `dev-documentations.md` (lines 7–35) and `AGENTS.md` (Section 4).
+2. **Standardized Dual-Phase Logging Schema**: Established required fields for both in-progress claims and completion handoffs:
+   - Agent Handle (`@<username>`), Status (`[IN PROGRESS]` / `[COMPLETED]`), "What I Am Doing" / "What Was Done".
+   - Root-cause "Problem Statement" and comprehensive "Technical Fix" detailing code and architecture mechanics.
+   - "Touched Files", "Verification Matrix", and "Handoff Notes".
+3. **Purged Ephemeral Issues Files**: Migrated all operational issues and historical agent logs from `scratch/issues.md` into `dev-documentations.md` and deleted `scratch/issues.md`.
+
+### Touched Files
+- `dev-documentations.md`
+- `AGENTS.md`
+- `.gitignore`
 
 ### Verification Matrix
-- Verified file creation and path resolution for `c:/Users/USER/Documents/Projects/EPUB READER DESKTOP/scratch/issues.md`.
-- Updated `AGENTS.md` and `dev-documentations.md`.
-- `npm run typecheck`: Verified 0 TypeScript errors.
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle generated cleanly with zero warnings or errors.
+
+### Handoff Notes
+- Agents in any future conversation must read only the header rules of `dev-documentations.md`, consult the latest increment at the bottom, and append their entries directly to `dev-documentations.md`.
 
 ---
 
-## Increment 32: Multi-Agent Git Worktree Isolation & Single-Authority Consolidation Architecture
+## Increment 33: Multi-Agent Git Worktree Isolation & Single-Authority Consolidation Architecture
+> **Agent**: @Agent-GitCoordinator | **Status**: COMPLETED
 
-### Problem Description
+### Problem Statement
 1. **Git Index Lock Contention (`.git/index.lock`)**: When multiple autonomous agents run concurrent staging (`git add`) and commit commands within a shared workspace directory, Git's file lock causes catastrophic aborts (`fatal: Unable to create '.git/index.lock': File exists`).
 2. **Intermediate Stage Contamination**: Concurrent `git add` operations cross-contaminate disparate features, causing one agent's commit to sweep in unfinished or broken changes from another agent.
 3. **Non-Fast-Forward Push Collisions**: Multiple agents pushing directly to `main` at the same time experience remote push rejections, forcing uncoordinated pulls, merge thrashing, and potential code rollbacks.
 
-### Architectural Solution
+### Technical Fix
 1. **Isolated Worktree Provisioning (Fan-Out)**:
    - Parallel or feature agents are strictly prohibited from committing directly to the root repository copy.
    - When parallel tasks execute, agents provision isolated Git worktrees:
@@ -2159,11 +2177,103 @@ Establish a strict separation between public website documentation and internal 
      - Performs the single, canonical push to the remote repository.
 4. **Permanent Workspace Invariants**:
    - Added Section 5 to `AGENTS.md`.
-   - Added Rule 6 to `scratch/issues.md`.
+
+### Touched Files
+- `AGENTS.md`
+- `.gitignore`
+- `dev-documentations.md`
 
 ### Verification Matrix
 - `.gitignore`: Added `.worktrees/`.
 - `AGENTS.md`: Integrated Section 5 protocol.
-- `scratch/issues.md`: Added Rule 6 and synchronization entry.
 - `npm run typecheck`: Verified 0 TypeScript errors across the workspace.
+
+---
+
+## Increment 34: Transferred Multi-Agent Issue Archive & Cross-Session Technical Fix Registry
+> **Agent**: @Agent-Coordinator | **Status**: COMPLETED
+
+### Transferred Issue 1: Fast Documentation Appending Headers & Rules
+- **Agent Handle**: `@Agent-DocSync` | **Status**: COMPLETED
+- **Problem Statement**: Agents previously had to read entire documentation files (thousands of lines) before appending increments, causing context bloating and high latency.
+- **Technical Fix**: Added upfront instructions (`[!IMPORTANT]`), strict rules, markdown codeblock templates, and complete examples at the beginning of `documentation.md` (user-facing) and `dev-documentations.md` (developer reference). Future agents only need to read the header rules (lines 1–40) to know how to append and can jump straight to the end.
+- **Touched Files**: `documentation.md`, `dev-documentations.md`, `AGENTS.md`
+- **Verification**: Verified header formatting, `npm run typecheck` passed with 0 errors, `npm run build` passed.
+- **Handoff Notes**: When adding future updates, read only the header rules/template of `documentation.md` or `dev-documentations.md`, then append directly to the bottom.
+
+### Transferred Issue 2: AdaptiveScrollOverlay Mounting in Native PDF View
+- **Agent Handle**: `@Agent-PDFEngine` | **Status**: COMPLETED
+- **Problem Statement**: PDF reading lacked hands-free auto-scrolling because previous implementations tied auto-scroll strictly to reflowable WPM calculations, which fail on fixed-layout PDF canvases.
+- **Technical Fix**:
+  - Lifted format restrictions in `useAppStore.ts` and wired `adaptiveScrollEngine` in deterministic `countdown` mode.
+  - Configured layout-aware dwell durations: 25s for single-page reading and 45s for dual-page spreads.
+  - Mounted `AdaptiveScrollOverlay` inside `PdfReaderView.tsx` with shared countdown subscriptions to eliminate counter drift.
+  - Implemented automatic countdown suspension when drawers/modals are active and termination at EOF.
+- **Touched Files**: `src/renderer/src/views/PdfReaderView.tsx`, `src/renderer/src/components/AdaptiveScrollOverlay.tsx`, `src/renderer/src/components/Drawers/SettingsDrawer/AutoScrollSettingsTab.tsx`
+- **Verification**: `npx tsc --noEmit` clean, verified countdown suspension and sync with settings drawer.
+- **Handoff Notes**: Dual-page mode in PDF readers maps `currentPage + 1` for the right canvas; avoid resetting canvas transforms when updating timer state.
+
+### Transferred Issue 3: Dual-Page PDF Text Layer Alignment & Selection Fixes
+- **Agent Handle**: `@Agent-ReaderCore` | **Status**: COMPLETED
+- **Problem Statement**: In dual-page PDF layout, text selection was restricted to the left page; selections or annotations on the right page failed or misattributed coordinates and bookmarks to `currentPage`.
+- **Technical Fix**:
+  - Added dedicated `textLayerRightRef` alongside `canvasRightRef` in `PdfReaderView.tsx`.
+  - Populated both layers concurrently via `page.getTextContent()` with identical viewport scaling.
+  - Implemented container-aware selection resolution in `handlePdfTextSelection` checking `textLayerRightRef.current?.contains(...)` to map right-page highlights accurately to `currentPage + 1`.
+  - Added preemptive `taskRef.current.cancel()` checks prior to canvas unmount to prevent worker exceptions.
+- **Touched Files**: `src/renderer/src/views/PdfReaderView.tsx`
+- **Verification**: `npm run typecheck` passed with 0 errors. Production bundle build clean.
+- **Handoff Notes**: When modifying PDF text layer geometry, maintain standard viewport scale alignment to prevent highlight rect displacement.
+
+### Transferred Issue 4: Horizontal Paginated Reader Standardization & Dual Layout
+- **Agent Handle**: `@Agent-LayoutMaster` | **Status**: COMPLETED
+- **Problem Statement**: Switching between single and dual layouts caused page estimation errors (spreadFactor halved), text inputs captured reader navigation keys, and opening overlay TOC drawers shifted the reading canvas unnecessarily.
+- **Technical Fix**:
+  - Reconciled legacy `pageSpread: 'double'` to `pageLayout: 'dual'` during store hydration in `useAppStore.ts`.
+  - In `EpubReaderView.tsx`, recalculated `spreadFactor` via `isDualLayout ? 2 : 1`.
+  - Added input element guards (`isTargetInput`) across content window and root window keydown listeners.
+  - Removed left canvas margin contraction on overlay TOC drawer.
+  - Applied `-translate-x-1/2` to the central dual-page gutter divider for exact optical midpoint alignment.
+- **Touched Files**: `src/renderer/src/views/EpubReaderView.tsx`, `src/renderer/src/store/useAppStore.ts`, `src/renderer/src/components/Drawers/TOCDrawer.tsx`
+- **Verification**: Automated layout test suite (`scratch/test_reader_layout_modes.js`) passed (TC-1 through TC-4). `tsc --noEmit` passed.
+- **Handoff Notes**: In `EpubReaderView.tsx`, always preserve `rendition.on('started')` layout constraints and do not place granular location states into continuous service effect hooks.
+
+---
+
+## Increment 35: Native 2-Page EPUB Spread Architecture & Scrollbar Elimination
+> **Agent**: @Agent-LayoutMaster | **Status**: COMPLETED
+
+### Problem Statement
+1. **3-Column Spread Misalignment & Text Clipping**: In dual-page mode, manual `column-gap: 64px !important;` and `padding-left/right: 36px` injected into the iframe `body` broke `epub.js`'s internal layout calculations (`calculate(_width, _height, _gap)`), causing a third column to bleed into the right edge, clipping the left margin, and landing off-column on page turns.
+2. **Native Horizontal Scrollbar Leak (`◀ [ ] ▶`)**: `applyDynamicStylesToDoc` only set `overflow-y: hidden !important;`, omitting `overflow-x: hidden`. Overflowing columns triggered native Chromium horizontal scrollbar controls.
+3. **Ghost / Blank Spreads on Reverse Navigation**: Fragile manual spine section hacking in `navigateStep` caused navigation to scroll into empty whitespace or stall across chapter boundaries.
+
+### Technical Fix
+1. **Purged `columnLayoutRule` Overrides** (`src/renderer/src/components/reader/EpubReaderView.tsx`):
+   - Reverted to the clean initial release architecture (`bf1c946` / `ee2860e`).
+   - Removed conflicting manual CSS multi-column rules (`column-gap: 64px !important;`, `padding-left/right: 36px;`).
+   - Allowed `epub.js`'s layout manager to natively calculate exact 2-column geometry via `contents.columns(width, height, columnWidth, gap)`.
+2. **Complete Native Scrollbar Suppression** (`src/renderer/src/components/reader/EpubReaderView.tsx`):
+   - Enforced `overflow: hidden !important; overflow-x: hidden !important; overflow-y: hidden !important;` across both `html` and `body`.
+   - Injected `::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }`, completely eliminating the native Windows Chromium scrollbar leak.
+3. **Restored Layout Constraints on `started` Event** (`src/renderer/src/components/reader/EpubReaderView.tsx`):
+   - Configured `epubInstance.renderTo` with `spread: isDual ? 'always' : 'none'`, `flow: 'paginated'`, `manager: 'default'`, `minSpreadWidth: 0`, and `gap: 64`.
+   - Registered `renditionInstance.on('started', applyMinSpreadWidth)` to ensure `_layout._minSpreadWidth = 0` and `manager.layout._minSpreadWidth = 0`, preserving repo invariant 1.
+4. **Clean Native Navigation**:
+   - Replaced fragile spine-index hacking with clean asynchronous calls to `rendition.next()` and `rendition.prev()`.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors in 9.72s.
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, always allow `epub.js`'s layout manager to calculate column widths and padding offsets natively. Never inject overriding `column-gap` or `column-width` styles via `applyDynamicStylesToDoc`.
+
+
+
 

@@ -159,3 +159,9 @@
   - **Accurate Annotation Attribution**: Annotations created on the right-hand canvas are strictly mapped to `currentPage + 1`, preventing bookmarks and notes from being misattributed to preceding odd pages.
   - **Render Task Cancellation Safety**: PDF rendering tasks now safely cancel pending worker promises prior to canvas unmounting or bounds validation, eliminating background thread races and unhandled cancellation exceptions.
   - **Polished Contextual In-App Toasts**: Re-enabled native contextual status toasts with themed status icons and dismiss controls, ensuring that user confirmations and error messages provide immediate visual feedback without interrupting reader focus.
+
+- **Authentic Dual-Page Spread & Clean Navigation**:
+  - **Pixel-Perfect 2-Page Spreads**: Dual-page mode displays exactly two balanced columns per spread with an optical central binding divider, eliminating column overflow, clipped margins, or third columns bleeding into the reading view.
+  - **Zero Scrollbar Distraction**: Completely suppressed OS scrollbar tracks and controls within the reading canvas so you enjoy an uninterrupted, paper-like reading surface.
+  - **Smooth Backward & Forward Navigation**: Page turns forward and backward transition smoothly between spreads without stalling on blank pages.
+

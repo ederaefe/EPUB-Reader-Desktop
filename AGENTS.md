@@ -15,16 +15,16 @@ These rules are permanent behavioral guidelines for coding agents working in thi
 - Keep `documentation.md` (user-facing, no code internals) and `dev-documentations.md` (developer-facing, architectural deep-dive) updated and appended with every completed increment.
 
 ## 4. Multi-Agent Coordination & Synchronization Protocol
-All autonomous agents across every conversation session MUST consult and maintain `scratch/issues.md` to prevent race conditions, conflicting file modifications, and redundant refactors:
+All autonomous agents across every conversation session MUST consult and maintain `dev-documentations.md` to prevent race conditions, conflicting file modifications, and redundant refactors:
 
-1. **Pre-Task Check**: Read `scratch/issues.md` before touching code to verify active locks, recent architectural fixes, and known constraints.
-2. **Task Registration (In-Progress)**: When claiming a task or modifying shared files, append an entry with status `[IN PROGRESS]` declaring:
+1. **Pre-Task Check**: Read the header rules and latest increments at the end of `dev-documentations.md` before touching code to verify active locks, recent architectural fixes, and known constraints.
+2. **Task Registration (In-Progress)**: When claiming a task or modifying shared files, append an entry to `dev-documentations.md` with status `[IN PROGRESS]` declaring:
    - **Agent Username**: Handle identifying the agent (e.g., `@Agent-PDFEngine`, `@Agent-LayoutCore`).
    - **Status**: `[IN PROGRESS]`
    - **What I Am Doing**: Specific goal and targeted components.
    - **Problem Statement**: Explicit root-cause description of the bug, edge case, or feature requirement.
    - **Active Files / Lock**: Exact paths reserved for this increment.
-3. **Task Completion (Done & Technical Fix)**: When the increment passes verification, append an entry with status `[COMPLETED]` declaring:
+3. **Task Completion (Done & Technical Fix)**: When the increment passes verification, append or update your increment entry in `dev-documentations.md` with status `[COMPLETED]` declaring:
    - **Agent Username**: Matching agent handle.
    - **Status**: `[COMPLETED]`
    - **What Was Done**: Summary of work performed.

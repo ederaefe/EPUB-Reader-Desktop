@@ -284,61 +284,33 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         ? `body, body p, body div, body span, body li, body blockquote, body h1, body h2, body h3, body h4, body h5, body h6 { font-family: ${fontFam} !important; }`
         : ''
 
-    // Strict two-column dual layout vs single-column formatting
-    const columnLayoutRule = isDual
-      ? `
-        html {
-          height: 100% !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-        }
-        body {
-          height: 100% !important;
-          margin: 0 !important;
-          padding-top: 24px !important;
-          padding-bottom: 24px !important;
-          padding-left: 36px !important;
-          padding-right: 36px !important;
-          box-sizing: border-box !important;
-          overflow-y: hidden !important;
-          column-gap: 64px !important;
-          column-fill: auto !important;
-          column-rule: none !important;
-        }
-        .galley-rw, section, article, div.body-rw, main {
-          max-width: 100% !important;
-          width: auto !important;
-        }
-        h1, h2, h3, h4, h5, h6 {
-          column-span: none !important;
-          -webkit-column-span: none !important;
-        }
-      `
-      : `
-        html {
-          height: 100% !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-        }
-        body {
-          height: 100% !important;
-          margin: 0 auto !important;
-          padding-top: 24px !important;
-          padding-bottom: 24px !important;
-          padding-left: 48px !important;
-          padding-right: 48px !important;
-          box-sizing: border-box !important;
-          overflow-y: hidden !important;
-        }
-        .galley-rw, section, article, div.body-rw, main {
-          max-width: 100% !important;
-          width: auto !important;
-        }
-        h1, h2, h3, h4, h5, h6 {
-          column-span: none !important;
-          -webkit-column-span: none !important;
-        }
-      `
+    // Base layout and scrollbar suppression rules (preserves epub.js native 2-column calculation)
+    const baseLayoutRule = `
+      html, body {
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        overflow-y: hidden !important;
+        box-sizing: border-box !important;
+      }
+      body {
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        overflow-y: hidden !important;
+      }
+      ::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+      .galley-rw, section, article, div.body-rw, main {
+        max-width: 100% !important;
+        width: auto !important;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        column-span: none !important;
+        -webkit-column-span: none !important;
+      }
+    `
 
     styleEl.textContent = `
       html, body {
@@ -358,7 +330,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         font-weight: ${emphasisWeight} !important;
       }
       ${fontRule}
-      ${columnLayoutRule}
+      ${baseLayoutRule}
     `
   }, [])
 
@@ -997,8 +969,23 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         spread: isDual ? 'always' : 'none',
         flow: 'paginated',
         manager: 'default',
-        minSpreadWidth: 800
-      })
+        minSpreadWidth: 0,
+        gap: 64
+      } as any)
+      renditionInstance.settings.minSpreadWidth = 0
+      if ((renditionInstance as any)._layout) {
+        ;(renditionInstance as any)._layout._minSpreadWidth = 0
+      }
+
+      const applyMinSpreadWidth = () => {
+        if ((renditionInstance as any)?._layout) {
+          ;(renditionInstance as any)._layout._minSpreadWidth = 0
+        }
+        if ((renditionInstance as any)?.manager?.layout) {
+          ;(renditionInstance as any).manager.layout._minSpreadWidth = 0
+        }
+      }
+      renditionInstance.on('started', applyMinSpreadWidth)
       renditionRef.current = renditionInstance
 
       // Guard epub.js internal Queue against permanent rejection deadlocks:
