@@ -28,6 +28,17 @@ import {
 } from '../../services/coverService'
 import { loadCachedReflowEpub } from '../../services/pdfViewService'
 
+const DEFAULT_CATEGORY_COLORS = [
+  '#2a69df',
+  '#8b5cf6',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#06b6d4',
+  '#ec4899',
+  '#84cc16'
+]
+
 export const LibraryView: React.FC = () => {
   const {
     selectedCategory,
@@ -654,7 +665,8 @@ export const LibraryView: React.FC = () => {
         setStatusMessage(`Found ${files.length} books. Importing...`)
         let importedCount = 0
         for (const f of files) {
-          if (await processAndAddFile(f, targetCatId)) importedCount++
+          const filePath = typeof f === 'string' ? f : (f as any)?.path || (f as any)?.filePath || ''
+          if (filePath && (await processAndAddFile(filePath, targetCatId))) importedCount++
         }
         await loadData()
       }

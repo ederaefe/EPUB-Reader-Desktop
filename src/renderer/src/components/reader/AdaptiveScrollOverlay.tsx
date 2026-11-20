@@ -26,9 +26,13 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   isActive,
   onClose
 }) => {
-  const { settings, updateSettings, isImmersiveFullscreen } = useAppStore()
+  const { activeBook, settings, updateSettings, isImmersiveFullscreen } = useAppStore()
   const [metrics, setMetrics] = useState<PacingMetrics>(adaptiveScrollEngine.getMetrics())
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const isPdf = activeBook?.format === 'pdf'
+  const isPdfDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+  const pdfDefaultDwell = isPdfDual ? 45 : 25
 
   useEffect(() => {
     return adaptiveScrollEngine.subscribe((m) => setMetrics(m))
@@ -79,8 +83,16 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleCountdownChange = (nextSec: number) => {
     const clamped = Math.max(3, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
-    updateSettings({ autoscrollCountdownSec: clamped })
-    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
+    if (isPdf) {
+      if (isPdfDual) {
+        updateSettings({ pdfCountdownSecDual: clamped, autoscrollCountdownSec: clamped })
+      } else {
+        updateSettings({ pdfCountdownSecSingle: clamped, autoscrollCountdownSec: clamped })
+      }
+    } else {
+      updateSettings({ autoscrollCountdownSec: clamped })
+    }
+    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped, mode: 'countdown' })
   }
 
   const handleAdaptiveSecChange = (nextSec: number) => {
@@ -99,6 +111,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const handleReset = () => {
     adaptiveScrollEngine.recordUserActivity()
+    if (isPdf) {
+      handleCountdownChange(pdfDefaultDwell)
+      return
+    }
     adaptiveScrollEngine.reset()
     if (effectiveMode === 'countdown') {
       updateSettings({ autoscrollCountdownSec: 20 })
@@ -238,37 +254,39 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </div>
           )}
 
-          {/* Row 3: Segmented Mode Selector (Fixed vs Smart) */}
-          <div className="grid grid-cols-2 p-0.5 bg-white/[0.04] rounded-md border border-white/[0.08]">
-            <button
-              type="button"
-              onClick={() => handleModeChange('countdown')}
-              className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                effectiveMode === 'countdown'
-                  ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Timer className="w-3 h-3" />
-              <span>Fixed</span>
-            </button>
+          {/* Row 3: Segmented Mode Selector (Fixed vs Smart) - EPUB only */}
+          {!isPdf && (
+            <div className="grid grid-cols-2 p-0.5 bg-white/[0.04] rounded-md border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => handleModeChange('countdown')}
+                className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                  effectiveMode === 'countdown'
+                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Timer className="w-3 h-3" />
+                <span>Fixed</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleModeChange('adaptive')}
-              className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                effectiveMode === 'adaptive'
-                  ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <Zap className="w-3 h-3" />
-              <span>Smart</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleModeChange('adaptive')}
+                className={`h-7 rounded-sm flex items-center justify-center gap-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                  effectiveMode === 'adaptive'
+                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Zap className="w-3 h-3" />
+                <span>Smart</span>
+              </button>
+            </div>
+          )}
 
           {/* Row 4: Mode-Specific Manual Seconds Controls with Presets */}
-          {effectiveMode === 'countdown' ? (
+          {isPdf || effectiveMode === 'countdown' ? (
             <div className="space-y-2 pt-0.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">

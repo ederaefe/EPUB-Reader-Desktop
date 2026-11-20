@@ -696,15 +696,17 @@ handleTrusted('window:getZoomFactor', () => {
   return mainWindow?.webContents.getZoomFactor() ?? 1.0
 })
 
-async function scanBookFolderInternal(safeRoot: string): Promise<string[]> {
+async function scanBookFolderInternal(
+  safeRoot: string
+): Promise<Array<{ path: string; subfolder: string | null }>> {
   const allowed = new Set(['.epub', '.pdf', '.mobi', '.txt'])
-  const results: string[] = []
+  const results: Array<{ path: string; subfolder: string | null }> = []
   const MAX_DEPTH = 6
   const MAX_FILES = 2500
 
   if (!existsSync(safeRoot)) return []
 
-  async function scan(dir: string, depth: number): Promise<void> {
+  async function scan(dir: string, depth: number, currentSubfolder: string | null): Promise<void> {
     if (depth > MAX_DEPTH || results.length >= MAX_FILES) return
     try {
       const entries = await readdir(dir, { withFileTypes: true })
@@ -714,9 +716,10 @@ async function scanBookFolderInternal(safeRoot: string): Promise<string[]> {
 
         const full = join(dir, entry.name)
         if (entry.isDirectory()) {
-          await scan(full, depth + 1)
+          const nextSubfolder = currentSubfolder ?? entry.name
+          await scan(full, depth + 1, nextSubfolder)
         } else if (allowed.has(extname(entry.name).toLowerCase())) {
-          results.push(full)
+          results.push({ path: full, subfolder: currentSubfolder })
         }
       }
     } catch {
@@ -724,7 +727,7 @@ async function scanBookFolderInternal(safeRoot: string): Promise<string[]> {
     }
   }
 
-  await scan(safeRoot, 0)
+  await scan(safeRoot, 0, null)
   return results
 }
 
@@ -787,12 +790,12 @@ handleTrusted('fs:scanFolder', async (_, folderPath: string) => {
   const rawFiles = await scanBookFolderInternal(safeRoot)
   const cfg = getSecurityStatus()
   if (cfg.vaultPath && cfg.copyImportsIntoVault) {
-    const vaultFiles: string[] = []
-    for (const filePath of rawFiles) {
+    const vaultFiles: Array<{ path: string; subfolder: string | null }> = []
+    for (const item of rawFiles) {
       try {
-        const safeFile = assertSafePath(filePath, 'read')
+        const safeFile = assertSafePath(item.path, 'read')
         const finalPath = await copyFileIntoVaultIfConfigured(safeFile)
-        vaultFiles.push(finalPath)
+        vaultFiles.push({ path: finalPath, subfolder: item.subfolder })
       } catch {
         // Skip unreadable or oversized entries
       }
@@ -1020,7 +1023,8 @@ handleTrusted('security:chooseVaultFolder', async () => {
   try {
     const safeDir = assertSafeFolderPath(result.filePaths[0])
     const status = setVaultFolder(safeDir)
-    const scannedFiles = await scanBookFolderInternal(safeDir)
+    const scannedRaw = await scanBookFolderInternal(safeDir)
+    const scannedFiles = scannedRaw.map((f) => f.path)
     return { canceled: false, status, scannedFiles }
   } catch (err: any) {
     return {
@@ -1076,7 +1080,8 @@ handleTrusted('security:scanVault', async () => {
   try {
     const safeRoot = assertSafeFolderPath(status.vaultPath)
     assertWithinAuthorizedBoundary(safeRoot, 'folder')
-    return await scanBookFolderInternal(safeRoot)
+    const scanned = await scanBookFolderInternal(safeRoot)
+    return scanned.map((f) => f.path)
   } catch {
     return []
   }

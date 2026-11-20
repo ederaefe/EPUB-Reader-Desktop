@@ -825,11 +825,9 @@ export const FullSettingsModal: React.FC = () => {
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={!isPdf && isAutoscrollActive}
+                        aria-checked={isAutoscrollActive}
                         data-preserve-theme="true"
-                        disabled={isPdf}
                         onClick={() => {
-                          if (isPdf) return
                           const next = !isAutoscrollActive
                           if (!next) {
                             adaptiveScrollEngine.stop()
@@ -839,24 +837,20 @@ export const FullSettingsModal: React.FC = () => {
                           setAutoscrollActive(next)
                         }}
                         style={{
-                          backgroundColor: !isPdf && isAutoscrollActive
+                          backgroundColor: isAutoscrollActive
                             ? 'var(--app-accent)'
                             : 'var(--app-border-strong)'
                         }}
-                        className={`settings-switch w-10 h-5 rounded-full p-0.5 flex items-center shrink-0 ${
-                          isPdf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-                        }`}
+                        className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center shrink-0 cursor-pointer"
                         title={
-                          isPdf
-                            ? 'Auto-Scroll is disabled for PDF documents'
-                            : isAutoscrollActive
-                              ? 'Turn off Auto-Scroll'
-                              : 'Turn on Auto-Scroll'
+                          isAutoscrollActive
+                            ? 'Turn off Auto-Scroll'
+                            : 'Turn on Auto-Scroll'
                         }
                       >
                         <span
                           className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
-                            !isPdf && isAutoscrollActive ? 'translate-x-5' : 'translate-x-0'
+                            isAutoscrollActive ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>

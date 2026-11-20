@@ -598,11 +598,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
     })
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (isTargetInput(e.target)) return
+
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
           e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
         )) ||
-        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !isTargetInput(e.target))
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace')
       if (isBackKey) {
         e.preventDefault()
         e.stopPropagation()
@@ -984,9 +986,6 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           ;(epubInstance?.spine as any)?.hooks?.content?.register?.((doc: Document) => {
             if (doc) sanitizeEpubDocument(doc)
           })
-          if ((renditionInstance as any)?._layout) {
-            ;(renditionInstance as any)._layout._minSpreadWidth = 0
-          }
         })
         .catch(() => {})
 
@@ -1006,6 +1005,18 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         ;(renditionInstance as any)._layout._minSpreadWidth = 0
       }
       renditionRef.current = renditionInstance
+
+      // Also apply after the rendition's internal start() completes (when _layout is first created)
+      // so the spread constraint is enforced before the first content render.
+      const applyMinSpreadWidth = () => {
+        if ((renditionInstance as any)?._layout) {
+          ;(renditionInstance as any)._layout._minSpreadWidth = 0
+        }
+        if ((renditionInstance as any)?.manager?.layout) {
+          ;(renditionInstance as any).manager.layout._minSpreadWidth = 0
+        }
+      }
+      renditionInstance.on('started', applyMinSpreadWidth)
 
       // Guard epub.js internal Queue against permanent rejection deadlocks:
       // In epubjs@0.3.93, Queue.run() lacks a rejection handler on dequeue(), so any rejected
@@ -1246,7 +1257,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
             const hasImg = Boolean(iframeDoc?.querySelector('img, svg, figure, image'))
             const chapterWords = computeEffectiveWordCount(pageText, hasImg).words
             const secPages = Math.max(1, location.start?.displayed?.total || 1)
-            const spreadFactor = settings.pageSpread === 'double' ? 2 : 1
+            const isDualLayout =
+              (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+            const spreadFactor = isDualLayout ? 2 : 1
             visibleWords = Math.round((chapterWords / secPages) * spreadFactor) || 150
           }
           lastWordsOnPageRef.current = visibleWords
@@ -1332,9 +1345,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }
       }
 
-      // Pre-validate startLocation with epub spine before calling display
+      // Pre-validate startLocation with epub spine before calling display.
+      // spine.get() only understands hrefs and spine indices — NOT epubcfi() strings.
+      // Pass CFI strings straight through; only validate href/index strings via the spine.
       let validStartLocation: any = startLocation
-      if (validStartLocation && epubInstance?.spine) {
+      const isCfiString = typeof validStartLocation === 'string' && validStartLocation.startsWith('epubcfi(')
+      if (!isCfiString && validStartLocation && epubInstance?.spine) {
         try {
           const sec = epubInstance.spine.get(validStartLocation)
           if (!sec) {
@@ -1486,11 +1502,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     return () => {
       isCancelled = true
       locationsReadyRef.current = false
-      renditionRef.current = null
-      epubBookRef.current = null
       adaptiveScrollEngine.setSuspension('layout', false)
       // Stop the internal epub.js queue BEFORE destroy() so pending Rendition.start()
       // tasks never fire against an undefined book after unmount/StrictMode remount.
+      // IMPORTANT: null the refs AFTER destroy() — nulling before destroy() causes a
+      // use-after-free race where the new initReader() starts while the old rendition
+      // is still alive and firing relocated/displayError events against null refs.
       const rendAny = renditionInstance as any
       try {
         rendAny?.q?.stop?.()
@@ -1502,6 +1519,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       try {
         epubInstance?.destroy?.()
       } catch {}
+      renditionRef.current = null
+      epubBookRef.current = null
     }
   }, [
     bookKey,
@@ -1930,7 +1949,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       cancelled = true
       if (recoveryTimer) clearTimeout(recoveryTimer)
     }
-  }, [isAutoscrollActive, book.format, currentCfi, analyzeVisiblePage, handleNext, setAutoscrollActive])
+  }, [isAutoscrollActive, book.format, analyzeVisiblePage, handleNext, setAutoscrollActive])
 
   // Cleanly stop Auto-Scroll, Read Aloud (TTS), and close Search drawer when exiting the reader back to Library
   useEffect(() => {
@@ -2087,11 +2106,13 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTargetInput(e.target)) return
+
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
           e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
         )) ||
-        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !isTargetInput(e.target))
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace')
       if (isBackKey) {
         e.preventDefault()
         e.stopPropagation()
@@ -3008,10 +3029,9 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
   }
 
-  // Dynamic container resizing and rebalance when drawers slide open/closed
+  // Dynamic container resizing and rebalance when persistent right-side drawers slide open/closed
   const isRightDrawerOpen =
     isSettingsDrawerOpen || isNotesDrawerOpen || isBookmarksDrawerOpen || isSearchDrawerOpen
-  const isLeftDrawerOpen = isTOCDrawerOpen
   const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
 
   useEffect(() => {
@@ -3021,7 +3041,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } catch {}
     }, 220)
     return () => clearTimeout(t)
-  }, [isRightDrawerOpen, isLeftDrawerOpen])
+  }, [isRightDrawerOpen])
 
   // Trigger epub.js layout reflow only when immersive fullscreen actually toggles (never on initial mount,
   // where an early resize() clears the active view and can snap scrollLeft back to page 1)
@@ -3082,7 +3102,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         onNext={handleNext}
         isLeftDisabled={currentPage <= 1 && progressPercent <= 0}
         isRightDisabled={progressPercent >= 100 && currentPage >= totalPages}
-        hidden={isImmersiveFullscreen}
+        hidden={isImmersiveFullscreen || isRightDrawerOpen || isTOCDrawerOpen}
       />
       <div
         onContextMenu={(e) => {
@@ -3091,9 +3111,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         }}
         className={`flex-1 relative flex items-center justify-center overflow-hidden transition-[margin] duration-200 ease-out ${
           isRightDrawerOpen && !isImmersiveFullscreen ? 'mr-[380px]' : ''
-        } ${isLeftDrawerOpen && !isImmersiveFullscreen ? 'ml-[340px]' : ''} ${
-          isImmersiveFullscreen ? 'py-6 px-4' : ''
-        }`}
+        } ${isImmersiveFullscreen ? 'py-6 px-4' : ''}`}
       >
         {/* Icecream-style On-Page Top-Right Bookmark Ribbon Toggle */}
         {!isImmersiveFullscreen && (
@@ -3134,7 +3152,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
               backgroundColor: currentTheme.border,
               boxShadow: '-1px 0 6px rgba(0,0,0,0.3), 1px 0 6px rgba(0,0,0,0.3)'
             }}
-            className="absolute left-1/2 top-4 bottom-4 w-px pointer-events-none opacity-40 z-20"
+            className="absolute left-1/2 top-4 bottom-4 w-px -translate-x-1/2 pointer-events-none opacity-40 z-20"
           />
         )}
       </div>

@@ -25,7 +25,7 @@ export const NativeFeedbackHost: React.FC = () => {
 
   return (
     <>
-      {/* Global Geist Contextual Toast */}
+      {/* Global Contextual Toast */}
       {toast && (
         <div
           role="status"

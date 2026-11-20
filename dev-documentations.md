@@ -1971,3 +1971,40 @@ Establish a strict separation between public website documentation and internal 
 - **TC-3 (Horizontal Dual, Drawer Open)**: Dual mode retained, container width cleanly constrained to remaining viewport without collapsing to 1 column (`pass: true`).
 - **TC-4 (Single <-> Dual Switch)**: Exact CFI preserved across transition (`cfiBefore === cfiAfter`), zero black screens, seamless text rendering (`pass: true`).
 - **Build Verification**: `npm run typecheck` (`tsc --noEmit`) and `npm run build` (`electron-vite build`) passed with zero errors.
+
+
+---
+
+## Increment 28: Epub Reader Spine Rendering & Engine Lifecycle Stabilization
+
+### Problem Description
+1. **Rendition Event Race & White-Screen Freeze**: Setting `renditionRef.current = null` before calling `renditionInstance.destroy()` allowed lingering epub.js events (`relocated`, `displayError`) to fire against null references during React remounts.
+2. **CFI Spine Rejection & Reading Position Loss**: `epubInstance.spine.get()` was invoked with raw `epubcfi(...)` strings, causing the check to fail and fall back to `display(undefined)` (resetting the reader to page 1 on every reopen).
+3. **Pre-Layout Spread Override Collapse**: `_minSpreadWidth = 0` was set before epub.js instantiated `_layout` during its `started` lifecycle event.
+4. **Reactive Dependency Thrashing in Auto-Scroll**: `currentCfi` in the autoscroll effect dependency array caused teardown and re-arm cycles on every single page turn.
+
+### Architectural Solution
+1. **Strict Teardown Sequence**: In `EpubReaderView.tsx`, queue stops and `renditionInstance.destroy()` / `epubInstance.destroy()` are executed prior to nulling `renditionRef.current` and `epubBookRef.current`.
+2. **Format-Aware Spine Lookup Guard**: Pre-filtered `startLocation` with `isCfiString` check so raw CFIs bypass `spine.get()` directly into `rendition.display()`.
+3. **Lifecycle-Hooked Spread Constraint**: Registered `applyMinSpreadWidth` on `renditionInstance.on('started')` ensuring the layout manager honors dual spread unconditionally.
+4. **Clean Effect Dependency Pruning**: Removed `currentCfi` from autoscroll effect dependencies, delegating position updates strictly to the `relocated` event.
+
+### Automated Testing Matrix
+- **Type Checking**: Clean `npx tsc --noEmit` pass with zero diagnostics across all TypeScript targets.
+
+---
+
+## Increment 29: Toast Notification De-Clutter & Feedback Engine Streamlining
+
+### Problem Description
+1. Transient bottom-right toast banners obstructed the user interface during library book deletion and batch file operations.
+2. Toast UI required unnecessary layout rendering, animations, and timer teardowns across the renderer process.
+
+### Architectural Solution
+1. **Toast Markup & Animation Pruning**: Removed the `{toast && ( ... )}` JSX and unused Lucide icon imports (`AlertCircle`, `CheckCircle2`, `Info`, `X`) from `NativeFeedbackHost.tsx`.
+2. **Non-Breaking Store Neutralization**: Converted `showToast` and `clearToast` in `useAppStore.ts` into lightweight, non-blocking no-ops, preserving API compatibility across all existing call sites without triggering state updates or window timer allocations.
+3. **Type-Safe Folder Scanning**: Aligned `processAndAddFile` file iteration in `LibraryView.tsx` with `ScannedBookItem.path`.
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly with zero warnings or errors.

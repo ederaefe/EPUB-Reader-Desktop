@@ -10,7 +10,9 @@ import {
   RotateCcw,
   Check,
   SlidersHorizontal,
-  Keyboard
+  Keyboard,
+  Minus,
+  Plus
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -111,6 +113,20 @@ const TIMER_PRESETS = [10, 20, 30, 45]
 const SMART_SEC_PRESETS = [15, 25, 35, 50]
 const TTS_SPEEDS = [0.8, 1.0, 1.2, 1.5, 2.0]
 
+const PDF_ZOOM_PRESETS = [
+  { id: 'fit', label: 'Fit', scale: 0.85 },
+  { id: 'default', label: 'Default', scale: 1.2 },
+  { id: 'full', label: 'Full', scale: 1.6 }
+] as const
+
+const getPdfZoomPresetLabel = (zoom: number): string => {
+  const rounded = Math.round(zoom * 100)
+  if (Math.abs(zoom - 0.85) < 0.06) return 'Fit'
+  if (Math.abs(zoom - 1.2) < 0.06) return 'Default'
+  if (Math.abs(zoom - 1.6) < 0.06) return 'Full'
+  return `${rounded}%`
+}
+
 export const SettingsDrawer: React.FC = () => {
   const {
     activeBook,
@@ -177,6 +193,10 @@ export const SettingsDrawer: React.FC = () => {
   const microPauseEnabled = settings.autoscrollMicroPause ?? true
   const isPdf = activeBook?.format === 'pdf'
   const isOriginalPdf = isPdf && pdfViewMode === 'original'
+  const isPdfDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+  const pdfDwellSec = isPdfDual
+    ? (settings.pdfCountdownSecDual ?? 45)
+    : (settings.pdfCountdownSecSingle ?? 25)
 
   const handleToggleAutoScrollPause = () => {
     adaptiveScrollEngine.setUserPaused(!autoscrollMetrics.isUserPaused)
@@ -194,6 +214,16 @@ export const SettingsDrawer: React.FC = () => {
     adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
   }
 
+  const handlePdfCountdownChange = (sec: number) => {
+    const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+    if (isPdfDual) {
+      updateSettings({ pdfCountdownSecDual: clamped, autoscrollCountdownSec: clamped })
+    } else {
+      updateSettings({ pdfCountdownSecSingle: clamped, autoscrollCountdownSec: clamped })
+    }
+    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped, mode: 'countdown' })
+  }
+
   const handleAdaptiveSecChange = (sec: number) => {
     const clamped = Math.max(3, Math.min(600, Math.round(sec)))
     updateSettings({ autoscrollAdaptiveSec: clamped })
@@ -207,12 +237,14 @@ export const SettingsDrawer: React.FC = () => {
   }
 
   const handleToggleAutoScroll = () => {
-    if (isPdf) return
     const next = !isAutoscrollActive
     if (!next) {
       adaptiveScrollEngine.stop()
     } else {
       adaptiveScrollEngine.clearTransientSuspensions()
+      if (isPdf) {
+        adaptiveScrollEngine.configure({ mode: 'countdown', fixedCountdownSec: pdfDwellSec })
+      }
     }
     setAutoscrollActive(next)
   }
@@ -527,6 +559,72 @@ export const SettingsDrawer: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* PDF Zoom Stepper: - [ Fit | Default | Full ] + */}
+                {isOriginalPdf && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-[var(--app-text)]">Zoom</span>
+                    <div className="inline-flex items-center h-7 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] overflow-hidden shrink-0 shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setPdfZoom(Math.max(0.5, Number((pdfZoom - 0.15).toFixed(2))))}
+                        disabled={pdfZoom <= 0.5}
+                        className="w-6 h-full flex items-center justify-center text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                        title="Zoom out (Ctrl -)"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <div
+                        className="glass-pill-track grid-cols-3 w-[162px] border-x border-[var(--app-border)] !p-0.5 !bg-transparent"
+                        role="radiogroup"
+                        aria-label="PDF Zoom Preset"
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={Math.abs(pdfZoom - 0.85) < 0.08}
+                          data-active={Math.abs(pdfZoom - 0.85) < 0.08 ? 'true' : 'false'}
+                          onClick={() => setPdfZoom(0.85)}
+                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
+                          title="Fit (85%)"
+                        >
+                          Fit
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={Math.abs(pdfZoom - 1.2) < 0.08}
+                          data-active={Math.abs(pdfZoom - 1.2) < 0.08 ? 'true' : 'false'}
+                          onClick={() => setPdfZoom(1.2)}
+                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
+                          title="Default (120%)"
+                        >
+                          Default
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={Math.abs(pdfZoom - 1.6) < 0.08}
+                          data-active={Math.abs(pdfZoom - 1.6) < 0.08 ? 'true' : 'false'}
+                          onClick={() => setPdfZoom(1.6)}
+                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
+                          title="Full (160%)"
+                        >
+                          Full
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPdfZoom(Math.min(3.0, Number((pdfZoom + 0.15).toFixed(2))))}
+                        disabled={pdfZoom >= 3.0}
+                        className="w-6 h-full flex items-center justify-center text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                        title="Zoom in (Ctrl +)"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Flat Lighting Rows: Custom Dimness Slider */}
@@ -655,17 +753,17 @@ export const SettingsDrawer: React.FC = () => {
                   <div>
                     <div className="text-[12px] font-semibold text-[var(--app-text-strong)] flex items-center gap-1.5">
                       <span>Auto-Scroll</span>
-                      {!isPdf && isAutoscrollActive && (
+                      {isAutoscrollActive && (
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]" />
                       )}
                     </div>
                     <div className="text-[10.5px] font-normal text-[var(--app-text-subtle)]">
-                      {isPdf ? 'Disabled for PDF documents' : 'Hands-free page turning'}
+                      Hands-free page turning
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {!isPdf && isAutoscrollActive && (
+                    {isAutoscrollActive && (
                       <button
                         type="button"
                         onClick={handleToggleAutoScrollPause}
@@ -687,84 +785,46 @@ export const SettingsDrawer: React.FC = () => {
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={!isPdf && isAutoscrollActive}
+                      aria-checked={isAutoscrollActive}
                       data-preserve-theme="true"
-                      disabled={isPdf}
                       onClick={handleToggleAutoScroll}
                       style={{
-                        backgroundColor: !isPdf && isAutoscrollActive
+                        backgroundColor: isAutoscrollActive
                           ? 'var(--app-accent)'
                           : 'var(--app-border-strong)'
                       }}
-                      className={`w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 ${
-                        isPdf ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
-                      }`}
+                      className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 cursor-pointer"
                       title={
-                        isPdf
-                          ? 'Auto-Scroll is disabled for PDF documents'
-                          : isAutoscrollActive
-                            ? 'Turn off Auto-Scroll'
-                            : 'Turn on Auto-Scroll'
+                        isAutoscrollActive
+                          ? 'Turn off Auto-Scroll'
+                          : 'Turn on Auto-Scroll'
                       }
                     >
                       <span
                         className={`w-3 h-3 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
-                          !isPdf && isAutoscrollActive ? 'translate-x-4' : 'translate-x-0'
+                          isAutoscrollActive ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
                     </button>
                   </div>
                 </div>
 
-                {!isPdf && (
-                  <>
-                    {/* Small Inline Mode Switcher */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                    Pacing
-                  </span>
-                  <div
-                    className="glass-pill-track grid-cols-2 w-[140px]"
-                    role="radiogroup"
-                    aria-label="Auto-scroll pacing mode"
-                  >
-                    {(
-                      [
-                        { id: 'countdown', label: 'Timer' },
-                        { id: 'adaptive', label: 'Smart' }
-                      ] as const
-                    ).map((m) => {
-                      const active = effectiveMode === m.id
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={active}
-                          data-active={active ? 'true' : 'false'}
-                          onClick={() => handleModeChange(m.id)}
-                          className="glass-pill-btn"
-                        >
-                          {m.label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Interval + Subtle Presets */}
-                {effectiveMode === 'countdown' ? (
+                {/* Pacing & Dwell Controls */}
+                {isPdf ? (
                   <div className="space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                          Turn every
+                          Dwell time
                         </span>
-                        {countdownSec !== 20 && (
+                        <span className="text-[10px] text-[var(--app-text-subtle)]">
+                          ({isPdfDual ? 'Dual page' : 'Single page'})
+                        </span>
+                        {pdfDwellSec !== (isPdfDual ? 45 : 25) && (
                           <button
                             type="button"
-                            onClick={() => handleCountdownChange(20)}
-                            title="Reset to 20s"
+                            onClick={() => handlePdfCountdownChange(isPdfDual ? 45 : 25)}
+                            title={`Reset to default (${isPdfDual ? '45s' : '25s'})`}
                             className="text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)]"
                           >
                             <RotateCcw className="w-3 h-3" />
@@ -772,25 +832,25 @@ export const SettingsDrawer: React.FC = () => {
                         )}
                       </div>
                       <SecondsNumberInput
-                        value={countdownSec}
-                        min={3}
+                        value={pdfDwellSec}
+                        min={5}
                         max={600}
                         step={5}
                         compact
-                        onChange={handleCountdownChange}
-                        ariaLabel="Fixed seconds per page"
+                        onChange={handlePdfCountdownChange}
+                        ariaLabel="PDF dwell time per page turn"
                       />
                     </div>
 
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {TIMER_PRESETS.map((sec) => {
-                        const active = countdownSec === sec
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[15, 25, 35, 45, 60].map((sec) => {
+                        const active = pdfDwellSec === sec
                         return (
                           <button
                             key={sec}
                             type="button"
                             data-active={active ? 'true' : 'false'}
-                            onClick={() => handleCountdownChange(sec)}
+                            onClick={() => handlePdfCountdownChange(sec)}
                             className="glass-preset-btn"
                           >
                             {sec}s
@@ -800,77 +860,152 @@ export const SettingsDrawer: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <>
+                    {/* Small Inline Mode Switcher */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                          Base / page
-                        </span>
-                        {adaptiveSec !== 25 && (
-                          <button
-                            type="button"
-                            onClick={() => handleAdaptiveSecChange(25)}
-                            title="Reset to 25s"
-                            className="text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)]"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                      <SecondsNumberInput
-                        value={adaptiveSec}
-                        min={3}
-                        max={600}
-                        step={5}
-                        compact
-                        onChange={handleAdaptiveSecChange}
-                        ariaLabel="Smart base seconds per page"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {SMART_SEC_PRESETS.map((sec) => {
-                        const active = adaptiveSec === sec
-                        return (
-                          <button
-                            key={sec}
-                            type="button"
-                            data-active={active ? 'true' : 'false'}
-                            onClick={() => handleAdaptiveSecChange(sec)}
-                            className="glass-preset-btn"
-                          >
-                            {sec}s
-                          </button>
-                        )
-                      })}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
                       <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                        Pause at breaks
+                        Pacing
                       </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={microPauseEnabled}
-                        data-preserve-theme="true"
-                        onClick={handleMicroPauseToggle}
-                        style={{
-                          backgroundColor: microPauseEnabled
-                            ? 'var(--app-accent)'
-                            : 'var(--app-border-strong)'
-                        }}
-                        className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors"
+                      <div
+                        className="glass-pill-track grid-cols-2 w-[140px]"
+                        role="radiogroup"
+                        aria-label="Auto-scroll pacing mode"
                       >
-                        <span
-                          className={`w-3 h-3 rounded-full bg-white shadow-sm block transition-transform duration-150 ${
-                            microPauseEnabled ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
+                        {(
+                          [
+                            { id: 'countdown', label: 'Timer' },
+                            { id: 'adaptive', label: 'Smart' }
+                          ] as const
+                        ).map((m) => {
+                          const active = effectiveMode === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              data-active={active ? 'true' : 'false'}
+                              onClick={() => handleModeChange(m.id)}
+                              className="glass-pill-btn"
+                            >
+                              {m.label}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+
+                    {/* Interval + Subtle Presets */}
+                    {effectiveMode === 'countdown' ? (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                              Turn every
+                            </span>
+                            {countdownSec !== 20 && (
+                              <button
+                                type="button"
+                                onClick={() => handleCountdownChange(20)}
+                                title="Reset to 20s"
+                                className="text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)]"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <SecondsNumberInput
+                            value={countdownSec}
+                            min={3}
+                            max={600}
+                            step={5}
+                            compact
+                            onChange={handleCountdownChange}
+                            ariaLabel="Fixed seconds per page"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {TIMER_PRESETS.map((sec) => {
+                            const active = countdownSec === sec
+                            return (
+                              <button
+                                key={sec}
+                                type="button"
+                                data-active={active ? 'true' : 'false'}
+                                onClick={() => handleCountdownChange(sec)}
+                                className="glass-preset-btn"
+                              >
+                                {sec}s
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)] block">
+                              Base sec
+                            </span>
+                            <span className="font-mono text-[9.5px] text-[var(--app-text-subtle)] font-normal">
+                              Scales by words
+                            </span>
+                          </div>
+                          <SecondsNumberInput
+                            value={adaptiveSec}
+                            min={3}
+                            max={600}
+                            step={5}
+                            compact
+                            onChange={handleAdaptiveSecChange}
+                            ariaLabel="Smart base seconds per page"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {SMART_SEC_PRESETS.map((sec) => {
+                            const active = adaptiveSec === sec
+                            return (
+                              <button
+                                key={sec}
+                                type="button"
+                                data-active={active ? 'true' : 'false'}
+                                onClick={() => handleAdaptiveSecChange(sec)}
+                                className="glass-preset-btn"
+                              >
+                                {sec}s
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--app-border)]">
+                          <div>
+                            <div className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                              Pause at breaks
+                            </div>
+                            <div className="text-[9.5px] text-[var(--app-text-subtle)] font-normal">
+                              +1.5s after section breaks
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={microPauseEnabled}
+                            onClick={handleMicroPauseToggle}
+                            className={`w-7 h-4 rounded-full transition-colors p-0.5 flex items-center cursor-pointer ${
+                              microPauseEnabled
+                                ? 'bg-[var(--app-accent)] justify-end'
+                                : 'bg-[var(--app-border-strong)] justify-start'
+                            }`}
+                          >
+                            <span className="w-3 h-3 bg-white rounded-full block shadow-sm" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

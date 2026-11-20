@@ -12,6 +12,11 @@ import type {
   WikipediaLookupResponse
 } from '../shared/securityTypes'
 
+export interface ScannedBookItem {
+  path: string
+  subfolder: string | null
+}
+
 export interface DesktopAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -29,7 +34,7 @@ export interface DesktopAPI {
   onOpenExternalFile: (callback: (filePath: string) => void) => () => void
   openFiles: () => Promise<string[]>
   openFolder: () => Promise<string | null>
-  scanFolder: (folderPath: string) => Promise<string[]>
+  scanFolder: (folderPath: string) => Promise<Array<ScannedBookItem | string>>
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
   readFileText: (filePath: string) => Promise<string>
   writeFileText: (filePath: string, content: string) => Promise<boolean>

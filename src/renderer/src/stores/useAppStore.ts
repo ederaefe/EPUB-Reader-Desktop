@@ -70,6 +70,12 @@ function loadSyncSettings(): UserSettings {
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<UserSettings>
         const merged: UserSettings = { ...DEFAULT_SETTINGS, ...parsed, id: 1 }
+        // Reconcile legacy pageSpread into pageLayout if pageLayout is missing in stored data
+        if (parsed.pageLayout !== undefined) {
+          merged.pageSpread = parsed.pageLayout === 'dual' ? 'double' : 'single'
+        } else if (parsed.pageSpread !== undefined) {
+          merged.pageLayout = parsed.pageSpread === 'double' ? 'dual' : 'single'
+        }
         applyDocumentTheme(merged.theme)
         return merged
       }
@@ -279,17 +285,14 @@ export const useAppStore = create<AppState>((set) => ({
       return { viewMode: mode, settings: merged }
     }),
   setActiveBook: (book, buffer = null, options) => {
-    const isPdf = book?.format === 'pdf'
-    if (isPdf) {
-      adaptiveScrollEngine.stop()
-    }
+    adaptiveScrollEngine.stop()
     set({
       activeBook: book,
       activeBookBuffer: buffer,
       pdfViewMode: options?.pdfViewMode ?? 'original',
       reflowEpubBuffer: options?.reflowEpubBuffer ?? null,
       pendingSeekPercent: null,
-      ...(isPdf ? { isAutoscrollActive: false } : {})
+      isAutoscrollActive: false
     })
   },
   updateActiveBook: (patch) =>
@@ -372,14 +375,12 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveFootnote: (fn) => set({ activeFootnote: fn }),
   setTTSActive: (active) => set({ isTTSActive: active }),
   setTTSMuted: (muted) => set({ isTTSMuted: muted }),
-  setAutoscrollActive: (active) =>
-    set((s) => {
-      if (active && s.activeBook?.format === 'pdf') {
-        adaptiveScrollEngine.stop()
-        return { isAutoscrollActive: false }
-      }
-      return { isAutoscrollActive: active }
-    }),
+  setAutoscrollActive: (active) => {
+    if (!active) {
+      adaptiveScrollEngine.stop()
+    }
+    set(() => ({ isAutoscrollActive: active }))
+  },
   setActiveTTSWord: (word) => set({ activeTTSWord: word }),
   setAdaptiveWpm: (wpm) => set({ adaptiveWpm: wpm }),
   setImmersiveFullscreen: (active) =>
@@ -412,15 +413,8 @@ export const useAppStore = create<AppState>((set) => ({
       persistSettings(merged)
       return { scrollMode: mode, settings: merged }
     }),
-  showToast: (message, variant = 'info') => {
-    set({ toast: { message, variant } })
-    const w = window as any
-    if (w.__semplyToastTimer) clearTimeout(w.__semplyToastTimer)
-    w.__semplyToastTimer = setTimeout(() => {
-      set((s) => (s.toast?.message === message ? { toast: null } : s))
-    }, 3200)
-  },
-  clearToast: () => set({ toast: null }),
+  showToast: () => {},
+  clearToast: () => {},
   openConfirmDialog: (dialog) => set({ confirmDialog: dialog }),
   closeConfirmDialog: () => set({ confirmDialog: null }),
   setLastNoteColor: (color) =>
@@ -467,6 +461,11 @@ export const useAppStore = create<AppState>((set) => ({
         // Prefer localStorage if present (always newest sync write), otherwise restore from Dexie DB
         if (!hasLocal) {
           const merged: UserSettings = { ...DEFAULT_SETTINGS, ...saved, id: 1 }
+          if (saved.pageLayout !== undefined) {
+            merged.pageSpread = saved.pageLayout === 'dual' ? 'double' : 'single'
+          } else if (saved.pageSpread !== undefined) {
+            merged.pageLayout = saved.pageSpread === 'double' ? 'dual' : 'single'
+          }
           applyDocumentTheme(merged.theme)
           persistSettings(merged)
           set({

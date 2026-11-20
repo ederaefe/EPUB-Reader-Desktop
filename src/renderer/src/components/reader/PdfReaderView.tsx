@@ -28,6 +28,7 @@ import { buildPdfToc, findActivePdfTocItem } from '../../services/tocService'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 import { ReaderAudioHUD } from './ReaderAudioHUD'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
+import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
 import { ttsService } from '../../services/ttsService'
 
@@ -80,7 +81,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     isTTSMuted,
     setTTSActive,
     setTTSMuted,
-    toggleHelpModal
+    toggleHelpModal,
+    isAutoscrollActive,
+    setAutoscrollActive,
+    isFullSettingsModalOpen
   } = useAppStore()
 
   const setZoom = (updater: number | ((z: number) => number)) => {
@@ -128,11 +132,6 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   bookTotalPagesRef.current = book.totalPages || 1
 
   useEffect(() => {
-    adaptiveScrollEngine.stop()
-    useAppStore.getState().setAutoscrollActive(false)
-  }, [])
-
-  useEffect(() => {
     if (!book.id) return
     db.bookmarks
       .where('bookId')
@@ -169,6 +168,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   const canvasLeftRef = useRef<HTMLCanvasElement>(null)
   const canvasRightRef = useRef<HTMLCanvasElement>(null)
   const textLayerLeftRef = useRef<HTMLDivElement>(null)
+  const textLayerRightRef = useRef<HTMLDivElement>(null)
   const renderTaskLeftRef = useRef<any>(null)
   const renderTaskRightRef = useRef<any>(null)
 
@@ -188,6 +188,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     if (lastLoadedBookKeyRef.current !== bookKey) {
       lastLoadedBookKeyRef.current = bookKey
       setCurrentPage(Math.max(1, book.currentPage || 1))
+      setTotalPages(Math.max(1, book.totalPages || 1))
       setToc([])
     }
 
@@ -275,6 +276,15 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
       taskRef: React.MutableRefObject<any>,
       textLayerDiv?: HTMLDivElement | null
     ) => {
+      if (taskRef.current) {
+        try {
+          taskRef.current.cancel()
+        } catch {
+          // ignore cancellation race
+        }
+        taskRef.current = null
+      }
+
       if (!canvas || pageNum < 1 || pageNum > pdfDoc.numPages) {
         if (canvas) {
           const ctx = canvas.getContext('2d')
@@ -282,15 +292,10 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           canvas.width = 0
           canvas.height = 0
         }
-        return
-      }
-
-      if (taskRef.current) {
-        try {
-          taskRef.current.cancel()
-        } catch {
-          // ignore cancellation race
+        if (textLayerDiv) {
+          textLayerDiv.innerHTML = ''
         }
+        return
       }
 
       const page = await pdfDoc.getPage(pageNum)
@@ -387,7 +392,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     const isDouble = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
     renderSingleCanvas(currentPage, canvasLeftRef.current, renderTaskLeftRef, textLayerLeftRef.current)
     if (isDouble) {
-      renderSingleCanvas(currentPage + 1, canvasRightRef.current, renderTaskRightRef, null)
+      renderSingleCanvas(currentPage + 1, canvasRightRef.current, renderTaskRightRef, textLayerRightRef.current)
     }
 
     // Persist reading progress and keep activeBook synced for proportional PDF <-> EPUB switching
@@ -615,6 +620,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     handleNext,
     handlePrev,
     totalPages,
+    settings.pageLayout,
     settings.pageSpread,
     updateSettings,
     handleTogglePdfBookmark,
@@ -855,7 +861,14 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         onNext={handleNext}
         isLeftDisabled={currentPage <= 1}
         isRightDisabled={currentPage >= totalPages}
-        hidden={isImmersiveFullscreen}
+        hidden={
+          isImmersiveFullscreen ||
+          isSettingsDrawerOpen ||
+          isNotesDrawerOpen ||
+          isBookmarksDrawerOpen ||
+          isSearchDrawerOpen ||
+          isTOCDrawerOpen
+        }
       />
       <div
         ref={viewportRef}

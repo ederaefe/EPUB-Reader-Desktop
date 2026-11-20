@@ -131,6 +131,8 @@ export interface UserSettings {
   viewMode?: 'grid' | 'list'
   lastNoteColor?: NoteColor
   pdfZoom?: number
+  pdfCountdownSecSingle?: number
+  pdfCountdownSecDual?: number
   scrollMode?: 'horizontal' | 'vertical'
   showProgressBar?: boolean
   /** Timestamp when the user dismissed the Library Continue-reading bar; cleared on next book open. */
