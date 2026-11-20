@@ -1478,3 +1478,19 @@ ull, protecting against unhandled SyntaxError crashes on malformed upstream API 
 endition.annotations?.underline, highlight, and 
 emove.
    - Verified available desktop conversion IPC before triggering PDF reflow transforms in pdfViewService.ts.
+
+---
+
+## Increment 39: Glassmorphic Pill Selectors & Browser-Standard Cursorless Navigation (2026-11-20)
+
+### Architecture & Implementation
+1. **Design System & Micro-Interactions (`src/renderer/src/index.css`)**:
+   - Introduced `.glass-pill-track`: Fully rounded pill track (`rounded-full`) utilizing `rgba(0, 0, 0, 0.32)` in dark modes and `rgba(0, 0, 0, 0.06)` in light modes, backed by `backdrop-filter: blur(8px)` and inset shadow depth.
+   - Introduced `.glass-pill-btn`: Translucent segmented option button with active linear gradient (`rgba(255, 255, 255, 0.22)` to `0.12`), hairline specular top highlight (`inset 0 1px 0 rgba(255, 255, 255, 0.4)`), elevation shadow (`0 2px 8px rgba(0, 0, 0, 0.28)`), and active click scale (`scale(0.96)`) using a `180ms cubic-bezier(0.22, 1, 0.36, 1)` transition curve.
+   - Introduced `.glass-preset-btn` and `.glass-action-pill` for tabular preset badges and the Read Aloud Play/Stop pill with full theme adaptation across Night, Dark Sepia, Light Sepia, and Day palettes.
+2. **SettingsDrawer & FullSettingsModal Selector Modernization (`SettingsDrawer.tsx`, `FullSettingsModal.tsx`)**:
+   - Converted Text Weight, Page Layout (Single / Spread), Scroll Direction (Horizontal / Vertical), Pacing Mode (Timer / Smart), Auto-Scroll interval presets (`15s`, `25s`, `35s`, `50s`), Read Aloud action button, TTS speed presets (`0.8x`, `1.0x`, `1.2x`, `1.5x`, `2.0x`), and View Format (PDF / EPUB) from stark white rectangular boxes to tactile glassmorphic pill selectors.
+3. **Browser-Standard Cursorless Navigation (`EpubReaderView.tsx`, `PdfReaderView.tsx`, `SettingsDrawer.tsx`, `SearchDrawer.tsx`, `HelpModal.tsx`, `FullSettingsModal.tsx`)**:
+   - Implemented `isForwardKey` handling `Alt + ArrowRight` (and `Alt + >` / `Alt + .`) in `EpubReaderView.tsx` (both iframe and outer window event listeners) and `PdfReaderView.tsx` to advance to the next page.
+   - Implemented `Alt + ArrowLeft` (`Alt + Left` / `Alt + <` / `Alt + X`) in `SettingsDrawer.tsx` and `SearchDrawer.tsx` for immediate drawer dismissal without trapping keyboard focus.
+   - Updated hotkey legends and shortcut cheat sheets to display `Alt + Left` / `Esc` for back/close and `Alt + Right` for forward.
