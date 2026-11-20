@@ -128,3 +128,19 @@ All future updates appended to `documentation.md` must follow these rules:
   - **Refined Reading Progress in Dual Mode**: Estimated page numbers and progress indicators dynamically adjust when viewing two pages at once, providing reliable page tracking across chapters.
   - **Uninterrupted Typing in Notes and Search**: Arrow keys and page navigation keys seamlessly control the text cursor when typing inside search boxes, notes, or input fields without triggering book page turns.
   - **Clean Overlay Presentation**: Page-turn hover arrows and side controls automatically fade out when side drawers or table-of-contents dialogs are active, keeping panels easy to read and clutter-free.
+
+- **Unified PDF Auto-Scroll & Dwell-Based Pacing Engine**:
+  - **Zero-WPM Dwell Timer for PDFs**: Native PDF documents now fully support hands-free Auto-Scroll powered by an autonomous dwell-timer countdown, completely independent of word count metrics. The countdown interval defaults to 25 seconds for single-page reading and 45 seconds for dual-page spreads, accurately reflecting the increased content density of side-by-side spreads.
+  - **100% Synchronized Telemetry Across Reader & Settings**: Both the Settings Drawer and the persistent corner reader countdown HUD share the same underlying timer engine. Adjustments made in the settings panel or the floating reader popover reflect instantly and identically across all interfaces without counter discrepancies.
+  - **Context-Aware Auto-Suspension**: Countdown timers seamlessly pause whenever side drawers (Contents, Bookmarks, Notes, Settings), dialogs, context menus, or text selections are active, resuming smoothly upon panel dismissal without losing elapsed time.
+  - **Automatic End-of-Document Termination**: Auto-scroll safely halts when the reader reaches the final page or spread of the PDF document, avoiding runaway page requests or redundant rendering loops.
+
+- **Neo-Styled PDF Zoom & Dimension Presets**:
+  - **Tactile `-[size]+` Stepper Control**: When viewing original PDF documents, the Display settings panel offers a dedicated neo-styled zoom stepper control flanked by quick decrement (`-`) and increment (`+`) buttons that match the desktop shortcuts (`Ctrl + -` and `Ctrl + =`).
+  - **Instant Multi-Scale Dimension Presets**: Provides one-click instant scaling across three standard PDF viewing dimensions: **Fit** (85% scale, providing comfortable breathing room on standard viewports), **Default** (120% scale, preserving crisp typography and diagram details), and **Full** (160% scale, filling wide displays). Clicking the central preset label cycles seamlessly through all three dimensions, while stepping allows continuous scaling from 50% to 300%.
+
+- **Dual-Page PDF Text Layer & Selection Hardening**:
+  - **Complete Right-Page Selection & Annotations**: Implemented an independent, aligned text layer across the secondary canvas in dual-page PDF layout. Readers can freely select text, copy passages, and attach color highlights and notes across both left and right pages.
+  - **Accurate Annotation Attribution**: Annotations created on the right-hand canvas are strictly mapped to `currentPage + 1`, preventing bookmarks and notes from being misattributed to preceding odd pages.
+  - **Render Task Cancellation Safety**: PDF rendering tasks now safely cancel pending worker promises prior to canvas unmounting or bounds validation, eliminating background thread races and unhandled cancellation exceptions.
+  - **Polished Contextual In-App Toasts**: Re-enabled native contextual status toasts with themed status icons and dismiss controls, ensuring that user confirmations and error messages provide immediate visual feedback without interrupting reader focus.
