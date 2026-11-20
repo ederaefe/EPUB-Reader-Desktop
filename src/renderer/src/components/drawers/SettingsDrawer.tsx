@@ -71,6 +71,7 @@ export const SettingsDrawer: React.FC = () => {
   } = useAppStore()
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('display')
+  const [autoscrollMetrics, setAutoscrollMetrics] = useState(adaptiveScrollEngine.getMetrics())
 
   useEffect(() => {
     if (!isSettingsDrawerOpen) return
@@ -81,6 +82,12 @@ export const SettingsDrawer: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey)
   }, [isSettingsDrawerOpen, toggleSettingsDrawer])
 
+  useEffect(() => {
+    if (!isSettingsDrawerOpen) return
+    setAutoscrollMetrics(adaptiveScrollEngine.getMetrics())
+    return adaptiveScrollEngine.subscribe((m) => setAutoscrollMetrics(m))
+  }, [isSettingsDrawerOpen])
+
   if (!isSettingsDrawerOpen) return null
 
   const effectiveMode: AutoscrollMode =
@@ -90,11 +97,6 @@ export const SettingsDrawer: React.FC = () => {
   const microPauseEnabled = settings.autoscrollMicroPause ?? true
   const isPdf = activeBook?.format === 'pdf'
   const isOriginalPdf = isPdf && pdfViewMode === 'original'
-
-  const [autoscrollMetrics, setAutoscrollMetrics] = useState(adaptiveScrollEngine.getMetrics())
-  useEffect(() => {
-    return adaptiveScrollEngine.subscribe((m) => setAutoscrollMetrics(m))
-  }, [])
 
   const handleToggleAutoScrollPause = () => {
     adaptiveScrollEngine.setUserPaused(!autoscrollMetrics.isUserPaused)

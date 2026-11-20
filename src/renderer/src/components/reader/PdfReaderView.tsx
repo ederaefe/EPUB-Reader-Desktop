@@ -78,7 +78,8 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     isTTSActive,
     isTTSMuted,
     setTTSActive,
-    setTTSMuted
+    setTTSMuted,
+    toggleHelpModal
   } = useAppStore()
 
   const setZoom = (updater: number | ((z: number) => number)) => {
@@ -424,7 +425,75 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const isBackKey =
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        )) ||
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement))
+      if (isBackKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        const st = useAppStore.getState()
+        if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
+          st.toggleSearchDrawer(false)
+          st.toggleTOCDrawer(false)
+          st.toggleBookmarksDrawer(false)
+          st.toggleNotesDrawer(false)
+          st.toggleSettingsDrawer(false)
+        } else {
+          onBack()
+        }
+        return
+      }
+
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (e.key === 'Escape') {
+          ;(e.target as HTMLElement)?.blur?.()
+        }
+        return
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase()
+        if (k === 'b' || k === 'd') {
+          e.preventDefault()
+          handleTogglePdfBookmark()
+          return
+        }
+        if (k === 'f') {
+          e.preventDefault()
+          toggleSearchDrawer(true)
+          return
+        }
+        if (k === '/' || e.key === '?') {
+          e.preventDefault()
+          toggleHelpModal()
+          return
+        }
+        if (k === '=' || k === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+          e.preventDefault()
+          setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))
+          return
+        }
+        if (k === '-' || k === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
+          e.preventDefault()
+          setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))
+          return
+        }
+        if (k === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
+          e.preventDefault()
+          setPdfZoom(1.0)
+          return
+        }
+        if (k === 'r') {
+          e.preventDefault()
+          updateSettings({
+            pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+          })
+          return
+        }
+      }
+
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         const vp = viewportRef.current
@@ -447,7 +516,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         e.preventDefault()
         handleNext()
         viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         e.preventDefault()
         handlePrev()
         viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -462,14 +531,30 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         updateSettings({
           pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
         })
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault()
-        handleTogglePdfBookmark()
+        toggleHelpModal()
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault()
+        setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))
+      } else if (e.key === '-') {
+        e.preventDefault()
+        setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))
+      } else if (e.key === '0') {
+        e.preventDefault()
+        setPdfZoom(1.0)
+      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        updateSettings({
+          pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
+        })
       } else if (e.key === 'Escape') {
         e.preventDefault()
         if (contextMenu) {
           setContextMenu(null)
-        } else if (
+          return
+        }
+        if (
           isTOCDrawerOpen ||
           isBookmarksDrawerOpen ||
           isNotesDrawerOpen ||
@@ -481,9 +566,23 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           toggleNotesDrawer(false)
           toggleSearchDrawer(false)
           toggleSettingsDrawer(false)
-        } else {
-          onBack()
+          return
         }
+        if (isTTSActive) {
+          ttsService.stop()
+          setTTSActive(false)
+          setTTSMuted(false)
+          return
+        }
+        if (isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
+          setImmersiveFullscreen(false)
+          window.desktopAPI?.setFullscreen?.(false)
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {})
+          }
+          return
+        }
+        onBack()
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -506,6 +605,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     toggleNotesDrawer,
     toggleSearchDrawer,
     toggleSettingsDrawer,
+    toggleHelpModal,
+    setPdfZoom,
+    isTTSActive,
+    setTTSActive,
+    setTTSMuted,
+    isImmersiveFullscreen,
+    setImmersiveFullscreen,
     onBack
   ])
 

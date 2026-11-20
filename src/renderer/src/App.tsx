@@ -10,6 +10,7 @@ import { HelpModal } from './components/ui/HelpModal'
 import { FullSettingsModal } from './components/modals/FullSettingsModal'
 import { BookMetadataModal } from './components/modals/BookMetadataModal'
 import { NativeFeedbackHost } from './components/ui/NativeFeedbackHost'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { getWarmFilterOverlay } from './services/colorTempService'
 import { extractBookMetadata } from './services/coverService'
 import { loadCachedReflowEpub, switchActivePdfViewMode } from './services/pdfViewService'
@@ -234,10 +235,25 @@ export const App: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isBackToHome =
         e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
         )
       if (isBackToHome) {
         const state = useAppStore.getState()
+        if (state.isFullSettingsModalOpen) {
+          e.preventDefault()
+          state.toggleFullSettingsModal(false)
+          return
+        }
+        if (state.isBookMetadataModalOpen) {
+          e.preventDefault()
+          state.toggleBookMetadataModal(false)
+          return
+        }
+        if (state.isHelpModalOpen) {
+          e.preventDefault()
+          state.toggleHelpModal(false)
+          return
+        }
         if (state.currentView === 'reader' && state.activeBook) {
           e.preventDefault()
           if (state.isImmersiveFullscreen) {
@@ -245,7 +261,10 @@ export const App: React.FC = () => {
             window.desktopAPI?.setFullscreen?.(false)
           }
           state.toggleSettingsDrawer(false)
-          state.toggleBookMetadataModal(false)
+          state.toggleSearchDrawer(false)
+          state.toggleTOCDrawer(false)
+          state.toggleBookmarksDrawer(false)
+          state.toggleNotesDrawer(false)
           state.setActiveBook(null)
           state.setView('library')
           return
@@ -255,10 +274,29 @@ export const App: React.FC = () => {
         e.preventDefault()
         return
       }
-      if (e.key === 'F1') {
+      if (
+        e.key === 'F1' ||
+        ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.key === '?')) ||
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === '?' && !((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA'))
+      ) {
         e.preventDefault()
         toggleHelpModal()
-      } else if (e.key === 'F7') {
+        return
+      }
+
+      if (useAppStore.getState().currentView === 'library') {
+        const isSearchShortcut =
+          ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') ||
+          (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === '/' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')
+        if (isSearchShortcut) {
+          e.preventDefault()
+          const searchInput = document.querySelector('input[data-library-search="true"]') as HTMLInputElement | null
+          searchInput?.focus()
+          searchInput?.select()
+          return
+        }
+      }
+      if (e.key === 'F7') {
         // Toggle TTS Play / Pause
         e.preventDefault()
         const state = useAppStore.getState()
@@ -527,20 +565,22 @@ export const App: React.FC = () => {
       {!hideTitleBar && <TitleBar />}
 
       <main className="flex-1 flex overflow-hidden">
-        {currentView === 'library' || !activeBook ? (
-          <LibraryView />
-        ) : activeBook.format === 'pdf' && pdfViewMode === 'original' ? (
-          <PdfReaderView
-            book={activeBook}
-            onBack={handleBackToLibrary}
-            onActivateReflow={handleActivatePdfReflow}
-          />
-        ) : (
-          <EpubReaderView
-            book={activeBook}
-            onBack={handleBackToLibrary}
-          />
-        )}
+        <ErrorBoundary onReset={handleBackToLibrary}>
+          {currentView === 'library' || !activeBook ? (
+            <LibraryView />
+          ) : activeBook.format === 'pdf' && pdfViewMode === 'original' ? (
+            <PdfReaderView
+              book={activeBook}
+              onBack={handleBackToLibrary}
+              onActivateReflow={handleActivatePdfReflow}
+            />
+          ) : (
+            <EpubReaderView
+              book={activeBook}
+              onBack={handleBackToLibrary}
+            />
+          )}
+        </ErrorBoundary>
       </main>
 
       <HelpModal />

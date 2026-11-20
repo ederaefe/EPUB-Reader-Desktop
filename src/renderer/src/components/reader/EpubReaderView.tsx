@@ -45,10 +45,20 @@ import {
   syncBookNotesCount
 } from '../../services/annotationService'
 import { buildResolvedToc, findActiveTocItem, findAnchorElement, resolveTocHrefToSpine } from '../../services/tocService'
+import { readerHistoryService } from '../../services/readerHistoryService'
 
 interface EpubReaderViewProps {
   book: Book
   onBack: () => void
+}
+
+const isTargetInput = (target: EventTarget | null): boolean => {
+  if (!target) return false
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true
+  const el = target as HTMLElement
+  if (el?.isContentEditable || el?.getAttribute?.('contenteditable') === 'true') return true
+  if (el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA') return true
+  return false
 }
 
 export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) => {
@@ -167,6 +177,8 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
   // Bookmarks state for instant current-page ribbon indicator
   const [bookBookmarks, setBookBookmarks] = useState<BookmarkItem[]>([])
   const toggleCurrentBookmarkRef = useRef<() => Promise<void>>(async () => {})
+  const handleUndoRef = useRef<() => Promise<void>>(async () => {})
+  const handleRedoRef = useRef<() => Promise<void>>(async () => {})
   const handleChapterStepRef = useRef<(dir: 'prev' | 'next') => void>(() => {})
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null)
@@ -513,13 +525,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     contents.window.addEventListener('keydown', (e: KeyboardEvent) => {
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
         )) ||
-        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !isTargetInput(e.target))
       if (isBackKey) {
         e.preventDefault()
         e.stopPropagation()
-        onBackRef.current()
+        const st = useAppStore.getState()
+        if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
+          st.toggleSearchDrawer(false)
+          st.toggleTOCDrawer(false)
+          st.toggleBookmarksDrawer(false)
+          st.toggleNotesDrawer(false)
+          st.toggleSettingsDrawer(false)
+        } else {
+          onBackRef.current()
+        }
         return
       }
       // Keep bare Control key and destructive/zoom Ctrl combos unresponsive
@@ -529,17 +550,71 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       }
       if (e.ctrlKey || e.metaKey) {
         const k = e.key.toLowerCase()
+        if (k === 'z') {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.shiftKey) {
+            handleRedoRef.current()
+          } else {
+            handleUndoRef.current()
+          }
+          return
+        }
+        if (k === 'y') {
+          e.preventDefault()
+          e.stopPropagation()
+          handleRedoRef.current()
+          return
+        }
         if (k === 'f') {
           e.preventDefault()
           e.stopPropagation()
           openSearchDrawerRef.current()
-        } else if (k === 'b') {
+          return
+        }
+        if (k === 'b' || k === 'd') {
           e.preventDefault()
           e.stopPropagation()
           toggleCurrentBookmarkRef.current()
-        } else if (k === 'r' || k === 'w' || k === '0' || k === '=' || k === '+' || k === '-' || k === '_') {
+          return
+        }
+        if (k === '/' || e.key === '?') {
           e.preventDefault()
           e.stopPropagation()
+          useAppStore.getState().toggleHelpModal()
+          return
+        }
+        if (k === '=' || k === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+          e.preventDefault()
+          e.stopPropagation()
+          const cur = useAppStore.getState().settings.fontSize
+          useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
+          return
+        }
+        if (k === '-' || k === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
+          e.preventDefault()
+          e.stopPropagation()
+          const cur = useAppStore.getState().settings.fontSize
+          useAppStore.getState().updateSettings({ fontSize: Math.max(12, cur - 2) })
+          return
+        }
+        if (k === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
+          e.preventDefault()
+          e.stopPropagation()
+          useAppStore.getState().updateSettings({ fontSize: 21 })
+          return
+        }
+        if (k === 'r') {
+          e.preventDefault()
+          e.stopPropagation()
+          const ps = useAppStore.getState().settings.pageSpread
+          useAppStore.getState().updateSettings({ pageSpread: ps === 'double' ? 'single' : 'double' })
+          return
+        }
+        if (k === 'w') {
+          e.preventDefault()
+          e.stopPropagation()
+          return
         }
         return
       }
@@ -596,11 +671,40 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if (e.key === 'End') {
         e.preventDefault()
         handleJumpEndRef.current()
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault()
+        useAppStore.getState().toggleHelpModal()
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault()
+        const cur = useAppStore.getState().settings.fontSize
+        useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
+      } else if (e.key === '-') {
+        e.preventDefault()
+        const cur = useAppStore.getState().settings.fontSize
+        useAppStore.getState().updateSettings({ fontSize: Math.max(12, cur - 2) })
+      } else if (e.key === '0') {
+        e.preventDefault()
+        useAppStore.getState().updateSettings({ fontSize: 21 })
+      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        const ps = useAppStore.getState().settings.pageSpread
+        useAppStore.getState().updateSettings({ pageSpread: ps === 'double' ? 'single' : 'double' })
       } else if (e.key === 'Escape') {
-        setContextMenu(null)
-        setActiveAnnotation(null)
-        setSelectedText(null)
-        setOpenNoteModalDirect(false)
+        e.preventDefault()
+        e.stopPropagation()
+        if (contextMenu) {
+          setContextMenu(null)
+          return
+        }
+        if (activeAnnotation) {
+          setActiveAnnotation(null)
+          return
+        }
+        if (selectedText) {
+          setSelectedText(null)
+          setOpenNoteModalDirect(false)
+          return
+        }
         const st = useAppStore.getState()
         if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
           st.toggleSearchDrawer(false)
@@ -608,13 +712,29 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           st.toggleBookmarksDrawer(false)
           st.toggleNotesDrawer(false)
           st.toggleSettingsDrawer(false)
-        } else if (st.isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
+          return
+        }
+        if (activeFootnote) {
+          setActiveFootnote(null)
+          return
+        }
+        if (st.isAutoscrollActive) {
+          st.setAutoscrollActive(false)
+          return
+        }
+        if (st.isTTSActive) {
+          handleStopTTSRef.current()
+          return
+        }
+        if (st.isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
           st.setImmersiveFullscreen(false)
           window.desktopAPI?.setFullscreen?.(false)
           if (document.fullscreenElement) {
             document.exitFullscreen().catch(() => {})
           }
+          return
         }
+        onBackRef.current()
       } else if (e.key === 'F11') {
         e.preventDefault()
         const next = !useAppStore.getState().isImmersiveFullscreen
@@ -1811,13 +1931,22 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     const handleKeyDown = (e: KeyboardEvent) => {
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
         )) ||
-        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && (e.target as HTMLElement)?.tagName !== 'INPUT' && (e.target as HTMLElement)?.tagName !== 'TEXTAREA')
+        (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !isTargetInput(e.target))
       if (isBackKey) {
         e.preventDefault()
         e.stopPropagation()
-        onBackRef.current()
+        const st = useAppStore.getState()
+        if (st.isSearchDrawerOpen || st.isTOCDrawerOpen || st.isBookmarksDrawerOpen || st.isNotesDrawerOpen || st.isSettingsDrawerOpen) {
+          st.toggleSearchDrawer(false)
+          st.toggleTOCDrawer(false)
+          st.toggleBookmarksDrawer(false)
+          st.toggleNotesDrawer(false)
+          st.toggleSettingsDrawer(false)
+        } else {
+          onBackRef.current()
+        }
         return
       }
 
@@ -1828,7 +1957,77 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         return
       }
 
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (isTargetInput(e.target)) {
+        if (e.key === 'Escape') {
+          ;(e.target as HTMLElement)?.blur?.()
+        }
+        return
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase()
+        if (k === 'z') {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.shiftKey) {
+            handleRedoRef.current()
+          } else {
+            handleUndoRef.current()
+          }
+          return
+        }
+        if (k === 'y') {
+          e.preventDefault()
+          e.stopPropagation()
+          handleRedoRef.current()
+          return
+        }
+        if (k === 'b' || k === 'd') {
+          e.preventDefault()
+          e.stopPropagation()
+          toggleCurrentBookmarkRef.current()
+          return
+        }
+        if (k === '/' || e.key === '?') {
+          e.preventDefault()
+          e.stopPropagation()
+          useAppStore.getState().toggleHelpModal()
+          return
+        }
+        if (k === '=' || k === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
+          e.preventDefault()
+          e.stopPropagation()
+          const cur = useAppStore.getState().settings.fontSize
+          useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
+          return
+        }
+        if (k === '-' || k === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
+          e.preventDefault()
+          e.stopPropagation()
+          const cur = useAppStore.getState().settings.fontSize
+          useAppStore.getState().updateSettings({ fontSize: Math.max(12, cur - 2) })
+          return
+        }
+        if (k === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
+          e.preventDefault()
+          e.stopPropagation()
+          useAppStore.getState().updateSettings({ fontSize: 21 })
+          return
+        }
+        if (k === 'r') {
+          e.preventDefault()
+          e.stopPropagation()
+          const ps = useAppStore.getState().settings.pageSpread
+          useAppStore.getState().updateSettings({ pageSpread: ps === 'double' ? 'single' : 'double' })
+          return
+        }
+        if (k === 'w') {
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        }
+        return
+      }
 
       const isVert = scrollModeRef.current === 'vertical'
       const scrollContainer = (renditionRef.current as any)?.manager?.container as HTMLElement | undefined
@@ -1876,6 +2075,12 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       } else if (e.key === 'End') {
         e.preventDefault()
         handleJumpEndRef.current()
+      } else if (e.key === 'F7') {
+        e.preventDefault()
+        handleToggleTTSRef.current()
+      } else if (e.key === 'F8') {
+        e.preventDefault()
+        handleStopTTSRef.current()
       } else if (e.key === 'F9') {
         e.preventDefault()
         const themes: Array<'day' | 'night' | 'light-sepia' | 'dark-sepia'> = [
@@ -1891,17 +2096,40 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
         updateSettings({
           pageSpread: settings.pageSpread === 'double' ? 'single' : 'double'
         })
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault()
-        toggleCurrentBookmarkRef.current()
+        useAppStore.getState().toggleHelpModal()
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault()
+        const cur = useAppStore.getState().settings.fontSize
+        useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
+      } else if (e.key === '-') {
+        e.preventDefault()
+        const cur = useAppStore.getState().settings.fontSize
+        useAppStore.getState().updateSettings({ fontSize: Math.max(12, cur - 2) })
+      } else if (e.key === '0') {
+        e.preventDefault()
+        useAppStore.getState().updateSettings({ fontSize: 21 })
+      } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        const ps = useAppStore.getState().settings.pageSpread
+        useAppStore.getState().updateSettings({ pageSpread: ps === 'double' ? 'single' : 'double' })
       } else if (e.key === 'Escape') {
         e.preventDefault()
+        if (contextMenu) {
+          setContextMenu(null)
+          return
+        }
         if (activeAnnotation) {
           setActiveAnnotation(null)
-        } else if (selectedText) {
+          return
+        }
+        if (selectedText) {
           setSelectedText(null)
           setOpenNoteModalDirect(false)
-        } else if (
+          return
+        }
+        if (
           isTOCDrawerOpen ||
           isBookmarksDrawerOpen ||
           isNotesDrawerOpen ||
@@ -1913,13 +2141,29 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
           toggleNotesDrawer(false)
           toggleSearchDrawer(false)
           toggleSettingsDrawer(false)
-        } else if (activeFootnote) {
-          setActiveFootnote(null)
-        } else if (isAutoscrollActive) {
-          setAutoscrollActive(false)
-        } else {
-          onBack()
+          return
         }
+        if (activeFootnote) {
+          setActiveFootnote(null)
+          return
+        }
+        if (isAutoscrollActive) {
+          setAutoscrollActive(false)
+          return
+        }
+        if (useAppStore.getState().isTTSActive) {
+          handleStopTTSRef.current()
+          return
+        }
+        if (useAppStore.getState().isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
+          useAppStore.getState().setImmersiveFullscreen(false)
+          window.desktopAPI?.setFullscreen?.(false)
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {})
+          }
+          return
+        }
+        onBack()
       }
     }
 
@@ -2250,6 +2494,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
 
   const handleDeleteAnnotation = async (ann: Annotation) => {
     if (!book.id || !ann.id) return
+    readerHistoryService.pushAction({ type: 'delete_annotation', annotation: ann })
     await db.annotations.delete(ann.id)
     removeAnnotationFromRendition(renditionRef.current, ann.cfiRange)
     if (activeAnnotation?.annotation.id === ann.id) {
@@ -2340,6 +2585,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
     const newId = await db.annotations.add(record)
     const saved: Annotation = { ...record, id: Number(newId) }
+    readerHistoryService.pushAction({ type: 'add_annotation', annotation: saved })
 
     setLastNoteColor(color)
     applyAnnotationToRendition(
@@ -2395,6 +2641,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
     }
     const newId = await db.annotations.add(record)
     const saved: Annotation = { ...record, id: Number(newId) }
+    readerHistoryService.pushAction({ type: 'add_annotation', annotation: saved })
 
     setLastNoteColor(color)
     applyAnnotationToRendition(
@@ -2431,6 +2678,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       .first()
 
     if (existing?.id) {
+      readerHistoryService.pushAction({ type: 'delete_bookmark', bookmark: existing })
       await db.bookmarks.delete(existing.id)
       bumpBookmarksVersion()
       return
@@ -2443,7 +2691,7 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       currentEndCfiRef.current
     )
 
-    await db.bookmarks.add({
+    const newBookmark: BookmarkItem = {
       bookId: book.id,
       cfi: currentCfiRef.current,
       label: currentChapterRef.current
@@ -2456,15 +2704,48 @@ export const EpubReaderView: React.FC<EpubReaderViewProps> = ({ book, onBack }) 
       pageNumber: currentPageRef.current,
       progressPercent: progressPercentRef.current,
       createdAt: Date.now()
-    })
+    }
+    const newId = await db.bookmarks.add(newBookmark)
+    readerHistoryService.pushAction({ type: 'add_bookmark', bookmark: { ...newBookmark, id: Number(newId) } })
     bumpBookmarksVersion()
   }
   toggleCurrentBookmarkRef.current = handleToggleCurrentBookmark
 
   const handleDeleteBookmark = async (id: number) => {
+    const existing = await db.bookmarks.get(id)
+    if (existing) {
+      readerHistoryService.pushAction({ type: 'delete_bookmark', bookmark: existing })
+    }
     await db.bookmarks.delete(id)
     bumpBookmarksVersion()
   }
+
+  const handleUndo = useCallback(async () => {
+    const success = await readerHistoryService.undo(
+      renditionRef.current,
+      themeRef.current,
+      (a, ev) => openAnnotationPopoverRef.current(a, ev)
+    )
+    if (success) {
+      bumpAnnotationsVersion()
+      bumpBookmarksVersion()
+    }
+  }, [bumpAnnotationsVersion, bumpBookmarksVersion])
+
+  const handleRedo = useCallback(async () => {
+    const success = await readerHistoryService.redo(
+      renditionRef.current,
+      themeRef.current,
+      (a, ev) => openAnnotationPopoverRef.current(a, ev)
+    )
+    if (success) {
+      bumpAnnotationsVersion()
+      bumpBookmarksVersion()
+    }
+  }, [bumpAnnotationsVersion, bumpBookmarksVersion])
+
+  handleUndoRef.current = handleUndo
+  handleRedoRef.current = handleRedo
 
   const handleRenameBookmark = async (id: number, label: string) => {
     await db.bookmarks.update(id, { label })

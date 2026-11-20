@@ -8,7 +8,16 @@ export const HelpModal: React.FC = () => {
   useEffect(() => {
     if (!isHelpModalOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') toggleHelpModal(false)
+      const isBack =
+        e.key === 'Escape' ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        ))
+      if (isBack) {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleHelpModal(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -17,20 +26,23 @@ export const HelpModal: React.FC = () => {
   if (!isHelpModalOpen) return null
 
   const shortcuts = [
-    { key: 'Up / Left / Page Up / Backspace', desc: 'Previous page (or scroll up)' },
-    { key: 'Down / Right / Page Down / Space', desc: 'Next page (or scroll down)' },
-    { key: 'Home', desc: 'First page of chapter' },
-    { key: 'End', desc: 'Last page of chapter' },
-    { key: 'F7', desc: 'Play / Pause Read Aloud (TTS)' },
-    { key: 'F8', desc: 'Stop Read Aloud' },
+    { key: 'Alt + < / Esc', desc: 'Back to Library / Close modal / drawer' },
+    { key: 'Ctrl + Z', desc: 'Undo annotation or bookmark' },
+    { key: 'Ctrl + Y / Ctrl+Shift+Z', desc: 'Redo annotation or bookmark' },
+    { key: 'Ctrl + B / Ctrl + D', desc: 'Bookmark current page' },
+    { key: 'Ctrl + = / +', desc: 'Zoom in / Increase font size' },
+    { key: 'Ctrl + - / -', desc: 'Zoom out / Decrease font size' },
+    { key: 'Ctrl + 0 / 0', desc: 'Reset zoom / font size' },
+    { key: 'Ctrl + / / ?', desc: 'Toggle hotkeys & navigation help' },
+    { key: 'Ctrl + F / /', desc: 'Search book text or library' },
+    { key: 'Ctrl + O', desc: 'Open book file' },
+    { key: 'Up / Left / PgUp / k', desc: 'Previous page (or scroll up)' },
+    { key: 'Down / Right / PgDn / j / Space', desc: 'Next page (or scroll down)' },
+    { key: 'Home / End', desc: 'First / Last page of chapter' },
+    { key: 'F7 / F8', desc: 'Play / Stop reading aloud (TTS)' },
     { key: 'F9', desc: 'Cycle theme (Day / Night / Sepia)' },
-    { key: 'F10', desc: 'Toggle Single / Double page spread' },
-    { key: 'F11', desc: 'Toggle Fullscreen distraction-free' },
-    { key: 'Ctrl + B', desc: 'Add bookmark on current page' },
-    { key: 'Ctrl + F', desc: 'Search text in book' },
-    { key: 'Ctrl + O', desc: 'Open book or import folder' },
-    { key: 'Alt + X', desc: 'Back to Library' },
-    { key: 'Esc', desc: 'Exit fullscreen / Close open drawers' }
+    { key: 'F10 / r', desc: 'Toggle single / double page spread' },
+    { key: 'F11', desc: 'Toggle fullscreen distraction-free' }
   ]
 
   return (

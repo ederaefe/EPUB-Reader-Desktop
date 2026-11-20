@@ -575,11 +575,17 @@ const BookMetadataModalContent: React.FC<BookMetadataModalContentProps> = ({
     showToast
   ])
 
-  // Escape closes modal; Ctrl/Cmd+S saves changes
+  // Escape or Alt+< closes modal; Ctrl/Cmd+S saves changes
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      const isBack =
+        e.key === 'Escape' ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        ))
+      if (isBack) {
         e.preventDefault()
+        e.stopPropagation()
         onClose()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()

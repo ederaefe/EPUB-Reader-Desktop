@@ -44,20 +44,26 @@ const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
 ]
 
 const HOTKEYS_LEFT: Array<{ label: string; keys: string[] }> = [
-  { label: 'Show hotkeys', keys: ['F1'] },
-  { label: 'Go to previous page', keys: ['Left', 'PgUp'] },
-  { label: 'Go to next page', keys: ['Right', 'Space'] },
+  { label: 'Show hotkeys', keys: ['F1', 'Ctrl + /', '?'] },
+  { label: 'Back / Close modal or drawer', keys: ['Alt + <', 'Esc'] },
+  { label: 'Undo annotation / bookmark', keys: ['Ctrl + Z'] },
+  { label: 'Redo annotation / bookmark', keys: ['Ctrl + Y', 'Ctrl+Shift+Z'] },
+  { label: 'Go to previous page', keys: ['Left', 'PgUp', 'k'] },
+  { label: 'Go to next page', keys: ['Right', 'Space', 'j'] },
   { label: 'Start/pause reading aloud', keys: ['F7'] },
   { label: 'Stop reading aloud', keys: ['F8'] }
 ]
 
 const HOTKEYS_RIGHT: Array<{ label: string; keys: string[] }> = [
-  { label: 'Add bookmark', keys: ['Ctrl + B'] },
-  { label: 'Search in book', keys: ['Ctrl + F'] },
+  { label: 'Add or remove bookmark', keys: ['Ctrl + B', 'Ctrl + D'] },
+  { label: 'Search in book or library', keys: ['Ctrl + F', '/'] },
+  { label: 'Zoom in / Increase font', keys: ['Ctrl + =', '+'] },
+  { label: 'Zoom out / Decrease font', keys: ['Ctrl + -', '-'] },
+  { label: 'Reset zoom / font size', keys: ['Ctrl + 0', '0'] },
   { label: 'Switch theme', keys: ['F9'] },
-  { label: 'Switch column count', keys: ['F10'] },
+  { label: 'Switch column count', keys: ['F10', 'r'] },
   { label: 'Switch fullscreen', keys: ['F11'] },
-  { label: 'Back to library', keys: ['Alt + X'] }
+  { label: 'Back to library', keys: ['Alt + <', 'Alt + X'] }
 ]
 
 export const FullSettingsModal: React.FC = () => {
@@ -93,7 +99,16 @@ export const FullSettingsModal: React.FC = () => {
   useEffect(() => {
     if (!isFullSettingsModalOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') toggleFullSettingsModal(false)
+      const isBack =
+        e.key === 'Escape' ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && (
+          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
+        ))
+      if (isBack) {
+        e.preventDefault()
+        e.stopPropagation()
+        toggleFullSettingsModal(false)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

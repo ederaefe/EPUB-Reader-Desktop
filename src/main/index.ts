@@ -1299,7 +1299,11 @@ if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     configureSessionSecurity()
     createWindow()
-    autoUpdater.checkForUpdatesAndNotify()
+    if (app.isPackaged) {
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        console.warn('[AutoUpdater] Failed to check for updates:', err)
+      })
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

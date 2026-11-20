@@ -72,3 +72,16 @@ All future updates appended to `documentation.md` must follow these rules:
   - **Antigravity Translucent Selection Bar**: Replaced stark white text pills with a floating translucent dual-hairline action bar (`backdrop-blur-2xl`, outer border + subtle inset hairline) and icon-only circular buttons (`StickyNote`, `Copy`/`Check`, `•••`). Contextually gates Dictionary and Wikipedia actions to single-word selections, preventing clutter on multi-word excerpts.
   - **Audio HUD & Read Aloud Player Integration**: Tapping "Read aloud" from the selection menu activates speech synthesis and surfaces the draggable, minimizable `<ReaderAudioHUD>` player with Play/Pause/Stop controls across both EPUB and PDF reading modes.
   - **Reading Progress Bar Settings Toggle**: Added `showProgressBar` toggle switch across `SettingsDrawer` (Display tab) and `FullSettingsModal` (Reading settings card) allowing readers to hide the bottom reading progress bar, paired with calmed saturation and glow parameters for quiet reading.
+- **Reader Settings Crash Fix & Global Error Resilience**: Resolved an issue where opening Reader Settings from the top bar gear icon could trigger an unexpected blank screen by ensuring all interface hooks load consistently. Added a calm recovery screen so any transient component interruption can be restored with a single click instead of closing the reading view.
+- **Development CLI Noise Elimination**: Suppressed background automatic update verification messages from logging to the command terminal when running in development mode, while preserving automatic update checks in production packages.
+
+- **Holistic Keyboard Navigation & Cascading Back**: Added comprehensive keyboard shortcuts to navigate seamlessly without reaching for a mouse. Pressing `Alt + <` or `Escape` gracefully cascades backwards—closing active context menus, drawers, or settings modals, and finally returning to the Library when the reader canvas is clear.
+- **Thought & Bookmark Undo / Redo**: Made `Ctrl + Z` (Undo) and `Ctrl + Y` (or `Ctrl + Shift + Z` for Redo) instantly restore or remove recent highlight creations, thought notes, and bookmark toggles while you read. Native text undo and redo inside search fields and note editors remain completely untouched and responsive.
+- **Universal Reader Hotkeys**: Added quick single-stroke and modifier shortcuts for effortless reading:
+  - `Ctrl + D` or `Ctrl + B`: Instantly bookmark or un-bookmark the current page.
+  - `Ctrl + =` or `+`: Increase font size or zoom in.
+  - `Ctrl + -` or `-`: Decrease font size or zoom out.
+  - `Ctrl + 0` or `0`: Reset font size and zoom back to default.
+  - `Ctrl + /` or `?`: Open the hotkeys and navigation cheatsheet from anywhere in the app.
+  - `r` or `F10`: Toggle between single-page and dual-page book spread.
+  - `/` or `Ctrl + F`: Jump directly into the Library search bar when viewing your bookshelf.

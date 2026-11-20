@@ -1396,3 +1396,62 @@ Keep these verified runtime invariants in mind when modifying or extending Sempl
 - Removed all technical security jargon (TLS 1.3, WASM, SHA-256, etc.) from the `index.html` file to prioritize a clean, user-focused experience.
 - Simplified the Hero section for better readability.
 - Consolidated the "Privacy First" section to highlight simplicity and open-source transparency, removing technical security-focused cards.
+
+---
+
+## Increment 36: Reader Settings Rule-of-Hooks Fix, Global Error Boundary & Development Update Check Gating (2026-11-20)
+
+### Architecture & Implementation
+1. **Rule-of-Hooks Rectification in SettingsDrawer (`src/renderer/src/components/drawers/SettingsDrawer.tsx`)**:
+   - Diagnosed runtime invariant crash occurring when toggling Reader Settings (`isSettingsDrawerOpen: true`): `autoscrollMetrics` state and `adaptiveScrollEngine.subscribe` effect hooks were previously placed below an early `if (!isSettingsDrawerOpen) return null` check.
+   - Upon initial closed render, React recorded only 2 hooks. Upon opening, React encountered hooks 3 and 4, triggering `Error: Rendered more hooks than during the previous render` and unmounting the React DOM tree into a blank window.
+   - Relocated all hook declarations (`useState`, `useEffect`) unconditionally to the top level of `SettingsDrawer`, configured the subscription effect to selectively bind only when `isSettingsDrawerOpen` is active, and positioned the `if (!isSettingsDrawerOpen) return null` early exit strictly after all hook declarations.
+2. **Global Renderer Error Boundary (`src/renderer/src/components/ui/ErrorBoundary.tsx`, `src/renderer/src/App.tsx`)**:
+   - Implemented an Obsidian-themed React `ErrorBoundary` class component with safe error capture, development console diagnostics, reading-data preservation notice, and two recovery actions ("Try again" resetting the error state and "Reload app").
+   - Wrapped the primary `<main>` reading/library viewport in `src/renderer/src/App.tsx` with `<ErrorBoundary onReset={handleBackToLibrary}>` to prevent any unexpected renderer exceptions from unmounting the window into an unrecoverable blank screen.
+3. **Environment-Gated Auto-Updater (`src/main/index.ts`)**:
+   - Gated `autoUpdater.checkForUpdatesAndNotify()` behind `if (app.isPackaged)` with `.catch()` error handling.
+   - Silences the persistent development terminal logs:
+     `Skip checkForUpdates because application is not packed and dev update config is not forced`
+     `checkForUpdatesAndNotify called, downloadPromise is null`
+     while preserving automated update checks and background downloads in packaged production builds.
+4. **Type-Safety in History Undo/Redo Engine (`src/renderer/src/services/readerHistoryService.ts`)**:
+   - Strengthened `theme` parameters from `string` to `UserSettings['theme']` (`'day' | 'night' | 'light-sepia' | 'dark-sepia'`) in `undo` and `redo` methods, aligning with `applyAnnotationToRendition` and passing strict typechecking.
+
+---
+
+## Increment 37: Holistic Keyboard Ergonomics, Reader History Service & 5 Bug Fixes (2026-11-20)
+
+### Architecture & Implementation
+1. **Reader History Service (`src/renderer/src/services/readerHistoryService.ts`)**:
+   - Implemented an in-memory stack-based action ledger (`undoStack`, `redoStack`, `maxDepth = 40`) tracking `add_annotation`, `delete_annotation`, `add_bookmark`, and `delete_bookmark` actions.
+   - Binds directly with Dexie DB operations and ePub.js `rendition` annotation rendering.
+   - Guarded all rendition DOM calls with defensive try-catches to ensure database rollback succeeds even when CFI ranges refer to off-screen or unmounted spine items.
+2. **Unified Keyboard Shortcuts Suite**:
+   - `Alt + <` / `Backspace` / `Alt + ArrowLeft` / `Alt + X`: Cascading backwards navigation across modals, drawers, and reader views.
+   - `Escape`: Cascading hierarchy closing topmost active element before navigating away.
+   - `Ctrl + Z`: Reader action undo (annotations, thoughts, bookmarks).
+   - `Ctrl + Y` / `Ctrl + Shift + Z`: Reader action redo.
+   - `Ctrl + D` & `Ctrl + B`: Bookmark current page toggle.
+   - `Ctrl + =` / `+`: Font size increase (EPUB) / Zoom in (PDF).
+   - `Ctrl + -` / `-`: Font size decrease (EPUB) / Zoom out (PDF).
+   - `Ctrl + 0` / `0`: Reset font size to 21px / Reset PDF zoom to 1.0.
+   - `Ctrl + /` / `?`: Toggle `HelpModal` keyboard shortcuts cheatsheet.
+   - `r` / `F10`: Toggle page spread (`single` <-> `double`).
+   - `/` / `Ctrl + F`: Focus Library search input when viewing library bookshelf.
+3. **Five Concrete Bugs Identified & Fixed**:
+   - **Bug 1: Keyboard leakage inside input/textarea/contentEditable**:
+     *Root cause*: Global window key listeners captured single-letter keys (`j`, `k`, `r`, `?`, `+`, `-`, `0`, `Backspace`) and `Ctrl + Z` even while the user was typing inside search bars or thought notes.
+     *Resolution*: Introduced `isTargetInput` guard across `EpubReaderView.tsx`, `PdfReaderView.tsx`, and `App.tsx` that inspects `target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable`. When focused, it allows native browser text editing and undo/redo (`Ctrl+Z`, `Ctrl+Y`), allows Escape to blur/clear without triggering reader navigation, and blocks leakage.
+   - **Bug 2: Iframe focus isolation in EPUB Reader**:
+     *Root cause*: Focus entering `contents.window` (the reader iframe) caused hotkeys to be swallowed or handled with different logic than the outer window.
+     *Resolution*: Synchronized the iframe keydown listener with identical modifier checks, history refs (`handleUndoRef`, `handleRedoRef`), and state triggers.
+   - **Bug 3: Physical keyboard layout variance for `Alt + <`**:
+     *Root cause*: On European (AZERTY/QWERTZ), UK ISO, and varying physical layouts, `<` requires Shift or maps to `IntlBackslash` or `KeyX`. A strict check on `e.key === '<'` failed for `Alt + ,` or non-US keyboards.
+     *Resolution*: Implemented multi-key detection checking `(e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX')`.
+   - **Bug 4: Cascading `Escape` priority inversion**:
+     *Root cause*: When nested modals (FullSettingsModal, BookMetadataModal) or drawers (SearchDrawer) were open, pressing Escape could trigger global reader back, navigating to the library instead of closing the topmost overlay.
+     *Resolution*: Implemented strict cascading early returns: Modal layer -> Input blur/clear -> Context menu/popover -> Drawers -> Footnotes -> TTS/Autoscroll -> Fullscreen -> Library `onBack()`.
+   - **Bug 5: Off-screen annotation Undo/Redo failure & Rendition desync**:
+     *Root cause*: Undoing or redoing an annotation in another chapter threw unhandled rendition exceptions when attempting to locate unmounted DOM nodes, crashing the history service and leaving Dexie out of sync.
+     *Resolution*: Wrapped all rendition CFI manipulations in defensive try-catches in `readerHistoryService.ts`, ensuring the database state always commits cleanly, and triggered `bumpAnnotationsVersion()` to re-render visible marks.

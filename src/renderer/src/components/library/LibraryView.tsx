@@ -1011,9 +1011,19 @@ export const LibraryView: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-[#555555] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
+                data-library-search="true"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search library..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    if (searchQuery) {
+                      setSearchQuery('')
+                    } else {
+                      e.currentTarget.blur()
+                    }
+                  }
+                }}
+                placeholder="Search library... (/)"
                 className="ice-input h-7 pl-8 pr-2.5 w-60 text-xs"
               />
             </div>
