@@ -1735,3 +1735,25 @@ emove.
    - Formatted OpenGraph and Twitter card metadata with absolute preview image URLs.
    - Embedded JSON-LD structured data graph containing `SoftwareApplication`, `TechArticle`, `BreadcrumbList` (Home > Documentation), and `FAQPage`.
    - Updated XML sitemaps and `robots.txt` with canonical production domain URLs.
+
+---
+
+## Increment 46: Vercel Clean URL Routing & Root-Relative Docs Asset Resolution (2026-11-20)
+
+### Problem Description
+Visiting `https://semply.vercel.app/documentations` rendered unstyled raw HTML and unfunctional scripts. 
+
+### Root Cause Analysis
+In `vercel.json`, `"cleanUrls": true` and `"trailingSlash": false` strip trailing slashes from directory routes. When a client visits `/documentations`, Vercel serves `documentations/index.html`, but the browser's base URL remains `https://semply.vercel.app/`. Any relative asset paths (`./styles.css`, `./app.js`, `./assets/...`, `./llms.txt`) were resolved by the browser to root endpoints (`https://semply.vercel.app/styles.css`, etc.), which returned 404 Not Found.
+
+### Engineering Solution
+1. **Root-Relative Asset Resolution (`documentations/index.html`)**:
+   - Converted all relative paths to root-relative paths (`/documentations/styles.css`, `/documentations/app.js`, `/documentations/assets/favicon.ico`, `/documentations/llms.txt`, `/documentations/llms-full.txt`, `/documentations/sitemap.xml`, `/documentations/robots.txt`).
+   - Converted internal home links from `../index.html` to root `/`.
+2. **Vercel Fallback Rewrites (`vercel.json`)**:
+   - Added explicit rewrite rules for `/documentations` and `/documentations/` to `/documentations/index.html`.
+   - Added wildcard rewrite `/documentation/:path*` to `/documentations/:path*`.
+   - Added fallback rewrites for `/styles.css` and `/app.js` directing to `/documentations/styles.css` and `/documentations/app.js` to eliminate any possible 404s from cached browsers or external referrers.
+3. **Verification**:
+   - Verified locally via HTTP server on port 3456 and Playwright headless Chromium browser.
+   - Confirmed full visual layout rendering with Obsidian dark theme, responsive sidebar navigation, search modal, and pace calculator functionality.

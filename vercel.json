@@ -48,6 +48,14 @@
   ],
   "rewrites": [
     {
+      "source": "/documentations",
+      "destination": "/documentations/index.html"
+    },
+    {
+      "source": "/documentations/",
+      "destination": "/documentations/index.html"
+    },
+    {
       "source": "/docs",
       "destination": "/documentations/index.html"
     },
@@ -58,6 +66,18 @@
     {
       "source": "/documentation",
       "destination": "/documentations/index.html"
+    },
+    {
+      "source": "/documentation/:path*",
+      "destination": "/documentations/:path*"
+    },
+    {
+      "source": "/styles.css",
+      "destination": "/documentations/styles.css"
+    },
+    {
+      "source": "/app.js",
+      "destination": "/documentations/app.js"
     },
     {
       "source": "/llms.txt",
