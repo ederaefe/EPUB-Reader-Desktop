@@ -3110,3 +3110,51 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - In `AdaptiveScrollOverlay.tsx`, the trigger badge persists at `bottom-11 right-5 z-40`, positioned directly above the liquid climax progress bar footer and page counter without overlapping.
 - When the reader is on page $\ge 5$ and enters a custom dwell duration (e.g., 34s in Smart mode), `adaptiveScrollEngine.recalibrateFromUserAnchor` immediately anchors the velocity profile and restarts the 7-page calibration batch.
+
+---
+
+## Increment 52: Minimalist 3-Zone HUD, Tactile Stepper Box & Unconditional Page Flip Guarantee
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Ultra-Streamlined 3-Zone HUD Layout (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`)**:
+   - Completely purged the top action bar (Pause button, Reset button, Power button, Close 'X' button) from the floating reader HUD card. Dismissal is handled naturally via click-outside backdrop or `Escape`.
+   - Purged the Skim Guard banner from the HUD, keeping the interface focused purely on essentials.
+   - The HUD popover now cleanly consists of:
+     - **Zone 1 (Speedometer)**: Dual-metric card with live cyan `WPM` (Reading Pace) and emerald `SPP` (Reading Speed).
+     - **Zone 2 (Pacing Pill)**: Segmented glass track `(( Fixed | Smart ))`.
+     - **Zone 3 (Stepper)**: Minimalist circle buttons `[-]` and `[+]` around the central dwell pill.
+2. **Tactile Inner Input Box with Blinking Caret**:
+   - Redesigned the center dwell pill to feature a distinct, styled inner box (`h-6 px-1.5 min-w-[36px] rounded border`) with theme-adaptive styling.
+   - Added auto-focus and text auto-select when the HUD opens, placing an active blinking caret inside the box immediately.
+   - Wired live numerical parsing so typing a new value applies it immediately and starts Auto-Flip if idle.
+3. **Subtle Bracketless Countdown Badge**:
+   - Removed `{}` curly brackets from the trigger badge (`28s` instead of `{28s}`).
+   - Clicking the badge when idle activates Auto-Flip and opens the HUD controls.
+4. **Unconditional Paginated Page Flip Guarantee (`src/renderer/src/components/reader/EpubReaderView.tsx`, `src/renderer/src/components/reader/PdfReaderView.tsx`)**:
+   - Diagnosed and fixed why pages were not flipping in EPUB mode: an obsolete `canScrollVertically` check previously called `container.scrollBy`, which did nothing in epub.js's paginated horizontal mode (`flow: 'paginated'`) and trapped the reader on the same page.
+   - Removed the vertical scroll branch in `advancePage` so countdown completion always triggers `await handleNext()`.
+   - Added a 600ms fallback re-arm safeguard so that if epub.js's `relocated` event is delayed across section breaks, the next page's countdown begins without interruption.
+   - Raised the PDF vertical headroom threshold to 80px to prevent minor container padding from blocking page advancement on unzoomed documents.
+
+### Problem Statement
+1. Visual HUD Clutter: The floating HUD contained an extraneous top bar and a Skim Guard banner that took up excessive space and duplicated controls available elsewhere in the application.
+2. Inaccessible Dwell Editing: The central `10 sec` pill appeared as flat, uneditable static text without an obvious input container or active blinking cursor.
+3. Distracting Curly Braces: The bottom-right trigger badge wrapped the remaining duration in curly brackets (`{28s}`), which looked like placeholder template syntax rather than a clean numeric timer badge.
+4. Page Advancing Freeze in EPUB: In paginated reading mode, the reader attempted vertical container scrolling before flipping, causing the auto-advance routine to stall on the same page indefinitely.
+
+### Touched Files
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 73/73 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 9.19s (`out/main`: 134.20 kB, `out/preload`: 5.36 kB, `out/renderer`: 3,473.53 kB JS, 128.29 kB CSS).
+
+### Handoff Notes
+- In `AdaptiveScrollOverlay.tsx`, the HUD width is streamlined to `268px` and consists strictly of Zones 1, 2, and 3. Clicking outside dismisses it cleanly.
+- `EpubReaderView.tsx` uses direct `handleNext()` for pagination. Continuous vertical scroll is reserved strictly for PDF zoom overflow.

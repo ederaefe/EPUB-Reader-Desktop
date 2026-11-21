@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Play,
   Pause,
-  RotateCcw,
-  Power,
-  X,
   Clock,
   Minus,
   Plus
@@ -51,8 +48,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     }))
   )
 
-  const [metrics, setMetrics] = useState<PacingMetrics>(adaptiveScrollEngine.getMetrics())
+  const [metrics, setMetrics] = useState<PacingMetrics>(() => adaptiveScrollEngine.getMetrics())
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const isPdf = activeBookFormat === 'pdf'
   const isPdfDual = (pageLayout ?? (pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
@@ -68,15 +66,28 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const currentDwellSec = effectiveMode === 'countdown' ? countdownSec : adaptiveSec
   const minFloor = effectiveMode === 'countdown' ? 3 : 10
 
-  const [inputValue, setInputValue] = useState<string>(String(currentDwellSec))
+  const [inputValue, setInputValue] = useState<string>(() => String(currentDwellSec))
 
   useEffect(() => {
     return adaptiveScrollEngine.subscribe((m) => setMetrics(m))
   }, [])
 
   useEffect(() => {
-    setInputValue(String(currentDwellSec))
-  }, [currentDwellSec])
+    if (!isModalOpen) {
+      setInputValue(String(currentDwellSec))
+    }
+  }, [currentDwellSec, isModalOpen])
+
+  // Focus and select input so the blinking cursor is immediately visible when the popover opens
+  useEffect(() => {
+    if (isModalOpen) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isModalOpen])
 
   // Suspend countdown cleanly while the Auto-Scroll modal is open
   useEffect(() => {
@@ -101,6 +112,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const handleModeChange = (mode: AutoscrollMode) => {
     adaptiveScrollEngine.recordUserActivity()
+    if (!isActive) {
+      useAppStore.getState().setAutoscrollActive(true)
+    }
     updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
     adaptiveScrollEngine.configure({ mode, rearm: true })
   }
@@ -108,6 +122,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleCountdownChange = (nextSec: number) => {
     const clamped = Math.max(3, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
+    if (!isActive) {
+      useAppStore.getState().setAutoscrollActive(true)
+    }
     if (isPdf) {
       if (isPdfDual) {
         updateSettings({ pdfCountdownSecDual: clamped, autoscrollCountdownSec: clamped })
@@ -123,6 +140,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleAdaptiveSecChange = (nextSec: number) => {
     const clamped = Math.max(10, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
+    if (!isActive) {
+      useAppStore.getState().setAutoscrollActive(true)
+    }
     updateSettings({ autoscrollAdaptiveSec: clamped })
     adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped, mode: 'adaptive', rearm: true })
   }
@@ -130,6 +150,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleDwellNudge = (deltaSec: number) => {
     if (deltaSec < 0 && currentDwellSec <= minFloor) return
     const next = Math.max(minFloor, Math.min(600, currentDwellSec + deltaSec))
+    setInputValue(String(next))
     if (effectiveMode === 'countdown') {
       handleCountdownChange(next)
     } else {
@@ -138,17 +159,38 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   }
 
   const handleDirectInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value)
+    const raw = e.target.value.replace(/[^0-9]/g, '')
+    setInputValue(raw)
+    const parsed = parseInt(raw, 10)
+    if (!isNaN(parsed) && parsed >= minFloor && parsed <= 600) {
+      if (!isActive) {
+        useAppStore.getState().setAutoscrollActive(true)
+      }
+      if (effectiveMode === 'countdown') {
+        handleCountdownChange(parsed)
+      } else {
+        handleAdaptiveSecChange(parsed)
+      }
+    }
   }
 
   const handleInputCommit = () => {
     const parsed = parseInt(inputValue, 10)
-    if (isNaN(parsed)) {
-      setInputValue(String(currentDwellSec))
+    if (isNaN(parsed) || parsed < minFloor) {
+      const fallback = Math.max(minFloor, currentDwellSec)
+      setInputValue(String(fallback))
+      if (effectiveMode === 'countdown') {
+        handleCountdownChange(fallback)
+      } else {
+        handleAdaptiveSecChange(fallback)
+      }
       return
     }
     const clamped = Math.max(minFloor, Math.min(600, parsed))
     setInputValue(String(clamped))
+    if (!isActive) {
+      useAppStore.getState().setAutoscrollActive(true)
+    }
     if (effectiveMode === 'countdown') {
       handleCountdownChange(clamped)
     } else {
@@ -156,46 +198,15 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     }
   }
 
-  const handleReset = () => {
-    adaptiveScrollEngine.recordUserActivity()
-    if (isPdf) {
-      handleCountdownChange(pdfDefaultDwell)
-      setInputValue(String(pdfDefaultDwell))
-      return
-    }
-    adaptiveScrollEngine.reset()
-    if (effectiveMode === 'countdown') {
-      updateSettings({ autoscrollCountdownSec: 20 })
-      setInputValue('20')
-    } else {
-      updateSettings({ autoscrollAdaptiveSec: 25, targetWpm: 250 })
-      setInputValue('25')
-    }
-  }
-
-  const handleTogglePause = () => {
-    if (!isActive) {
-      useAppStore.getState().setAutoscrollActive(true)
-      return
-    }
-    adaptiveScrollEngine.setUserPaused(!metrics.isUserPaused)
-  }
-
-  const handleTurnOff = () => {
-    setIsModalOpen(false)
-    adaptiveScrollEngine.stop()
-    onClose()
-  }
-
   const triggerTooltip = !isActive
-    ? `Auto-Flip ({${currentDwellSec}s}) · Click to open controls (A)`
+    ? `Auto-Flip (${currentDwellSec}s) · Click to open controls (A)`
     : metrics.pauseReason === 'inactivity'
-    ? `Auto-Flip paused while away ({${metrics.remainingSec}s} left) — Click to configure`
+    ? `Auto-Flip paused while away (${metrics.remainingSec}s left) — Click to configure`
     : metrics.isUserPaused
-    ? `Auto-Flip paused ({${metrics.remainingSec}s} left) — Click to configure`
+    ? `Auto-Flip paused (${metrics.remainingSec}s left) — Click to configure`
     : effectiveMode === 'adaptive'
-    ? `Smart Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
-    : `Fixed Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
+    ? `Smart Auto-Flip: ${metrics.remainingSec}s left — Click to configure`
+    : `Fixed Auto-Flip: ${metrics.remainingSec}s left — Click to configure`
 
   const currentTheme = theme || 'night'
   const isLight = currentTheme === 'day' || currentTheme === 'light-sepia'
@@ -208,12 +219,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
       : currentTheme === 'dark-sepia'
       ? 'bg-[#1b1611]/96 border-[#e6c8a5]/[0.15] text-[#fffbf5] shadow-[0_16px_48px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(230,200,165,0.08)]'
       : 'bg-[#12151b]/96 border-white/[0.12] text-[#f1f3f7] shadow-[0_16px_48px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.08)]'
-
-  const headerBorderClass = isLight
-    ? currentTheme === 'light-sepia'
-      ? 'border-[#5f4b32]/[0.14]'
-      : 'border-black/[0.08]'
-    : 'border-white/[0.08]'
 
   const speedometerBoxClass =
     currentTheme === 'day'
@@ -269,13 +274,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
       ? 'flex-1 h-9 px-3 rounded-full bg-white/[0.05] border border-[#e6c8a5]/[0.12] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
       : 'flex-1 h-9 px-3 rounded-full bg-white/[0.06] border border-white/[0.10] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
 
-  const skimGuardClass =
-    currentTheme === 'day'
-      ? 'bg-amber-500/15 border border-amber-600/30 text-amber-800'
-      : currentTheme === 'light-sepia'
-      ? 'bg-amber-700/15 border border-amber-700/30 text-amber-900'
-      : 'bg-amber-500/15 border border-amber-500/25 text-amber-300'
-
   return (
     <>
       {/* Click-outside dismissal backdrop when popover is open */}
@@ -293,92 +291,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           aria-label="Auto-Flip Settings"
           className={`fixed ${
             isImmersiveFullscreen ? 'bottom-14' : 'bottom-20'
-          } right-5 z-50 w-[280px] font-sans select-none antialiased backdrop-blur-2xl rounded-2xl p-4 flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-150 app-no-drag border ${containerThemeClasses}`}
+          } right-5 z-50 w-[268px] font-sans select-none antialiased backdrop-blur-2xl rounded-2xl p-3.5 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150 app-no-drag border ${containerThemeClasses}`}
         >
-          {/* Header Row: Minimalist Playback & Lifecycle Actions */}
-          <div className={`flex items-center justify-between pb-1 border-b ${headerBorderClass}`}>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleTogglePause}
-                aria-label={!isActive ? 'Start Auto-Flip' : metrics.isUserPaused ? 'Resume Auto-Flip' : 'Pause Auto-Flip'}
-                className={`h-7 px-3 flex items-center justify-center gap-1.5 rounded-full font-sans text-[11.5px] font-medium transition-all cursor-pointer ${
-                  !isActive || metrics.isUserPaused
-                    ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-xs hover:opacity-90'
-                    : isLight
-                    ? 'bg-black/[0.06] text-[var(--app-text-strong)] hover:bg-black/[0.10] border border-black/[0.08]'
-                    : 'bg-white/[0.08] text-[var(--app-text-strong)] hover:bg-white/[0.14] border border-white/[0.10]'
-                }`}
-              >
-                {!isActive ? (
-                  <>
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Start</span>
-                  </>
-                ) : metrics.isUserPaused ? (
-                  <>
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Resume</span>
-                  </>
-                ) : (
-                  <>
-                    <Pause className="w-3 h-3 fill-current" />
-                    <span>Pause</span>
-                  </>
-                )}
-              </button>
-
-              {metrics.pauseReason === 'inactivity' && (
-                <span
-                  className="w-6 h-6 flex items-center justify-center text-amber-500"
-                  title="Auto-paused after 5 minutes of reader inactivity"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleReset}
-                aria-label="Reset Auto-Flip parameters"
-                title={
-                  effectiveMode === 'countdown'
-                    ? 'Reset fixed timer to 20s'
-                    : 'Reset smart base timer to 25s (250 WPM)'
-                }
-                className={`w-7 h-7 flex items-center justify-center rounded-full text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] transition-colors cursor-pointer ${
-                  isLight ? 'hover:bg-black/[0.06]' : 'hover:bg-white/[0.08]'
-                }`}
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleTurnOff}
-                aria-label="Turn off Auto-Flip"
-                title="Turn off Auto-Flip completely"
-                className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--app-text-muted)] hover:text-red-400 hover:bg-red-500/15 transition-colors cursor-pointer"
-              >
-                <Power className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                aria-label="Close Auto-Flip modal"
-                title="Close panel and resume reading"
-                className={`w-7 h-7 flex items-center justify-center rounded-full text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] transition-colors cursor-pointer ${
-                  isLight ? 'hover:bg-black/[0.06]' : 'hover:bg-white/[0.08]'
-                }`}
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
           {/* Zone 1: Independent Dual Speedometer Card (WPM + SPP) */}
           <div className={`grid grid-cols-2 py-2 px-3 rounded-xl text-center shadow-xs border ${speedometerBoxClass}`}>
             {/* Left: Reading Pace */}
@@ -418,13 +332,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             </div>
           </div>
 
-          {/* Optional Skim Guard Pill Indicator */}
-          {metrics.isSkimming && (
-            <div className={`flex items-center justify-center py-0.5 px-2 rounded-full font-sans text-[10.5px] font-medium select-none border ${skimGuardClass}`}>
-              <span>Skim Guard Active</span>
-            </div>
-          )}
-
           {/* Zone 2: Tactile Glass Segmented Mode Pill */}
           <div className="glass-pill-track grid grid-cols-2 p-1 gap-1">
             <button
@@ -462,29 +369,50 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
               <Minus className="w-4 h-4 stroke-[2.5]" />
             </button>
 
-            {/* Editable Pill with Blinking Cursor */}
-            <div className={centerPillClass}>
-              <div className="flex items-center justify-center gap-1 font-mono">
-                <input
-                  type="number"
-                  min={minFloor}
-                  max={600}
-                  value={inputValue}
-                  onChange={handleDirectInputChange}
-                  onBlur={handleInputCommit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      ;(e.target as HTMLElement).blur()
-                    } else if (e.key === 'Escape') {
-                      setInputValue(String(currentDwellSec))
-                      ;(e.target as HTMLElement).blur()
-                    }
-                  }}
-                  style={{ width: `${Math.max(2, inputValue.length)}ch` }}
-                  className="text-right text-[15px] font-semibold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  aria-label="Dwell seconds"
-                />
-                <span className="text-[12px] text-[var(--app-text-muted)] font-mono select-none">sec</span>
+            {/* Editable Pill with Blinking Cursor in a distinct inner box */}
+            <div
+              onClick={() => inputRef.current?.focus()}
+              className={`${centerPillClass} cursor-text`}
+            >
+              <div className="flex items-center justify-center gap-1.5 font-mono">
+                {/* Distinct inner box with blinking cursor */}
+                <div
+                  className={`h-6 px-1.5 min-w-[36px] rounded border flex items-center justify-center transition-all ${
+                    isLight
+                      ? currentTheme === 'light-sepia'
+                        ? 'bg-[#5f4b32]/[0.08] border-[#5f4b32]/[0.26] focus-within:border-[var(--app-accent)] focus-within:bg-[#fbf4e4] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30'
+                        : 'bg-black/[0.05] border-black/[0.18] focus-within:border-[var(--app-accent)] focus-within:bg-white focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30'
+                      : currentTheme === 'dark-sepia'
+                      ? 'bg-white/[0.08] border-[#e6c8a5]/[0.24] focus-within:border-[var(--app-accent)] focus-within:bg-[#1b1611] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30'
+                      : 'bg-white/[0.08] border-white/[0.22] focus-within:border-[var(--app-accent)] focus-within:bg-black/40 focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30'
+                  }`}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={inputValue}
+                    onChange={handleDirectInputChange}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={handleInputCommit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleInputCommit()
+                        ;(e.target as HTMLElement).blur()
+                      } else if (e.key === 'Escape') {
+                        setInputValue(String(currentDwellSec))
+                        ;(e.target as HTMLElement).blur()
+                      }
+                    }}
+                    style={{ width: `${Math.max(2, inputValue.length)}ch` }}
+                    className="text-center text-[14px] font-bold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums"
+                    aria-label="Dwell seconds"
+                  />
+                </div>
+                <span className="text-[12px] text-[var(--app-text-muted)] font-mono font-medium select-none">
+                  sec
+                </span>
               </div>
             </div>
 
@@ -504,7 +432,12 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
       {/* Minimalist Numeric Countdown Trigger Badge — Bottom-Right (persists in Fullscreen) */}
       <button
         type="button"
-        onClick={() => setIsModalOpen((prev) => !prev)}
+        onClick={() => {
+          if (!isActive) {
+            useAppStore.getState().setAutoscrollActive(true)
+          }
+          setIsModalOpen((prev) => !prev)
+        }}
         aria-label={triggerTooltip}
         title={triggerTooltip}
         className={`fixed ${
@@ -530,7 +463,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
         ) : !isActive ? (
           <Play className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)]" />
         ) : null}
-        <span>&#123;{isActive ? metrics.remainingSec : currentDwellSec}s&#125;</span>
+        <span>{isActive ? metrics.remainingSec : currentDwellSec}s</span>
       </button>
     </>
   )

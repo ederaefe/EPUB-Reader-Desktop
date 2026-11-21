@@ -238,5 +238,7 @@
 
 - **Auto-Flip Mid-Book Calibration Anchor & Persistent Reader HUD**:
   - **Mid-Book Calibration Starting Anywhere**: Auto-Flip no longer requires starting from page 1. When activated on any page past the frontmatter (page 5 onwards), the intelligent pacing engine immediately begins its 7-page calibration batch using your saved dwell time as the baseline, adapting dynamically to your reading rhythm every 7 pages.
-  - **Permanent Reader HUD Trigger**: The bottom-right countdown badge (`{25s}`) remains visible at all times across all themes and book formats (including reflowed PDFs). Tapping the badge opens the 3-zone glass HUD popover to start hands-free reading or adjust dwell pacing with single-click ease.
+  - **Permanent Bracketless Countdown Badge**: The bottom-right countdown badge displays a clean, subtle number (`28s`) without distracting curly brackets across all themes and book formats. Tapping the badge opens the 3-zone glass HUD popover to start hands-free reading or adjust dwell pacing with single-click ease.
+  - **Tactile Stepper with Blinking Cursor**: The central dwell pill features a distinct inner input box with an actively blinking cursor. Typing a custom duration updates the timer and starts Auto-Flip immediately.
+  - **Uninterrupted Paginated Page Turning**: Page transitions in EPUB and PDF reading modes execute cleanly on countdown completion without getting trapped in vertical scroll headroom.
   - **Detailed Preferences in Settings**: The main Settings Drawer and Full Settings Modal now host full telemetry (real-time WPM, SPP, and batch progress), Timer vs. Smart pacing mode toggles, dwell presets, chapter end grace buffers, and keyboard shortcuts, while keeping the on-canvas floating HUD sleek and minimal.

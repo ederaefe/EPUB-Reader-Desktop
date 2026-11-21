@@ -1902,24 +1902,17 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         if (cancelled || !useAppStore.getState().isAutoscrollActive || isAdvancing) return
         isAdvancing = true
         try {
-          // Format-aware page advancement:
-          // Check if continuous vertical scroll is active with scroll headroom
-          const canScrollVertically =
-            container &&
-            container.scrollHeight - container.clientHeight > 20 &&
-            container.scrollTop + container.clientHeight < container.scrollHeight - 10
-          if (canScrollVertically) {
-            container.scrollBy({ top: container.clientHeight * 0.85, behavior: 'smooth' })
-            setTimeout(() => {
-              if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-              try {
-                ;(renditionRef.current as any)?.reportLocation?.()
-              } catch {}
+          await handleNext()
+          // Fallback guarantee: if epub.js relocated event does not fire within 600ms, re-arm the countdown
+          setTimeout(() => {
+            if (
+              !cancelled &&
+              useAppStore.getState().isAutoscrollActive &&
+              !adaptiveScrollEngine.getMetrics().isActive
+            ) {
               armPage()
-            }, 450)
-          } else {
-            await handleNext()
-          }
+            }
+          }, 600)
         } catch (err) {
           console.warn('Auto-advance error:', err)
         } finally {
@@ -1935,14 +1928,12 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         () => {
           advancePage()
 
-          // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI (and no vertical movement occurred),
+          // Recovery watchdog: if epub.js stalls on a section edge or emits the same CFI,
           // retry once after 1200ms so Auto-Scroll never freezes at 0s or skips multiple pages.
           if (recoveryTimer) clearTimeout(recoveryTimer)
           recoveryTimer = setTimeout(() => {
             if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-            const currentScrollTop = container?.scrollTop ?? 0
-            const didScrollVertically = Math.abs(currentScrollTop - scrollTopBeforeTurn) > 10
-            if (currentCfiRef.current === cfiBeforeTurn && !didScrollVertically) {
+            if (currentCfiRef.current === cfiBeforeTurn) {
               const check = analyzeVisiblePage()
               if (check.atEnd) {
                 adaptiveScrollEngine.stop()
@@ -1950,9 +1941,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
               } else {
                 advancePage()
                 recoveryTimer = setTimeout(() => {
-                  const checkScrollTop = container?.scrollTop ?? 0
-                  const checkDidScroll = Math.abs(checkScrollTop - scrollTopBeforeTurn) > 10
-                  if (!cancelled && useAppStore.getState().isAutoscrollActive && currentCfiRef.current === cfiBeforeTurn && !checkDidScroll) {
+                  if (
+                    !cancelled &&
+                    useAppStore.getState().isAutoscrollActive &&
+                    currentCfiRef.current === cfiBeforeTurn
+                  ) {
                     armPage()
                   }
                 }, 1000)

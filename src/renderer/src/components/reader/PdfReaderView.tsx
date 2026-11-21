@@ -620,8 +620,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           const vp = viewportRef.current
           const canScrollVertically =
             vp &&
-            vp.scrollHeight - vp.clientHeight > 20 &&
-            vp.scrollTop + vp.clientHeight < vp.scrollHeight - 10
+            vp.scrollHeight - vp.clientHeight > 80 &&
+            vp.scrollTop + vp.clientHeight < vp.scrollHeight - 15
           if (canScrollVertically) {
             vp.scrollBy({ top: vp.clientHeight * 0.85, behavior: 'smooth' })
             setTimeout(() => {
