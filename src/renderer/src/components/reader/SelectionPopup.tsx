@@ -99,14 +99,29 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   }, [onClose, showDictModal, showWikiModal])
 
   // Precision Viewport Clamping (Subtle Micro-Pill Positioning)
-  const barWidth = 200
-  const barHalfWidth = barWidth / 2
-  const clampedX = Math.max(barHalfWidth + 12, Math.min(window.innerWidth - barHalfWidth - 12, position.x))
+  const [popupDims, setPopupDims] = useState({ width: showNoteComposer ? 310 : 270, height: 40 })
+
+  useEffect(() => {
+    if (popupRef.current) {
+      const rect = popupRef.current.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        setPopupDims({ width: rect.width, height: rect.height })
+      }
+    }
+  }, [showNoteComposer, showMoreMenu, selectedText])
+
+  const effectiveWidth = Math.max(popupDims.width, showNoteComposer ? 310 : 270)
+  const halfWidth = effectiveWidth / 2
+  const marginX = 16
+  const clampedX = Math.max(
+    halfWidth + marginX,
+    Math.min(window.innerWidth - halfWidth - marginX, position.x)
+  )
 
   // Determine whether to show above or below selection based on clearance
-  const isNearTop = position.y < 160
+  const isNearTop = position.y < (showNoteComposer ? 220 : 120)
   const clampedY = isNearTop
-    ? Math.min(window.innerHeight - 80, position.y + 22)
+    ? Math.min(window.innerHeight - (showNoteComposer ? 240 : 60), position.y + 22)
     : Math.max(48, position.y - 44)
 
   const handleCopy = () => {

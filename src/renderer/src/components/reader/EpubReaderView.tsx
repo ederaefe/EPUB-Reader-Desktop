@@ -737,13 +737,15 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else if (e.key === 'F8') {
         e.preventDefault()
         handleStopTTSRef.current()
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
         e.preventDefault()
+        e.stopPropagation()
         if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
         } else {
           navigateStepRef.current('next')
         }
+        return
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         useAppStore.getState().setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
@@ -2337,13 +2339,15 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
 
-      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
         e.preventDefault()
+        e.stopPropagation()
         if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
         } else {
           handleNext()
         }
+        return
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)

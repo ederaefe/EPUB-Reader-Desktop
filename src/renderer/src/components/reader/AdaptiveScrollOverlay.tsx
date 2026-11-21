@@ -198,7 +198,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     setIsModalOpen(false)
   }
 
-  const showConfirmTick = isEditing || inputValue !== String(currentDwellSec)
+  const isValueChanged = inputValue.trim().length > 0 && Number(inputValue) !== currentDwellSec
 
   const triggerTooltip = !isActive
     ? `Auto-Flip (${currentDwellSec}s) · Click to open controls (A)`
@@ -278,12 +278,12 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const confirmTickClass =
     currentTheme === 'day'
-      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_2px_8px_rgba(5,150,105,0.35)] border border-white/80'
+      ? 'w-5 h-5 rounded-full bg-black/[0.06] hover:bg-black/[0.12] border border-black/[0.12] shadow-xs flex items-center justify-center text-[#0d1117] transition-all cursor-pointer'
       : currentTheme === 'light-sepia'
-      ? 'bg-[#2d6a4f] hover:bg-[#1b4332] text-[#f7efe0] shadow-[0_2px_8px_rgba(45,106,79,0.35)] border border-[#f7efe0]/80'
+      ? 'w-5 h-5 rounded-full bg-[#5f4b32]/[0.10] hover:bg-[#5f4b32]/[0.18] border border-[#5f4b32]/[0.20] shadow-xs flex items-center justify-center text-[#17110a] transition-all cursor-pointer'
       : currentTheme === 'dark-sepia'
-      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_2px_10px_rgba(5,150,105,0.45)] border border-[#1b1611]/80'
-      : 'bg-emerald-500 hover:bg-emerald-400 text-[#0d1117] shadow-[0_2px_10px_rgba(16,185,129,0.45)] border border-[#12151b]/80'
+      ? 'w-5 h-5 rounded-full bg-white/[0.12] hover:bg-white/[0.22] border border-[#e6c8a5]/[0.18] shadow-xs flex items-center justify-center text-[#fffbf5] transition-all cursor-pointer'
+      : 'w-5 h-5 rounded-full bg-white/[0.14] hover:bg-white/[0.24] border border-white/[0.18] shadow-xs flex items-center justify-center text-white transition-all cursor-pointer'
 
   return (
     <>
@@ -426,24 +426,23 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 <span className="text-[12px] text-[var(--app-text-muted)] font-mono font-medium select-none">
                   sec
                 </span>
+                {/* Thin Circular Confirmation Tick inside the pill directly beside 'sec' */}
+                {isValueChanged && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleLockIn()
+                    }}
+                    title="Lock in dwell and start (Enter)"
+                    aria-label="Lock in dwell and start"
+                    className={`${confirmTickClass} animate-in zoom-in-75 fade-in duration-100 hover:scale-110 active:scale-95`}
+                  >
+                    <Check className="w-3 h-3 stroke-[1.5]" />
+                  </button>
+                )}
               </div>
-
-              {/* Hovering Circular Confirmation Tick (Lock in value and close HUD) */}
-              {showConfirmTick && (
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    handleLockIn()
-                  }}
-                  title="Lock in dwell and start (Enter)"
-                  aria-label="Lock in dwell and start"
-                  className={`absolute -top-3 -right-1.5 z-20 w-6 h-6 rounded-full flex items-center justify-center shadow-md cursor-pointer transition-all hover:scale-110 active:scale-95 animate-in zoom-in-75 fade-in duration-150 ${confirmTickClass}`}
-                >
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-              )}
             </div>
 
             <button

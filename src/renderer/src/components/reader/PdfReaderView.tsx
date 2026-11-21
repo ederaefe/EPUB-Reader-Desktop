@@ -761,14 +761,16 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           handlePrev()
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
         e.preventDefault()
+        e.stopPropagation()
         if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
         } else {
           handleNext()
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
+        return
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)

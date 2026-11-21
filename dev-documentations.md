@@ -3296,6 +3296,37 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
 - `npm run build`: Production bundle built cleanly via `electron-vite build` in 19.96s.
 
+---
+
+## Increment 57: Context Menu Viewport Boundary Protection, Dedicated Spacebar Pacing Isolation & In-Pill Confirmation Tick
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Selection Popup Viewport Clamping & Edge Overflow Protection (`SelectionPopup.tsx`)**:
+   - Replaced static `barWidth = 200` with dynamic bounding box dimension tracking (`useLayoutEffect` / `useEffect` measuring `popupRef.current.getBoundingClientRect()`), accounting for the full 270px highlight palette and 310px note composer width.
+   - Constrained `clampedX` so that the popup's horizontal bounds maintain a guaranteed minimum 16px clearance from screen edges (`Math.max(halfWidth + 16, Math.min(window.innerWidth - halfWidth - 16, position.x))`), completely eliminating right-edge clipping when selecting words at the far margin of the reading column.
+2. **Dedicated Spacebar Auto-Scroll Rule (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Strictly reserved `Space` (and `code === 'Space'`) exclusively for pausing and resuming the auto-flip countdown whenever auto-scroll is active (`useAppStore.getState().isAutoscrollActive`).
+   - If auto-scroll is inactive, `Space` triggers clean page-by-page forward advancement (`handleNext()` / `navigateStepRef.current('next')`), with `e.stopPropagation()` and early return preventing accidental chapter skipping or native window scrolling.
+3. **In-Pill Dwell Confirmation Tick Harmonization (`AdaptiveScrollOverlay.tsx`)**:
+   - Relocated the confirmation check button to sit directly inside the dwell pill beside `sec`.
+   - Conditioned appearance strictly on value changes (`Number(inputValue) !== currentDwellSec`), ensuring the tick stays hidden when opening the HUD, focusing the input, or leaving the number unchanged.
+   - Styled the circular button using the exact neutral theme palette, borders, and materials as the surrounding stepper buttons, featuring a delicate thin stroke (`stroke-[1.5]`) on `<Check />`.
+
+### Touched Files
+- `src/renderer/src/components/reader/SelectionPopup.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 24.69s.
+
+
 
 
 
