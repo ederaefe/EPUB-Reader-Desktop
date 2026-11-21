@@ -52,6 +52,50 @@ const MAX_CACHE_ENTRIES = 200
 const dictResolvedCache = new Map<string, CacheEntry<InlineDefinition>>()
 const wikiResolvedCache = new Map<string, CacheEntry<WikipediaSummary>>()
 
+export interface DictHistoryEntry {
+  word: string
+  definition: InlineDefinition
+  timestamp: number
+}
+
+const DICT_HISTORY_KEY = 'semply_dict_history'
+const MAX_HISTORY_ENTRIES = 100
+
+export function getDictionaryHistory(): DictHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(DICT_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveToDictionaryHistory(word: string, definition: InlineDefinition): void {
+  try {
+    const cleanWord = word.trim()
+    if (!cleanWord || !definition) return
+    const current = getDictionaryHistory()
+    const filtered = current.filter((item) => item.word.toLowerCase() !== cleanWord.toLowerCase())
+    filtered.unshift({
+      word: cleanWord,
+      definition,
+      timestamp: Date.now()
+    })
+    const trimmed = filtered.slice(0, MAX_HISTORY_ENTRIES)
+    localStorage.setItem(DICT_HISTORY_KEY, JSON.stringify(trimmed))
+  } catch (err) {
+    console.warn('Failed to save dictionary history:', err)
+  }
+}
+
+export function clearDictionaryHistory(): void {
+  try {
+    localStorage.removeItem(DICT_HISTORY_KEY)
+  } catch {}
+}
+
 function getFromCache<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {
   const entry = cache.get(key)
   if (!entry) return null
@@ -81,6 +125,14 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
   const cachedResult = getFromCache(dictResolvedCache, cleanWord)
   if (cachedResult) return cachedResult
 
+  // Check persistent history cache for instant offline definitions
+  const history = getDictionaryHistory()
+  const historyMatch = history.find((h) => h.word.toLowerCase() === cleanWord.toLowerCase())
+  if (historyMatch?.definition) {
+    setInCache(dictResolvedCache, cleanWord, historyMatch.definition)
+    return historyMatch.definition
+  }
+
   const cachedPromise = dictInflight.get(cleanWord)
   if (cachedPromise) return cachedPromise
 
@@ -94,6 +146,7 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
         const res = await window.desktopAPI.lookupDictionary(cleanWord)
         if (!res?.ok || !res.data) return null
         setInCache(dictResolvedCache, cleanWord, res.data)
+        saveToDictionaryHistory(cleanWord, res.data)
         return res.data
       }
 
@@ -137,6 +190,7 @@ export async function fetchInlineDefinition(query: string): Promise<InlineDefini
           : []
       }
       setInCache(dictResolvedCache, cleanWord, result)
+      saveToDictionaryHistory(cleanWord, result)
       return result
     } catch {
       return null

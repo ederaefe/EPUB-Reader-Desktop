@@ -3326,6 +3326,83 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
 - `npm run build`: Production bundle built cleanly via `electron-vite build` in 24.69s.
 
+---
+
+## Increment 58: Classic SVG Underline Highlight, Absolute Selection Popup Clamping, Persistent Dictionary Cache & History, Top Page Header, and Interactive Go-To-Page
+> **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Classic Bottom Underline Annotation Architecture (`annotationService.ts`, `EpubReaderView.tsx`, `index.css`)**:
+   - Stripped inherited group `stroke` on `<g>` elements in `getSvgAnnotationStyle` for `underline` annotations.
+   - Enforced `svg g.underlinenote rect { stroke: none !important; fill: transparent !important; }` while styling `svg g.underlinenote line` with themed strokes (`#2a69df` / `#79c0ff`) and rounded caps (`stroke-width: 2.5px; stroke-linecap: round`), completely eliminating the 4-sided bounding-box artifact.
+   - Preserved transparent `<rect>` elements so hit-testing and click popovers continue to work reliably.
+2. **Absolute Boundary Selection Popup Clamping (`SelectionPopup.tsx`)**:
+   - Replaced CSS `-translate-x-1/2` with direct screen-pixel coordinate calculation: `leftPos = Math.max(16, Math.min(window.innerWidth - effectiveWidth - 16, position.x - effectiveWidth / 2))`.
+   - Added `w-max whitespace-nowrap` to the floating micro-bar container to prevent flex squashing or button wrapping.
+   - Guaranteed a minimum 16px clearance from screen boundaries, completely preventing right-edge menu clipping when selecting words at the far margin of the reading area.
+3. **Persistent Dictionary Caching & History Drawer (`dictService.ts`, `SelectionPopup.tsx`)**:
+   - Implemented `saveToDictionaryHistory` and `getDictionaryHistory` backed by `localStorage` (`'semply_dict_history'`) with deduplication and reverse-chronological ordering.
+   - Added a "History" text toggle in the Dictionary modal header, displaying looked-up words with phonetic tags and definitions.
+   - Tapping any historical word immediately switches to its cached definition without network roundtrips.
+4. **Header Page Number Indicator (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Mounted a bare `{currentPage}` indicator at the top right of the reader canvas beside the bookmark ribbon.
+   - Ensures readers maintain spatial page awareness even when the bottom progress bar is hidden or toggled off.
+5. **Interactive Browser-Style "Go to Page" Input (`FluidClimaxProgressBar.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Transformed the first number in the progress bar into an interactive pill: `[currentPage] / totalPages`.
+   - Clicking `[currentPage]` opens an autofocusing input box with an active blinking cursor.
+   - Applied high-contrast theme inversion: crisp white background with black text in dark themes, and dark background with white text in light themes.
+   - Pressing `Enter` validates `1 <= page <= totalPages` and triggers `onPageChange(targetPage)`, seeking the exact location via `cfiFromLocation` or percentage seek across both EPUB and PDF modes.
+
+### Touched Files
+- `src/renderer/src/services/annotationService.ts`
+- `src/renderer/src/services/dictService.ts`
+- `src/renderer/src/components/reader/SelectionPopup.tsx`
+- `src/renderer/src/components/reader/FluidClimaxProgressBar.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/index.css`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 23.38s.
+
+### Handoff Notes
+- In `FluidClimaxProgressBar.tsx`, `onPageChange` seamlessly navigates EPUB spine items / locations and PDF canvas viewports.
+- In `SelectionPopup.tsx`, the direct `leftPos` math avoids any interaction with CSS entry animations.
+
+---
+
+## Increment 59: Zero-CPU Inactivity Cursor Concealment Engine
+> **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Zero-CPU Inactivity Hook (`src/renderer/src/hooks/useIdleCursor.ts`)**:
+   - Engineered a transition-only inactivity hook that conceals the mouse cursor after 10 seconds of reading dormancy.
+   - Guaranteed 0% CPU consumption during active pointer movement: maintains state in a ref and throttles timer reschedule calls to at most once per 500ms, eliminating React re-render churn during continuous mouse movement.
+   - Instantly awakens the cursor on any pointer movement, mouse click, keyboard navigation, touch gesture, or wheel scroll.
+2. **Iframe & Reader Viewport Cursor Synchronization (`EpubReaderView.tsx`, `PdfReaderView.tsx`, `index.css`)**:
+   - Injected `.cursor-idle-hidden, .cursor-idle-hidden * { cursor: none !important; }` into global styles and EPUB iframe dynamic style sheets.
+   - Synchronized concealment across reading view containers and loaded EPUB iframe document bodies.
+   - Automatically suspends cursor concealment whenever drawers, modals, context menus, or active text selections are open.
+
+### Touched Files
+- `src/renderer/src/hooks/useIdleCursor.ts`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/index.css`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 24.21s.
+
+
+
 
 
 

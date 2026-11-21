@@ -8,6 +8,7 @@ interface FluidClimaxProgressBarProps {
   totalPages: number
   book?: Book | null
   onSeek: (targetPercent: number) => void
+  onPageChange?: (targetPage: number) => void
   theme?: ReaderTheme
   isImmersiveFullscreen?: boolean
   /** This book's unique random climax apex (75..85); drives crimson peak. */
@@ -66,6 +67,7 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
   totalPages,
   book,
   onSeek,
+  onPageChange,
   theme = 'night',
   isImmersiveFullscreen = false,
   climaxTarget,
@@ -76,6 +78,9 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const [hoverPercent, setHoverPercent] = useState<number | null>(null)
   const [dragPercent, setDragPercent] = useState<number | null>(null)
+  const [isEditingPage, setIsEditingPage] = useState(false)
+  const [pageInputVal, setPageInputVal] = useState('')
+  const pageInputRef = useRef<HTMLInputElement>(null)
   const dragPercentRef = useRef<number | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const cachedTrackRectRef = useRef<DOMRect | null>(null)
@@ -126,6 +131,43 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
 
   const displayedEndPage = isDragging && dragPercent !== null ? targetPageForPct(dragPercent) : safeCurrentPage
   const tooltipPage = targetPageForPct(previewPct)
+
+  useEffect(() => {
+    if (isEditingPage) {
+      setPageInputVal(String(displayedEndPage))
+      setTimeout(() => {
+        if (pageInputRef.current) {
+          pageInputRef.current.focus()
+          pageInputRef.current.select()
+        }
+      }, 30)
+    }
+  }, [isEditingPage, displayedEndPage])
+
+  const handlePageCommit = useCallback(() => {
+    const parsed = parseInt(pageInputVal.trim(), 10)
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= safeTotal) {
+      if (onPageChange) {
+        onPageChange(parsed)
+      } else {
+        const pct = safeTotal > 1 ? ((parsed - 1) / (safeTotal - 1)) * 100 : 0
+        onSeek(pct)
+      }
+    }
+    setIsEditingPage(false)
+  }, [pageInputVal, safeTotal, onPageChange, onSeek])
+
+  const handlePageKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
+      handlePageCommit()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsEditingPage(false)
+    }
+  }
 
   // Narrative Climax Chromatic Calculation
   // Centers crimson peak on this book's own random 75%–85% climax target
@@ -392,12 +434,41 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
         )}
       </div>
 
-      {/* Crisp, Non-Muted, Theme-Adaptive Page Counter at End of Progress Bar */}
+      {/* Crisp, Non-Muted, Theme-Adaptive Interactive Page Counter at End of Progress Bar */}
       <div
-        className="shrink-0 text-[12px] font-mono font-semibold tabular-nums leading-none text-[var(--app-text-strong)] tracking-tight"
+        className="shrink-0 text-[12px] font-mono font-semibold tabular-nums leading-none text-[var(--app-text-strong)] tracking-tight flex items-center gap-1"
         title={`Page ${displayedEndPage} of ${safeTotal} (${Math.round(activeFluidPct)}%)`}
       >
-        {displayedEndPage}/{safeTotal}
+        {isEditingPage ? (
+          <input
+            ref={pageInputRef}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={pageInputVal}
+            onChange={(e) => setPageInputVal(e.target.value.replace(/[^0-9]/g, ''))}
+            onKeyDown={handlePageKeyDown}
+            onBlur={handlePageCommit}
+            className={`w-11 h-6 px-1 text-center text-[12px] font-mono font-bold rounded outline-none border transition-all ${
+              isLightMode
+                ? 'bg-neutral-900 text-white border-neutral-900 selection:bg-white selection:text-neutral-900 shadow-md'
+                : 'bg-white text-black border-white selection:bg-black selection:text-white shadow-md'
+            }`}
+            aria-label="Go to page"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsEditingPage(true)}
+            className="inline-flex items-center justify-center px-1.5 py-0.5 rounded border border-white/20 dark:border-white/20 hover:border-[var(--app-accent)] bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 text-[var(--app-text-strong)] cursor-pointer transition-all duration-150 shadow-2xs font-mono font-semibold text-[12px]"
+            title="Click to go to page"
+            aria-label={`Current page ${displayedEndPage}. Click to jump to page`}
+          >
+            {displayedEndPage}
+          </button>
+        )}
+        <span className="text-[var(--app-text-muted)] opacity-60">/</span>
+        <span>{safeTotal}</span>
       </div>
     </footer>
   )

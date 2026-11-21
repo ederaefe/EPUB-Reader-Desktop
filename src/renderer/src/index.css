@@ -826,6 +826,22 @@ span.greennote {
 
 span.underlinenote {
   text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 2px !important;
+  text-decoration-color: #2a69df !important;
+}
+
+svg g.underlinenote rect {
+  stroke: none !important;
+  fill: transparent !important;
+  cursor: pointer !important;
+}
+
+svg g.underlinenote line {
+  stroke: #2a69df !important;
+  stroke-width: 2.5px !important;
+  stroke-linecap: round !important;
+  stroke-opacity: 0.9 !important;
 }
 
 span.speechActive {
@@ -1563,3 +1579,12 @@ html[data-theme="dark-sepia"] .settings-btn-danger,
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================================
+   Zero-CPU Inactivity Cursor Suppression
+   ============================================================================ */
+.cursor-idle-hidden,
+.cursor-idle-hidden * {
+  cursor: none !important;
+}
+

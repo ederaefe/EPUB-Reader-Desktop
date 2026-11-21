@@ -80,10 +80,12 @@ export function getSvgAnnotationStyle(
   const meta = ICE_NOTE_COLORS[color] || ICE_NOTE_COLORS.yellow
 
   if (color === 'underline') {
+    // epub.js Underline creates an SVG group (<g>) containing both a <rect> for hit testing
+    // and a <line> along the bottom of the range. We intentionally do NOT apply stroke to the parent
+    // group, because group stroke cascades to <rect>, creating an unwanted 4-sided bounding box.
+    // Instead, the rect remains transparent for pointer events while dynamic CSS styles the bottom <line>.
     return {
-      stroke: isDark ? '#79c0ff' : '#2a69df',
-      'stroke-opacity': hasComment ? '1' : '0.85',
-      'stroke-width': hasComment ? '2.5px' : '2px',
+      fill: 'none',
       'mix-blend-mode': 'normal',
       cursor: 'pointer'
     }

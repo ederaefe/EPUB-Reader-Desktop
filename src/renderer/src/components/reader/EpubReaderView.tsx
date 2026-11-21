@@ -31,6 +31,7 @@ import { ReaderAudioHUD } from './ReaderAudioHUD'
 import { FluidClimaxProgressBar } from './FluidClimaxProgressBar'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
 import { SideNavigation } from './SideNavigation'
+import { useIdleCursor } from '../../hooks/useIdleCursor'
 import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { adaptiveScrollEngine, computeEffectiveWordCount } from '../../services/adaptiveScrollService'
@@ -373,6 +374,28 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       }
       body strong, body b {
         font-weight: ${emphasisWeight} !important;
+      }
+      /* Clean Literary Underline Highlight (replaces bounding box with bottom stroke) */
+      svg g.underlinenote rect {
+        stroke: none !important;
+        fill: transparent !important;
+        cursor: pointer !important;
+      }
+      svg g.underlinenote line {
+        stroke: ${isLightTheme ? '#2a69df' : '#79c0ff'} !important;
+        stroke-width: 2.5px !important;
+        stroke-linecap: round !important;
+        stroke-opacity: 0.9 !important;
+      }
+      span.underlinenote {
+        text-decoration: underline !important;
+        text-decoration-color: ${isLightTheme ? '#2a69df' : '#79c0ff'} !important;
+        text-underline-offset: 3px !important;
+        text-decoration-thickness: 2px !important;
+      }
+      .cursor-idle-hidden,
+      .cursor-idle-hidden * {
+        cursor: none !important;
       }
       ${fontRule}
       ${baseLayoutRule}
@@ -2219,6 +2242,35 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
     handleSeek(100)
   }
 
+  const handleJumpToPage = useCallback(
+    async (targetPage: number) => {
+      const rendition = renditionRef.current
+      const epub = epubBookRef.current
+      if (!rendition || !epub) return
+      const safeTotal = Math.max(1, totalPagesRef.current || 1)
+      const pageClamped = Math.max(1, Math.min(safeTotal, targetPage))
+      setCurrentPage(pageClamped)
+      const pct = safeTotal > 1 ? ((pageClamped - 1) / (safeTotal - 1)) * 100 : 0
+      setProgressPercent(pct)
+
+      if (hasReadyLocations(epub)) {
+        try {
+          const rawCfi =
+            (epub.locations as any).cfiFromLocation?.(pageClamped - 1) ||
+            (epub.locations as any).cfiFromPercentage?.(pct / 100)
+          if (typeof rawCfi === 'string' && rawCfi.startsWith('epubcfi(')) {
+            await rendition.display(rawCfi)
+            return
+          }
+        } catch (err) {
+          console.warn('Page jump cfi error:', err)
+        }
+      }
+      await handleSeek(pct)
+    },
+    [handleSeek, hasReadyLocations]
+  )
+
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3212,10 +3264,37 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
     }
   }
 
+  // Zero-CPU 10s idle cursor suppression (distraction-free reading, suspended when menus/drawers/selections are active)
+  const isAnyModalOrPopoverOpen =
+    isAnyDrawerOpen ||
+    Boolean(selectedText) ||
+    Boolean(activeAnnotation) ||
+    Boolean(contextMenu)
+
+  const isCursorIdle = useIdleCursor({
+    timeoutMs: 10000,
+    disabled: isAnyModalOrPopoverOpen
+  })
+
+  // Synchronize cursor concealment to active EPUB iframe bodies
+  useEffect(() => {
+    try {
+      const contents = renditionRef.current?.getContents() as any
+      const list = Array.isArray(contents) ? contents : contents ? [contents] : []
+      list.forEach((c: any) => {
+        c.document?.body?.classList.toggle('cursor-idle-hidden', isCursorIdle)
+      })
+    } catch {
+      // Ignore detached iframes
+    }
+  }, [isCursorIdle])
+
   return (
     <div
       style={{ backgroundColor: currentTheme.bg }}
-      className="flex-1 flex flex-col h-full relative overflow-hidden select-none transition-colors duration-200"
+      className={`flex-1 flex flex-col h-full relative overflow-hidden select-none transition-colors duration-200 ${
+        isCursorIdle ? 'cursor-idle-hidden' : ''
+      }`}
     >
       {/* Top Docked Header (hidden completely in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
@@ -3256,28 +3335,36 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           isImmersiveFullscreen ? 'py-6 px-4' : ''
         }`}
       >
-        {/* Icecream-style On-Page Top-Right Bookmark Ribbon Toggle */}
+        {/* Icecream-style On-Page Top-Right Bookmark Ribbon Toggle & Bare Page Indicator */}
         {!isImmersiveFullscreen && (
-          <button
-            type="button"
-            onClick={handleToggleCurrentBookmark}
-            className={`absolute top-2 right-5 z-30 w-7 h-8 flex items-center justify-center rounded-[2px] transition-all duration-200 cursor-pointer app-no-drag ${
-              isCurrentPageBookmarked
-                ? 'text-[#2a69df] opacity-100 hover:scale-110 active:scale-95'
-                : 'text-[#8b949e] opacity-25 hover:opacity-85 hover:text-white active:scale-95'
-            }`}
-            title={
-              isCurrentPageBookmarked
-                ? `Remove bookmark on page ${currentPage} (Ctrl+B)`
-                : `Bookmark page ${currentPage} (Ctrl+B)`
-            }
-          >
-            <Bookmark
-              className={`w-5 h-5 transition-transform duration-200 ${
-                isCurrentPageBookmarked ? 'fill-current drop-shadow scale-105' : 'scale-100'
+          <div className="absolute top-2 right-5 z-30 flex items-center gap-2 app-no-drag">
+            <span
+              className="text-[12px] font-mono font-medium tracking-wide text-[#8b949e] opacity-40 select-none pointer-events-none"
+              title={`Page ${currentPage}`}
+            >
+              {currentPage}
+            </span>
+            <button
+              type="button"
+              onClick={handleToggleCurrentBookmark}
+              className={`w-7 h-8 flex items-center justify-center rounded-[2px] transition-all duration-200 cursor-pointer ${
+                isCurrentPageBookmarked
+                  ? 'text-[#2a69df] opacity-100 hover:scale-110 active:scale-95'
+                  : 'text-[#8b949e] opacity-25 hover:opacity-85 hover:text-white active:scale-95'
               }`}
-            />
-          </button>
+              title={
+                isCurrentPageBookmarked
+                  ? `Remove bookmark on page ${currentPage} (Ctrl+B)`
+                  : `Bookmark page ${currentPage} (Ctrl+B)`
+              }
+            >
+              <Bookmark
+                className={`w-5 h-5 transition-transform duration-200 ${
+                  isCurrentPageBookmarked ? 'fill-current drop-shadow scale-105' : 'scale-100'
+                }`}
+              />
+            </button>
+          </div>
         )}
 
         {/* EPUB Mount Point (kept completely empty of React children so 3rd-party DOM cleanup never collides with React fiber reconciler) */}
@@ -3330,6 +3417,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           isSaberGlowing={climaxEffect === 'bar-saber'}
           onSaberGlowEnd={stopClimaxEffect}
           onSeek={handleSeek}
+          onPageChange={handleJumpToPage}
         />
       )}
 

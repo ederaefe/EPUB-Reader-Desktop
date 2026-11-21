@@ -17,8 +17,11 @@ import {
   getDefinitionUrl,
   fetchInlineDefinition,
   fetchWikipediaSummary,
+  getDictionaryHistory,
+  clearDictionaryHistory,
   type InlineDefinition,
-  type WikipediaSummary
+  type WikipediaSummary,
+  type DictHistoryEntry
 } from '../../services/dictService'
 import { ttsService } from '../../services/ttsService'
 import { useAppStore } from '../../stores/useAppStore'
@@ -54,6 +57,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const [showDictModal, setShowDictModal] = useState(false)
   const [dictLoading, setDictLoading] = useState(false)
   const [definition, setDefinition] = useState<InlineDefinition | null>(null)
+  const [showDictHistory, setShowDictHistory] = useState(false)
+  const [dictHistory, setDictHistory] = useState<DictHistoryEntry[]>([])
 
   const [showWikiModal, setShowWikiModal] = useState(false)
   const [wikiLoading, setWikiLoading] = useState(false)
@@ -99,24 +104,22 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   }, [onClose, showDictModal, showWikiModal])
 
   // Precision Viewport Clamping (Subtle Micro-Pill Positioning)
-  const [popupDims, setPopupDims] = useState({ width: showNoteComposer ? 310 : 270, height: 40 })
+  // Direct pixel coordinate calculation without CSS transform -translate-x-1/2 to prevent animation & clipping conflicts
+  const [measuredWidth, setMeasuredWidth] = useState(showNoteComposer ? 310 : 270)
 
   useEffect(() => {
     if (popupRef.current) {
       const rect = popupRef.current.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        setPopupDims({ width: rect.width, height: rect.height })
+      if (rect.width > 0) {
+        setMeasuredWidth(rect.width)
       }
     }
   }, [showNoteComposer, showMoreMenu, selectedText])
 
-  const effectiveWidth = Math.max(popupDims.width, showNoteComposer ? 310 : 270)
-  const halfWidth = effectiveWidth / 2
-  const marginX = 16
-  const clampedX = Math.max(
-    halfWidth + marginX,
-    Math.min(window.innerWidth - halfWidth - marginX, position.x)
-  )
+  const effectiveWidth = Math.max(measuredWidth, showNoteComposer ? 310 : 270)
+  const paddingX = 16
+  const maxLeft = Math.max(paddingX, window.innerWidth - effectiveWidth - paddingX)
+  const leftPos = Math.max(paddingX, Math.min(maxLeft, position.x - effectiveWidth / 2))
 
   // Determine whether to show above or below selection based on clearance
   const isNearTop = position.y < (showNoteComposer ? 220 : 120)
@@ -155,6 +158,8 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
 
   const handleLookupDefinition = async () => {
     setShowMoreMenu(false)
+    setShowDictHistory(false)
+    setDictHistory(getDictionaryHistory())
     setShowDictModal(true)
     setDictLoading(true)
     const res = await fetchInlineDefinition(selectedText)
@@ -198,11 +203,11 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       {/* Sleek Minimalist Literary Floating Micro-Pill */}
       <div
         ref={popupRef}
-        style={{ left: `${clampedX}px`, top: `${clampedY}px` }}
-        className="fixed z-50 transform -translate-x-1/2 flex flex-col items-center select-none app-no-drag animate-in fade-in zoom-in-95 duration-100"
+        style={{ left: `${leftPos}px`, top: `${clampedY}px` }}
+        className="fixed z-50 flex flex-col items-center select-none app-no-drag animate-in fade-in duration-100"
       >
         {/* The Action Pill (Antigravity UI Translucent Dual-Hairline Floating Pill) */}
-        <div className="h-8 px-2 bg-[rgba(18,20,24,0.85)] dark:bg-[rgba(14,16,20,0.88)] backdrop-blur-2xl border border-white/[0.10] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.55)] rounded-full flex items-center gap-1.5">
+        <div className="h-8 px-2 w-max whitespace-nowrap bg-[rgba(18,20,24,0.85)] dark:bg-[rgba(14,16,20,0.88)] backdrop-blur-2xl border border-white/[0.10] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.55)] rounded-full flex items-center gap-1.5">
           {/* Subtle Watercolor Color Palette */}
           <div className="flex items-center gap-1.5 px-0.5">
             {ICE_NOTE_COLOR_LIST.map((col) => (
@@ -392,71 +397,148 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
             <div className="flex items-center justify-between border-b border-[var(--app-border)] pb-2">
               <div className="flex items-center gap-2">
                 <BookMarked className="w-4 h-4 text-[var(--app-accent)]" />
-                <span className="text-[13px] font-semibold text-[var(--app-text-strong)]">Dictionary: {selectedText.slice(0, 30)}</span>
+                <span className="text-[13px] font-semibold text-[var(--app-text-strong)]">
+                  {showDictHistory ? 'Dictionary History' : `Dictionary: ${definition?.word || selectedText.slice(0, 30)}`}
+                </span>
               </div>
-              <button
-                onClick={() => {
-                  setShowDictModal(false)
-                  onClose()
-                }}
-                className="w-5 h-5 flex items-center justify-center text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] rounded-md cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!showDictHistory) {
+                      setDictHistory(getDictionaryHistory())
+                    }
+                    setShowDictHistory((prev) => !prev)
+                  }}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                    showDictHistory
+                      ? 'bg-[var(--app-accent)] text-white'
+                      : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)]'
+                  }`}
+                >
+                  {showDictHistory ? 'Definition' : `History (${dictHistory.length || getDictionaryHistory().length})`}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDictModal(false)
+                    onClose()
+                  }}
+                  className="w-5 h-5 flex items-center justify-center text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)] rounded-md cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-              {dictLoading ? (
-                <div className="py-6 text-center text-[var(--app-text-subtle)]">Looking up definition...</div>
-              ) : definition ? (
-                <div className="space-y-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-base font-bold text-[var(--app-text-strong)]">{definition.word}</span>
-                    {definition.phonetic && (
-                      <span className="text-[11px] font-mono text-[var(--app-accent-text)]">{definition.phonetic}</span>
-                    )}
+            {showDictHistory ? (
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[50vh]">
+                {dictHistory.length === 0 ? (
+                  <div className="py-8 text-center text-[var(--app-text-subtle)]">
+                    No past lookups in dictionary history yet.
                   </div>
-                  {definition.meanings.map((m, mi) => (
-                    <div key={mi} className="bg-[var(--app-surface-2)]/60 p-2.5 rounded-lg border border-[var(--app-border)] space-y-1">
-                      <span className="text-[11px] font-semibold uppercase text-amber-500 tracking-wider font-mono">
-                        {m.partOfSpeech}
-                      </span>
-                      {m.definitions.map((def, di) => (
-                        <div key={di} className="text-[12px] leading-relaxed text-[var(--app-text)] pl-1 border-l border-[var(--app-border-strong)]">
-                          <p>{def.definition}</p>
-                          {def.example && (
-                            <p className="text-[11px] text-[var(--app-text-subtle)] italic mt-0.5">&ldquo;{def.example}&rdquo;</p>
-                          )}
-                        </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      {dictHistory.map((item) => (
+                        <button
+                          key={item.word + item.timestamp}
+                          type="button"
+                          onClick={() => {
+                            setDefinition(item.definition)
+                            setShowDictHistory(false)
+                          }}
+                          className="w-full text-left p-2.5 rounded-lg bg-[var(--app-surface-2)]/60 hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)] transition-colors flex items-center justify-between group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-bold text-[13px] text-[var(--app-text-strong)] group-hover:text-[var(--app-accent-text)]">
+                                {item.word}
+                              </span>
+                              {item.definition.phonetic && (
+                                <span className="text-[10.5px] font-mono text-[var(--app-text-subtle)]">
+                                  {item.definition.phonetic}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11.5px] text-[var(--app-text-muted)] line-clamp-1 mt-0.5">
+                              {item.definition.meanings?.[0]?.definitions?.[0]?.definition || 'Cached definition'}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-[var(--app-text-subtle)] font-mono shrink-0">
+                            {new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </span>
+                        </button>
                       ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-4 text-[var(--app-text-subtle)]">
-                  No instant offline definition found for &ldquo;{selectedText}&rdquo;. Choose a web dictionary provider below:
-                </div>
-              )}
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearDictionaryHistory()
+                          setDictHistory([])
+                        }}
+                        className="text-[11px] text-[var(--app-text-subtle)] hover:text-red-400 transition-colors cursor-pointer"
+                      >
+                        Clear history
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                {dictLoading ? (
+                  <div className="py-6 text-center text-[var(--app-text-subtle)]">Looking up definition...</div>
+                ) : definition ? (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-base font-bold text-[var(--app-text-strong)]">{definition.word}</span>
+                      {definition.phonetic && (
+                        <span className="text-[11px] font-mono text-[var(--app-accent-text)]">{definition.phonetic}</span>
+                      )}
+                    </div>
+                    {definition.meanings.map((m, mi) => (
+                      <div key={mi} className="bg-[var(--app-surface-2)]/60 p-2.5 rounded-lg border border-[var(--app-border)] space-y-1">
+                        <span className="text-[11px] font-semibold uppercase text-amber-500 tracking-wider font-mono">
+                          {m.partOfSpeech}
+                        </span>
+                        {m.definitions.map((def, di) => (
+                          <div key={di} className="text-[12px] leading-relaxed text-[var(--app-text)] pl-1 border-l border-[var(--app-border-strong)]">
+                            <p>{def.definition}</p>
+                            {def.example && (
+                              <p className="text-[11px] text-[var(--app-text-subtle)] italic mt-0.5">&ldquo;{def.example}&rdquo;</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-4 text-[var(--app-text-subtle)]">
+                    No instant offline definition found for &ldquo;{selectedText}&rdquo;. Choose a web dictionary provider below:
+                  </div>
+                )}
 
-              {/* Web Providers List */}
-              <div className="pt-2 border-t border-[var(--app-border)] space-y-1">
-                <div className="text-[10px] text-[var(--app-text-subtle)] uppercase tracking-wider font-mono mb-1">
-                  External Dictionaries & Deep Translation
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {DICT_PROVIDERS.map((provider) => (
-                    <button
-                      key={provider.name}
-                      onClick={() => handleOpenExternalProvider(provider.name)}
-                      className="px-2.5 py-1.5 bg-[var(--app-surface)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)] rounded-md text-xs text-[var(--app-text)] flex items-center justify-between transition-colors cursor-pointer"
-                    >
-                      <span className="truncate">{provider.name}</span>
-                      <ExternalLink className="w-3 h-3 text-[var(--app-text-subtle)]" />
-                    </button>
-                  ))}
+                {/* Web Providers List */}
+                <div className="pt-2 border-t border-[var(--app-border)] space-y-1">
+                  <div className="text-[10px] text-[var(--app-text-subtle)] uppercase tracking-wider font-mono mb-1">
+                    External Dictionaries & Deep Translation
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {DICT_PROVIDERS.map((provider) => (
+                      <button
+                        key={provider.name}
+                        onClick={() => handleOpenExternalProvider(provider.name)}
+                        className="px-2.5 py-1.5 bg-[var(--app-surface)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)] rounded-md text-xs text-[var(--app-text)] flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="truncate">{provider.name}</span>
+                        <ExternalLink className="w-3 h-3 text-[var(--app-text-subtle)]" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

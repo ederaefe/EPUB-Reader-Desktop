@@ -31,6 +31,7 @@ import { ReaderAudioHUD } from './ReaderAudioHUD'
 import { FullscreenClimaxWaveOverlay } from './FullscreenClimaxWaveOverlay'
 import { AdaptiveScrollOverlay } from './AdaptiveScrollOverlay'
 import { useClimaxEasterEgg } from '../../hooks/useClimaxEasterEgg'
+import { useIdleCursor } from '../../hooks/useIdleCursor'
 import { ttsService } from '../../services/ttsService'
 
 // Ensure pdfjs worker is properly configured for Electron Vite renderer
@@ -1092,10 +1093,27 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     }
   }
 
+  // Zero-CPU 10s idle cursor suppression (distraction-free reading, suspended when menus/drawers/selections are active)
+  const isAnyModalOrPopoverOpen =
+    isSettingsDrawerOpen ||
+    isNotesDrawerOpen ||
+    isBookmarksDrawerOpen ||
+    isSearchDrawerOpen ||
+    isTOCDrawerOpen ||
+    Boolean(selectedPdfText) ||
+    Boolean(contextMenu)
+
+  const isCursorIdle = useIdleCursor({
+    timeoutMs: 10000,
+    disabled: isAnyModalOrPopoverOpen
+  })
+
   return (
     <div
       style={{ backgroundColor: currentTheme.bg }}
-      className="flex-1 flex flex-col h-full relative overflow-hidden select-none transition-colors duration-200"
+      className={`flex-1 flex flex-col h-full relative overflow-hidden select-none transition-colors duration-200 ${
+        isCursorIdle ? 'cursor-idle-hidden' : ''
+      }`}
     >
       {/* Top Docked Header (hidden in immersive fullscreen) */}
       {!isImmersiveFullscreen && (
@@ -1117,6 +1135,18 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         >
           <Minimize2 className="w-4 h-4" />
         </button>
+      )}
+
+      {/* Bare Top-Right Page Indicator for PDF */}
+      {!isImmersiveFullscreen && (
+        <div className="absolute top-12 right-5 z-30 flex items-center gap-2 app-no-drag pointer-events-none">
+          <span
+            className="text-[12px] font-mono font-medium tracking-wide text-[#8b949e] opacity-40 select-none"
+            title={`Page ${currentPage}`}
+          >
+            {currentPage}
+          </span>
+        </div>
       )}
 
       {/* Main PDF Scroll / Page Viewport */}
@@ -1233,6 +1263,12 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
                 ? totalPages
                 : Math.max(1, Math.min(totalPages, Math.round((val / 100) * (totalPages - 1)) + 1))
             setCurrentPage(targetPage)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          onPageChange={(targetPage) => {
+            const safeTotal = Math.max(1, totalPages || 1)
+            const p = Math.max(1, Math.min(safeTotal, targetPage))
+            setCurrentPage(p)
             viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
           }}
         />
