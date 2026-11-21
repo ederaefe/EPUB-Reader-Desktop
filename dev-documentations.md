@@ -3615,6 +3615,50 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - In `electron-builder.config.cjs`, all NSIS properties are strictly validated against `@develar/schema-utils`. Keep publisher specifications under `win.publisherName` and `win.signtoolOptions.publisherName`.
 
+---
+
+## Increment 65: Brand Transition to "Efedera" & Link Integration (`efedera.me`)
+> **Agent**: @Agent-BrandRelease | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Desktop UI & Attribution Alignment**:
+   - `src/renderer/src/components/ui/TitleBar.tsx`: Updated native titlebar attribution from `by Dera Labs` to an interactive `by Efedera` link pointing to `https://efedera.me` (with `app-no-drag` and subtle hover transitions).
+   - `src/renderer/src/components/modals/FullSettingsModal.tsx`: Updated About tab publisher text to `Published by Efedera` linking to `https://efedera.me` and added an `efedera.me` website button in the external links bar.
+2. **Main Process & Window Metadata**:
+   - `src/main/index.ts`: Set main window title to `Semply Ebook Reader - Efedera`.
+3. **Packaging, Distribution & Landing Site**:
+   - `package.json`: Configured `"author": "Efedera <https://efedera.me>"` and `"appPublisher": "Efedera"`.
+   - `electron-builder.config.cjs`: Updated copyright to `Copyright (c) 2026 Efedera (efedera.me). Licensed under the MIT License.`, Windows publisherName to `Efedera`, NSIS uninstaller display name to `Semply Ebook Reader (by Efedera)`, and Linux maintainer to `Efedera <https://efedera.me>`.
+   - `index.html`: Updated footer attribution to cite publisher and creator `Efedera` with direct link to `https://efedera.me`.
+
+### Problem Statement
+1. **Publisher Identity & Link Realignment**: Transition attribution from "Dera Labs" to personal publisher brand "Efedera" with direct link to `https://efedera.me`.
+
+### Technical Fix
+1. **UI Components** (`TitleBar.tsx`, `FullSettingsModal.tsx`):
+   - Attached secure external link `https://efedera.me` (`target="_blank"`, `rel="noopener noreferrer"`) with `app-no-drag` CSS class to ensure clicks register within Electron's draggable titlebar frame.
+2. **Build Configuration** (`electron-builder.config.cjs`, `package.json`):
+   - Synchronized author, publisherName, and maintainer tokens to `Efedera`. Schema verified via `validateConfiguration`.
+
+### Touched Files
+- `src/renderer/src/components/ui/TitleBar.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `src/main/index.ts`
+- `package.json`
+- `electron-builder.config.cjs`
+- `index.html`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `node validateConfiguration`: Clean resolution with `SCHEMA_VALIDATION_SUCCESS`.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `git status`: Working tree clean after commit.
+
+### Handoff Notes
+- All publisher metadata and external links across desktop and web landing assets now consistently reference `Efedera` (`https://efedera.me`).
+
+
 
 
 

@@ -39,9 +39,15 @@ export const TitleBar: React.FC = () => {
           <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400/90 border border-amber-500/30 uppercase tracking-wider font-semibold">
             Beta
           </span>
-          <span className="text-[10px] text-[#777777] font-normal tracking-normal hidden sm:inline">
-            by Dera Labs
-          </span>
+          <a
+            href="https://efedera.me"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="app-no-drag text-[10px] text-[#777777] hover:text-[#d4d4d4] transition-colors font-normal tracking-normal hidden sm:inline"
+            title="efedera.me"
+          >
+            by Efedera
+          </a>
         </div>
       </div>
 

@@ -9,8 +9,8 @@
     "url": "https://github.com/ederaefe/EPUB-Reader-Desktop.git"
   },
   "main": "out/main/index.js",
-  "author": "Dera Labs",
-  "appPublisher": "Dera Labs",
+  "author": "Efedera <https://efedera.me>",
+  "appPublisher": "Efedera",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

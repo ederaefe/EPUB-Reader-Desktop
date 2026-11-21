@@ -950,7 +950,15 @@ export const FullSettingsModal: React.FC = () => {
                       Version 1.0.8-beta.1 (Native Desktop Edition)
                     </p>
                     <p className="text-[11px] text-[var(--app-text-subtle)] font-medium mt-0.5">
-                      Published by Dera Labs
+                      Published by{' '}
+                      <a
+                        href="https://efedera.me"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-[var(--app-text)] transition-colors"
+                      >
+                        Efedera
+                      </a>
                     </p>
                   </div>
                 </div>
@@ -1013,6 +1021,15 @@ export const FullSettingsModal: React.FC = () => {
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>Docs</span>
+                  </a>
+                  <a
+                    href="https://efedera.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-amber-400" />
+                    <span>efedera.me</span>
                   </a>
                   <a
                     href="https://semply.vercel.app"
