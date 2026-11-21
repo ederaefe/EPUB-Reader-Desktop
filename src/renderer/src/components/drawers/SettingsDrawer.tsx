@@ -1112,9 +1112,18 @@ export const SettingsDrawer: React.FC = () => {
                         style={{ width: `${pdfConvertProgress.percent}%` }}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] font-normal text-[var(--app-text-subtle)]">
+                    <div className="flex justify-between items-center text-[10px] font-normal text-[var(--app-text-subtle)]">
                       <span className="truncate pr-2">{pdfConvertProgress.stage}</span>
-                      <span className="font-mono tabular-nums">{pdfConvertProgress.percent}%</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono tabular-nums">{pdfConvertProgress.percent}%</span>
+                        <button
+                          type="button"
+                          onClick={() => useAppStore.getState().cancelPdfConversion()}
+                          className="text-[10px] text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

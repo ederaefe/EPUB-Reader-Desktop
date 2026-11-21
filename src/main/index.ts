@@ -903,6 +903,8 @@ handleTrusted('dialog:showOpenDialog', async (_, options: { title?: string; filt
 })
 
 // Offline MuPDF WASM PDF-to-EPUB Conversion Engine (Librera Reflow Architecture)
+let activePdfConversionController: AbortController | null = null
+
 handleTrusted(
   'pdf:convertToEpub',
   async (
@@ -915,6 +917,15 @@ handleTrusted(
           mode?: 'reflow-cache' | 'library' | 'export'
         }
   ) => {
+    // Abort any prior in-flight reflow before initiating a new one
+    if (activePdfConversionController) {
+      activePdfConversionController.abort()
+      activePdfConversionController = null
+    }
+    const currentController = new AbortController()
+    activePdfConversionController = currentController
+    const signal = currentController.signal
+
     try {
       const rawPdfPath = typeof input === 'string' ? input : input?.pdfPath
       const safePdfPath = assertSafePath(rawPdfPath, 'read')
@@ -953,18 +964,43 @@ handleTrusted(
         }
       }
 
-      const result = await convertPdfToEpub(safePdfPath, targetEpubPath, (progress) => {
-        mainWindow?.webContents.send('pdf:convertProgress', progress)
-      })
+      const result = await convertPdfToEpub(
+        safePdfPath,
+        targetEpubPath,
+        (progress) => {
+          if (!signal.aborted) {
+            mainWindow?.webContents.send('pdf:convertProgress', progress)
+          }
+        },
+        signal
+      )
       if (safeCustomOutputPath && result.success) {
         approvedSavePaths.delete(canonicalKey(safeCustomOutputPath))
       }
       return result
     } catch (error: any) {
-      return { success: false, error: error?.message || 'PDF to EPUB conversion failed' }
+      const isCancelled = signal.aborted || error?.message?.includes('cancelled')
+      return {
+        success: false,
+        error: isCancelled ? 'Reflow conversion cancelled by user' : error?.message || 'PDF to EPUB conversion failed',
+        cancelled: isCancelled
+      }
+    } finally {
+      if (activePdfConversionController === currentController) {
+        activePdfConversionController = null
+      }
     }
   }
 )
+
+handleTrusted('pdf:cancelConversion', async () => {
+  if (activePdfConversionController) {
+    activePdfConversionController.abort()
+    activePdfConversionController = null
+    return true
+  }
+  return false
+})
 
 // Font Library Cache & Downloader IPC
 handleTrusted('pdf:clearReflowCache', async (_, rawPdfPath: string) => {

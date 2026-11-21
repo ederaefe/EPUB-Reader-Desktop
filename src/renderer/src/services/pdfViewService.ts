@@ -27,6 +27,12 @@ export async function loadCachedReflowEpub(
       pdfPath,
       mode: 'reflow-cache'
     })
+    if (res.cancelled) {
+      if (showProgressOverlay) {
+        store.showToast('PDF reflow cancelled', 'info')
+      }
+      return null
+    }
     if (res.success && res.epubPath && window.desktopAPI?.readFileBuffer) {
       return await window.desktopAPI.readFileBuffer(res.epubPath)
     }

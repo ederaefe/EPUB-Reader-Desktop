@@ -57,7 +57,9 @@ export interface DesktopAPI {
     pageCount?: number
     imageCount?: number
     error?: string
+    cancelled?: boolean
   }>
+  cancelPdfConversion: () => Promise<boolean>
   onPdfConvertProgress: (
     callback: (progress: { currentPage: number; totalPages: number; stage: string; percent: number }) => void
   ) => () => void
@@ -140,6 +142,7 @@ const api: DesktopAPI = {
   showSaveDialog: (opts) => ipcRenderer.invoke('dialog:showSaveDialog', opts),
   showOpenDialog: (opts) => ipcRenderer.invoke('dialog:showOpenDialog', opts),
   convertToEpub: (input) => ipcRenderer.invoke('pdf:convertToEpub', input),
+  cancelPdfConversion: () => ipcRenderer.invoke('pdf:cancelConversion'),
   onPdfConvertProgress: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: any) => callback(progress)
     ipcRenderer.on('pdf:convertProgress', listener)

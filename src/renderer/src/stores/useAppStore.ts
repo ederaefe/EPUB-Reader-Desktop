@@ -187,6 +187,7 @@ interface AppState {
     converting: boolean,
     progress?: { percent: number; stage: string } | null
   ) => void
+  cancelPdfConversion: () => Promise<void>
   toggleTOCDrawer: (open?: boolean) => void
   toggleNotesDrawer: (open?: boolean) => void
   toggleBookmarksDrawer: (open?: boolean) => void
@@ -320,6 +321,15 @@ export const useAppStore = create<AppState>((set) => ({
   setPendingSeekPercent: (pct) => set({ pendingSeekPercent: pct }),
   setPdfConversionState: (converting, progress = null) =>
     set({ isConvertingPdf: converting, pdfConvertProgress: progress }),
+  cancelPdfConversion: async () => {
+    try {
+      await window.desktopAPI?.cancelPdfConversion?.()
+    } catch (err) {
+      console.warn('Failed to cancel PDF conversion:', err)
+    } finally {
+      set({ isConvertingPdf: false, pdfConvertProgress: null })
+    }
+  },
   toggleTOCDrawer: (open) =>
     set((s) => ({
       isTOCDrawerOpen: open ?? !s.isTOCDrawerOpen,

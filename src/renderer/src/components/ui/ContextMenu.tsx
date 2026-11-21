@@ -21,11 +21,80 @@ interface ContextMenuProps {
   onClose: () => void
 }
 
+/**
+ * Intelligent Submenu Popup with 4-way boundary collision detection,
+ * automatic horizontal/vertical viewport flipping, and scroll clamping.
+ */
+const SubmenuPopup: React.FC<{
+  children: React.ReactNode
+  parentItemEl: HTMLElement | null
+}> = ({ children, parentItemEl }) => {
+  const subRef = useRef<HTMLDivElement>(null)
+  const [style, setStyle] = useState<React.CSSProperties>({
+    visibility: 'hidden',
+    position: 'absolute'
+  })
+
+  useLayoutEffect(() => {
+    const el = subRef.current
+    if (!el || !parentItemEl) return
+
+    const pad = 8
+    const itemRect = parentItemEl.getBoundingClientRect()
+    const subRect = el.getBoundingClientRect()
+    const subWidth = subRect.width || 180
+    const subHeight = subRect.height || 200
+
+    // Horizontal placement:
+    // Determine whether to open to the right or flip to the left
+    const spaceRight = window.innerWidth - itemRect.right
+    const spaceLeft = itemRect.left
+    const openLeft = spaceRight < subWidth + pad && spaceLeft >= subWidth + pad
+
+    // Vertical placement:
+    // Default: align top of submenu with top of item (-4px padding)
+    let top = -4
+    if (itemRect.top + subHeight + pad > window.innerHeight) {
+      // Flip upwards: align bottom of submenu with bottom of item
+      top = Math.round(itemRect.height - subHeight + 4)
+      if (itemRect.top + top < pad) {
+        top = Math.round(pad - itemRect.top)
+      }
+    }
+
+    setStyle({
+      visibility: 'visible',
+      position: 'absolute',
+      top,
+      [openLeft ? 'right' : 'left']: 'calc(100% + 4px)',
+      maxHeight: `min(420px, ${Math.max(160, window.innerHeight - 32)}px)`
+    })
+  }, [parentItemEl])
+
+  return (
+    <div
+      ref={subRef}
+      style={style}
+      className="z-[101] min-w-[170px] max-w-[260px] overflow-y-auto bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.4)] p-1 text-[12px] text-[var(--app-text)] select-none animate-in fade-in zoom-in-95 duration-75 custom-scrollbar"
+    >
+      {children}
+    </div>
+  )
+}
+
 export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null)
-  const [coords, setCoords] = useState({ left: x, top: y })
+  const itemRowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [coords, setCoords] = useState(() => {
+    const pad = 10
+    const estW = 220
+    const estH = Math.min(items.length * 32 + 20, 360)
+    return {
+      left: Math.max(pad, x + estW > window.innerWidth - pad ? x - estW : x),
+      top: Math.max(pad, y + estH > window.innerHeight - pad ? y - estH : y)
+    }
+  })
   const [activeSubmenuId, setActiveSubmenuId] = useState<string | null>(null)
-  const [openLeft, setOpenLeft] = useState(false)
 
   // Clamp coordinates so the menu stays strictly inside the window viewport
   useLayoutEffect(() => {
@@ -36,15 +105,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
     let nextLeft = x
     let nextTop = y
 
+    // If opening near right window edge, flip to the left of target point
     if (x + rect.width > window.innerWidth - pad) {
-      nextLeft = Math.max(pad, window.innerWidth - rect.width - pad)
+      nextLeft = Math.max(pad, x - rect.width)
     }
+    // If opening near bottom window edge, flip above target point
     if (y + rect.height > window.innerHeight - pad) {
-      nextTop = Math.max(pad, window.innerHeight - rect.height - pad)
+      nextTop = Math.max(pad, y - rect.height)
     }
     setCoords({ left: nextLeft, top: nextTop })
-    // If opening near right window edge, flip submenus to the left
-    setOpenLeft(nextLeft + rect.width + 180 > window.innerWidth)
   }, [x, y, items])
 
   useEffect(() => {
@@ -75,7 +144,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
       ref={menuRef}
       style={{ left: coords.left, top: coords.top }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-[100] min-w-[208px] max-w-[260px] bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.35)] p-1 text-[12px] text-[var(--app-text)] select-none app-no-drag animate-in fade-in duration-75"
+      className="fixed z-[100] min-w-[208px] max-w-[260px] max-h-[calc(100vh-24px)] overflow-y-auto bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.35)] p-1 text-[12px] text-[var(--app-text)] select-none app-no-drag animate-in fade-in duration-75 custom-scrollbar"
     >
       {items.map((item) => {
         if (item.divider) {
@@ -111,6 +180,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
         return (
           <div
             key={item.id}
+            ref={(el) => {
+              if (el) itemRowRefs.current.set(item.id, el)
+              else itemRowRefs.current.delete(item.id)
+            }}
             className="relative"
             onMouseEnter={() => {
               if (hasSubmenu) setActiveSubmenuId(item.id)
@@ -155,42 +228,41 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
               ) : null}
             </button>
 
-            {/* Hover Submenu */}
+            {/* Hover Submenu with Viewport Flipping */}
             {hasSubmenu && isSubmenuOpen && (
-              <div
-                style={{
-                  top: -4,
-                  [openLeft ? 'right' : 'left']: 'calc(100% + 4px)'
-                }}
-                className="absolute z-[101] min-w-[150px] bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.35)] p-1 text-[12px] text-[var(--app-text)] select-none animate-in fade-in zoom-in-95 duration-75"
-              >
-                {item.children!.map((subItem) => (
-                  <button
-                    key={subItem.id}
-                    type="button"
-                    disabled={subItem.disabled}
-                    onClick={() => {
-                      if (subItem.disabled) return
-                      subItem.onClick?.()
-                      onClose()
-                    }}
-                    className={`w-full h-7 px-2 rounded-[5px] flex items-center gap-2 text-left transition-colors ${
-                      subItem.disabled
-                        ? 'opacity-40 cursor-not-allowed'
-                        : subItem.danger
-                        ? 'text-[#e5484d] hover:bg-[#e5484d]/15 hover:text-[#e5484d] cursor-pointer'
-                        : 'text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] cursor-pointer'
-                    }`}
-                  >
-                    {subItem.icon && (
-                      <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-90">
-                        {subItem.icon}
-                      </span>
-                    )}
-                    <span className="truncate">{subItem.label}</span>
-                  </button>
-                ))}
-              </div>
+              <SubmenuPopup parentItemEl={itemRowRefs.current.get(item.id) || null}>
+                {item.children!.map((subItem) => {
+                  if (subItem.divider) {
+                    return <div key={subItem.id} className="my-1 border-t border-[var(--app-border)]" />
+                  }
+                  return (
+                    <button
+                      key={subItem.id}
+                      type="button"
+                      disabled={subItem.disabled}
+                      onClick={() => {
+                        if (subItem.disabled) return
+                        subItem.onClick?.()
+                        onClose()
+                      }}
+                      className={`w-full h-7 px-2 rounded-[5px] flex items-center gap-2 text-left transition-colors ${
+                        subItem.disabled
+                          ? 'opacity-40 cursor-not-allowed'
+                          : subItem.danger
+                          ? 'text-[#e5484d] hover:bg-[#e5484d]/15 hover:text-[#e5484d] cursor-pointer'
+                          : 'text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text-strong)] cursor-pointer'
+                      }`}
+                    >
+                      {subItem.icon && (
+                        <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 opacity-90">
+                          {subItem.icon}
+                        </span>
+                      )}
+                      <span className="truncate">{subItem.label}</span>
+                    </button>
+                  )
+                })}
+              </SubmenuPopup>
             )}
           </div>
         )

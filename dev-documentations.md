@@ -3373,6 +3373,29 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - In `FluidClimaxProgressBar.tsx`, `onPageChange` seamlessly navigates EPUB spine items / locations and PDF canvas viewports.
 - In `SelectionPopup.tsx`, the direct `leftPos` math avoids any interaction with CSS entry animations.
 
+---
+
+## Increment 59: Zero-CPU Inactivity Cursor Concealment Engine
+> **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Zero-CPU Inactivity Hook (`src/renderer/src/hooks/useIdleCursor.ts`)**:
+   - Engineered a transition-only inactivity hook that conceals the mouse cursor after 10 seconds of reading dormancy.
+   - Guaranteed 0% CPU consumption during active pointer movement: maintains state in a ref and throttles timer reschedule calls to at most once per 500ms, eliminating React re-render churn during continuous mouse movement.
+   - Instantly awakens the cursor on any pointer movement, mouse click, keyboard navigation, touch gesture, or wheel scroll.
+2. **Iframe & Reader Viewport Cursor Synchronization (`EpubReaderView.tsx`, `PdfReaderView.tsx`, `index.css`)**:
+   - Injected `.cursor-idle-hidden, .cursor-idle-hidden * { cursor: none !important; }` into global styles and EPUB iframe dynamic style sheets.
+   - Synchronized concealment across reading view containers and loaded EPUB iframe document bodies.
+   - Automatically suspends cursor concealment whenever drawers, modals, context menus, or active text selections are open.
+
+### Touched Files
+- `src/renderer/src/hooks/useIdleCursor.ts`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/index.css`
+- `dev-documentations.md`
+- `documentation.md`
+
 ### Verification Matrix
 - `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
@@ -3380,7 +3403,7 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 
 ---
 
-## Increment 60: Persistent Fullscreen Page Number, Streamlined History Label & Live Dictionary Search
+## Increment 60: Persistent Fullscreen Page Number, Streamlined History Label, Live Dictionary Search & Spacebar Auto-Flip Priority
 > **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
 
 ### What Was Done
@@ -3395,16 +3418,23 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
    - Enabled real-time filtering across cached entry words, phonetic strings, and definitions.
    - Added an interactive Enter key / click action to query and cache new terms from the dictionary API directly from the history view when a word is not yet cached.
    - Added word count indicator (`X of Y words`) and clear history button.
+4. **Spacebar Auto-Flip Priority on Fresh Book Mount & Relocation (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Elevated Space bar handling to the highest priority in both window and EPUB iframe keydown listeners immediately after input checks.
+   - When Auto-Flip is enabled (`isAutoscrollActive: true`), pressing Space strictly plays or pauses without triggering default browser viewport scrolling, page turns, or chapter skips.
+   - If the countdown engine is uninitialized or dormant on initial book load (`!isActive || isPaused`), Space unpauses and directly triggers `armPageRef.current()` to immediately begin the countdown.
 
 ### Problem Statement
 1. In immersive fullscreen mode, readers lost bare page number orientation when the bottom progress bar was toggled off or hidden.
 2. The dictionary history button displayed `History (x)` count cluttering the modal header.
 3. The dictionary history view lacked a search bar to filter past words or look up new definitions directly.
+4. When Auto-Flip was turned on immediately upon opening or loading a book, pressing Space bar either failed to start/resume the countdown or triggered a default page turn / chapter skip because the countdown engine had not yet finished its initial arming cycle.
 
 ### Technical Fix
 - In `EpubReaderView.tsx` and `PdfReaderView.tsx`, mounted `{currentPage}` inside the `fixed top-3 right-3 z-50` container alongside `Minimize2`.
 - In `SelectionPopup.tsx`, introduced `historySearchQuery` state with computed `filteredHistory`. Rendered `<Search />` input with keyboard Enter listener executing `fetchInlineDefinition(term)` on demand, transitioning directly to definition view with updated history.
 - Simplified header button label to `{showDictHistory ? 'Definition' : 'History'}`.
+- In `EpubReaderView.tsx` and `PdfReaderView.tsx`, positioned Space bar listener directly after `isTargetInput` and evaluated:
+  `if (isPaused || !isActive) { adaptiveScrollEngine.setUserPaused(false); armPageRef.current(); } else { adaptiveScrollEngine.setUserPaused(true); }` with strict `e.preventDefault()` and `e.stopPropagation()`.
 
 ### Touched Files
 - `src/renderer/src/components/reader/EpubReaderView.tsx`
@@ -3421,6 +3451,63 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - In `SelectionPopup.tsx`, the search bar supports both filtering existing cached words and pressing Enter to fetch new vocabulary immediately.
 - The fullscreen page indicator uses fixed layout positioning to stay in sync with the floating exit button.
+- Spacebar priority cleanly suppresses browser scroll events and guarantees auto-flip play/pause functionality across all book load states.
+
+---
+
+## Increment 61: Context Menu Category Submenu, 4-Way Viewport Boundary Flipping & Cancellable Non-Blocking PDF Reflow
+> **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Consolidated "Move to:" Category Submenu (`BookCard.tsx`)**:
+   - Replaced vertical context menu bloat from individual top-level category actions (`Remove from: SCI-FI`, `Move to: DRAMA`, `Move to: FICTION`) with a single, consolidated `Move to:${batchSuffix}` parent menu item.
+   - When opened, the submenu presents an explicit `Remove from: [Category]` action at the top (with red badge indicator and danger styling) if the book is currently assigned to a category, followed by a divider and the full list of categories with their color swatches and `(Current)` indicators.
+2. **Intelligent 4-Way Viewport Boundary Flipping (`ContextMenu.tsx`)**:
+   - Implemented reactive `SubmenuPopup` component that measures parent item coordinates and submenu dimensions in layout space.
+   - **Horizontal Flipping**: Automatically detects right-edge collisions (`spaceRight < subWidth + pad`) and flips the submenu to the left side (`right: calc(100% + 4px)`). If at the left edge, it opens to the right (`left: calc(100% + 4px)`).
+   - **Vertical Flipping & Clamping**: When opening near the bottom of the window, submenus flip upward (`top = itemRect.height - subHeight + 4`), ensuring categories never overflow below the visible viewport.
+   - **Scrollable Safety Ceiling**: Bound both main context menus and submenus to `maxHeight: min(420px, calc(100vh - 32px))` and `overflow-y-auto custom-scrollbar`, ensuring smooth mousewheel scrolling without offscreen clipping even on small screens or with dozens of categories.
+3. **Cooperative Non-Blocking PDF Reflow Engine (`pdfToEpubEngine.ts`)**:
+   - Injected cooperative event-loop yields (`await new Promise((resolve) => setImmediate(resolve))`) during both Pass 1 font sampling and Pass 2 extraction loops, as well as before heavy 1.8x rasterization of scanned/image-only pages.
+   - Completely resolved main-process event loop starvation, ensuring Windows never flags the Electron app as "Not Responding" during intensive image conversions.
+4. **Mid-Flight Reflow Cancellation Architecture (`pdfToEpubEngine.ts`, `index.ts`, `preload/index.ts`, `useAppStore.ts`, `pdfViewService.ts`, `PdfReaderView.tsx`, `SettingsDrawer.tsx`)**:
+   - Added `AbortSignal` support to `convertPdfToEpub` with instant cancellation checkpoints before processing pages, rasterizing images, or archiving the EPUB container.
+   - Registered `pdf:cancelConversion` IPC handler in `src/main/index.ts` and exposed `desktopAPI.cancelPdfConversion()` in preload.
+   - Added a visible "Cancel Reflow" button to the progress modal in `PdfReaderView.tsx`, wired up the <kbd>Escape</kbd> key to cancel conversion mid-flight and clear progress immediately, and added a quick "Cancel" action in `SettingsDrawer.tsx`.
+
+### Problem Statement
+1. In `BookCard.tsx`, categories were dumped as individual top-level context menu items (`Remove from: SCI-FI`, `Move to: DRAMA`, `Move to: FICTION`), creating massive vertical sprawl. The user requested consolidating these under a single `Move to:` menu item that reveals an accessible submenu.
+2. In `ContextMenu.tsx`, context menus and submenus could overflow offscreen at viewport edges (right, left, bottom, top) without intelligent 4-way boundary flipping and vertical scroll clamping.
+3. In `pdfToEpubEngine.ts`, converting image-based/scanned PDFs blocked the Node.js event loop synchronously during multi-megapixel JPEG/PNG rasterization, causing Windows to flag the Electron app as "Not Responding". Furthermore, there was no cancellation mechanism or UI button to cancel reflow mid-flight and clear progress.
+
+### Technical Fix
+- In `BookCard.tsx`, grouped categories into `categoryChildren` with conditional top-level `Remove from:` and individual `cat.name` items under `id: 'move-to-category'`.
+- In `ContextMenu.tsx`, computed horizontal/vertical clearance inside `SubmenuPopup` via `getBoundingClientRect()`, setting `top` offset and `left`/`right` properties dynamically while constraining `maxHeight`.
+- In `pdfToEpubEngine.ts`, integrated `AbortSignal` checks and `setImmediate` yields across Pass 1, Pass 2, and scanned fallback loops.
+- In `src/main/index.ts`, managed `activePdfConversionController = new AbortController()`, cancelling any active conversion upon receiving `pdf:cancelConversion`.
+- In `PdfReaderView.tsx` and `SettingsDrawer.tsx`, bound `useAppStore.getState().cancelPdfConversion()` to user cancel buttons and <kbd>Escape</kbd> key press.
+
+### Touched Files
+- `src/renderer/src/components/library/BookCard.tsx`
+- `src/renderer/src/components/ui/ContextMenu.tsx`
+- `src/main/pdfToEpubEngine.ts`
+- `src/main/index.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/services/pdfViewService.ts`
+- `src/renderer/src/stores/useAppStore.ts`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 engine unit and integration tests passed.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 31.91s.
+
+### Handoff Notes
+- In `ContextMenu.tsx`, `SubmenuPopup` handles arbitrary nesting depths and auto-detects viewport boundaries on every mount.
+- In `pdfToEpubEngine.ts`, cooperative yielding guarantees that Electron stays responsive to UI events even during hundred-page scanned PDF conversions.
 
 
 

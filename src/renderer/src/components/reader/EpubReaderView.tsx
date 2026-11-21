@@ -764,7 +764,14 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         e.preventDefault()
         e.stopPropagation()
         if (useAppStore.getState().isAutoscrollActive) {
-          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
+          const isPaused = adaptiveScrollEngine.isPausedState()
+          const isActive = adaptiveScrollEngine.getMetrics().isActive
+          if (isPaused || !isActive) {
+            adaptiveScrollEngine.setUserPaused(false)
+            armPageRef.current()
+          } else {
+            adaptiveScrollEngine.setUserPaused(true)
+          }
         } else {
           navigateStepRef.current('next')
         }
@@ -2281,6 +2288,25 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
 
+      // Priority Space bar handler: If autoscroll is switched on, strictly play or pause even on fresh book load/relocation
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (useAppStore.getState().isAutoscrollActive) {
+          const isPaused = adaptiveScrollEngine.isPausedState()
+          const isActive = adaptiveScrollEngine.getMetrics().isActive
+          if (isPaused || !isActive) {
+            adaptiveScrollEngine.setUserPaused(false)
+            armPageRef.current()
+          } else {
+            adaptiveScrollEngine.setUserPaused(true)
+          }
+        } else {
+          handleNext()
+        }
+        return
+      }
+
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft') ||
         (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace')
@@ -2312,13 +2338,6 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         openSearchDrawerRef.current()
-        return
-      }
-
-      if (isTargetInput(e.target)) {
-        if (e.key === 'Escape') {
-          ;(e.target as HTMLElement)?.blur?.()
-        }
         return
       }
 
@@ -2391,16 +2410,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
 
-      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
-        e.preventDefault()
-        e.stopPropagation()
-        if (useAppStore.getState().isAutoscrollActive) {
-          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
-        } else {
-          handleNext()
-        }
-        return
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'j') {

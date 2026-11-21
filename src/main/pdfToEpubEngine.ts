@@ -44,6 +44,7 @@ export interface PdfConvertResult {
   pageCount?: number
   imageCount?: number
   error?: string
+  cancelled?: boolean
 }
 
 interface ExtractedSpan {
@@ -187,10 +188,15 @@ figure.pdf-page-scan img {
 export async function convertPdfToEpub(
   pdfPath: string,
   targetEpubPath: string,
-  onProgress?: (p: PdfConvertProgress) => void
+  onProgress?: (p: PdfConvertProgress) => void,
+  signal?: AbortSignal
 ): Promise<PdfConvertResult> {
   // Dynamically load Artifex official MuPDF WASM package (ESM)
   const mupdf: any = await import('mupdf')
+
+  if (signal?.aborted) {
+    return { success: false, error: 'Reflow conversion cancelled by user', cancelled: true }
+  }
 
   if (!existsSync(pdfPath)) {
     return { success: false, error: `PDF file not found: ${pdfPath}` }
@@ -284,6 +290,12 @@ export async function convertPdfToEpub(
     let sampledCount = 0
 
     for (let p = 0; p < totalPages; p += sampleStep) {
+      if (signal?.aborted) {
+        throw new Error('Reflow conversion cancelled by user')
+      }
+      if (p % 10 === 0) {
+        await new Promise((resolve) => setImmediate(resolve))
+      }
       sampledCount++
       const page = doc.loadPage(p)
       try {
@@ -375,6 +387,12 @@ export async function convertPdfToEpub(
     let currentChapter = openChapter(chapterStartMap.get(0) || title)
 
     for (let p = 0; p < totalPages; p++) {
+      if (signal?.aborted) {
+        throw new Error('Reflow conversion cancelled by user')
+      }
+      // Cooperative event-loop yield so Electron main thread never hangs
+      await new Promise((resolve) => setImmediate(resolve))
+
       if (p > 0) {
         if (chapterStartMap.has(p)) {
           currentChapter = openChapter(chapterStartMap.get(p)!)
@@ -460,6 +478,7 @@ export async function convertPdfToEpub(
               activeBlock = null
             },
             onImageBlock(bbox: [number, number, number, number], _matrix: number[], image: any) {
+              if (signal?.aborted) return
               try {
                 const pixmap = image.toPixmap()
                 try {
@@ -512,6 +531,10 @@ export async function convertPdfToEpub(
 
         // Scanned / Image-Only / Full-Diagram Page Fallback: preserve 100% visually as crisp JPEG
         if (pageTextCharCount < 25 && blocks.filter((b) => b.type === 'image').length === 0) {
+          if (signal?.aborted) {
+            throw new Error('Reflow conversion cancelled by user')
+          }
+          await new Promise((resolve) => setImmediate(resolve))
           try {
             const scanMatrix = mupdf.Matrix.scale(1.8, 1.8)
             const scanPixmap = page.toPixmap(scanMatrix, mupdf.ColorSpace.DeviceRGB, false)
@@ -769,6 +792,10 @@ ${spineItems}
 </package>`
     zip.file('OEBPS/content.opf', contentOpf)
 
+    if (signal?.aborted) {
+      throw new Error('Reflow conversion cancelled by user')
+    }
+
     // Generate EPUB ZIP buffer and persist atomically to prevent partial files on crash
     const epubBuffer = await zip.generateAsync({
       type: 'nodebuffer',
@@ -788,7 +815,12 @@ ${spineItems}
       imageCount: imageCounter
     }
   } catch (err: any) {
-    return { success: false, error: err?.message || 'PDF to EPUB conversion failed.' }
+    const isCancelled = Boolean(signal?.aborted || err?.message?.includes('cancelled'))
+    return {
+      success: false,
+      error: isCancelled ? 'Reflow conversion cancelled by user' : err?.message || 'PDF to EPUB conversion failed.',
+      cancelled: isCancelled
+    }
   } finally {
     try {
       doc.destroy()

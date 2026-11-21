@@ -9,7 +9,8 @@ import {
   Maximize2,
   Bookmark,
   FileCode2,
-  Settings
+  Settings,
+  X
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -662,6 +663,10 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     settings.autoscrollAdaptiveSec
   ])
 
+  const handleCancelReflow = useCallback(async () => {
+    await useAppStore.getState().cancelPdfConversion()
+  }, [])
+
   // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -697,6 +702,26 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       if (isTargetInput(e.target)) {
         if (e.key === 'Escape') {
           ;(e.target as HTMLElement)?.blur?.()
+        }
+        return
+      }
+
+      // Priority Space bar handler: If autoscroll is switched on, strictly play or pause even on fresh book load/relocation
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (useAppStore.getState().isAutoscrollActive) {
+          const isPaused = adaptiveScrollEngine.isPausedState()
+          const isActive = adaptiveScrollEngine.getMetrics().isActive
+          if (isPaused || !isActive) {
+            adaptiveScrollEngine.setUserPaused(false)
+            armPageRef.current()
+          } else {
+            adaptiveScrollEngine.setUserPaused(true)
+          }
+        } else {
+          handleNext()
+          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
         return
       }
@@ -762,16 +787,6 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           handlePrev()
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
-      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === ' ' || e.code === 'Space')) {
-        e.preventDefault()
-        e.stopPropagation()
-        if (useAppStore.getState().isAutoscrollActive) {
-          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
-        } else {
-          handleNext()
-          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-        }
-        return
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
@@ -843,6 +858,10 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         })
       } else if (e.key === 'Escape') {
         e.preventDefault()
+        if (useAppStore.getState().isConvertingPdf) {
+          handleCancelReflow()
+          return
+        }
         if (contextMenu) {
           setContextMenu(null)
           return
@@ -1352,8 +1371,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
 
       {/* Offline Reflow Conversion Progress Overlay */}
       {isConvertingPdf && (
-        <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-[1px] flex items-center justify-center">
-          <div className="w-80 bg-[#171a21] border border-[#2d323f] rounded-lg p-4 shadow-2xl space-y-2.5">
+        <div className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-[1px] flex items-center justify-center animate-in fade-in duration-150">
+          <div className="w-80 bg-[#171a21] border border-[#2d323f] rounded-lg p-4 shadow-2xl space-y-3">
             <div className="flex items-center justify-between text-xs font-semibold text-white">
               <span>Reflowing PDF to EPUB (Offline)</span>
               <span className="font-mono text-[#2a69df]">{pdfConvertProgress?.percent ?? 0}%</span>
@@ -1367,6 +1386,14 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             <p className="text-[11px] text-[#8b949e] truncate">
               {pdfConvertProgress?.stage || 'Initializing MuPDF structured text engine...'}
             </p>
+            <button
+              type="button"
+              onClick={handleCancelReflow}
+              className="w-full mt-2 py-1.5 px-3 bg-[#232732] hover:bg-[#2d323f] border border-[#3d4455] rounded-md text-xs text-[#c8d1dc] hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5 font-medium"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Cancel Reflow</span>
+            </button>
           </div>
         </div>
       )}
