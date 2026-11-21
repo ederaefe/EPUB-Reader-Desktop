@@ -3727,6 +3727,55 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - All download interactions across both static HTML fallback and dynamic client-side GitHub API matching now guarantee delivery of the NSIS setup installer with auto-update integration enabled.
 
+---
+
+## Increment 68: Clean Branding Containment to About Tab & Official v1.0.8 Stable Release
+> **Agent**: @Agent-CleanRelease | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Uncluttered Native Window Chrome & Titlebar**:
+   - `src/renderer/src/components/ui/TitleBar.tsx`: Removed the `Beta` badge and `by Efedera` hyperlink from the titlebar header, leaving a clean, distraction-free Semply logo and app label.
+   - `src/main/index.ts`: Reverted the native window title from `Semply Ebook Reader - Efedera` to clean `Semply Ebook Reader`.
+2. **Confined Publisher Attribution to About & Metadata**:
+   - `src/renderer/src/components/modals/FullSettingsModal.tsx`: Removed the `Beta` badge, set display version to `Version 1.0.8 (Native Desktop Edition)`, and retained `Published by Efedera` linking to `https://efedera.me` strictly inside the About tab.
+   - `package.json`: Updated version to `1.0.8` while retaining metadata fields `"author": "Efedera <https://efedera.me>"` and `"appPublisher": "Efedera"`.
+   - `electron-builder.config.cjs`: Maintained build metadata attribution while resetting uninstaller display name to clean `Semply Ebook Reader`.
+3. **Official Stable Release v1.0.8**:
+   - `landing.js`: Updated `FALLBACK_VERSION` to `v1.0.8`.
+   - `index.html`: Cleaned footer attribution to `Semply Ebook Reader • Created by Efedera • Open Source under the MIT License`.
+   - Tagged and published official stable release `v1.0.8`.
+
+### Problem Statement
+1. **Unwanted Brand Plastering Across App Chrome**: Publisher attribution and Beta badges were displayed on the native titlebar and window header, cluttering the reader interface. Branding should be unobtrusive and confined exclusively to the About tab and system metadata.
+2. **Transition from Beta to Stable Release**: Promote `1.0.8-beta.1` to official stable release `1.0.8`.
+
+### Technical Fix
+1. **Desktop Chrome Simplification** (`TitleBar.tsx`, `index.ts`):
+   - Excised secondary label and beta chip elements from the flex header container.
+   - Normalized `BrowserWindow` creation options to omit trailing publisher suffix.
+2. **Settings & Build Config Alignment** (`FullSettingsModal.tsx`, `package.json`, `electron-builder.config.cjs`):
+   - Bumped semver string to `1.0.8`. Verified schema compliance with `validateConfiguration`.
+
+### Touched Files
+- `src/renderer/src/components/ui/TitleBar.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `src/main/index.ts`
+- `package.json`
+- `electron-builder.config.cjs`
+- `landing.js`
+- `index.html`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `node validateConfiguration`: Clean resolution with `SCHEMA_VALIDATION_SUCCESS`.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `git status`: Working tree clean after commit.
+
+### Handoff Notes
+- App chrome is completely free of intrusive publisher labels and beta badges. All attribution resides respectfully within the About preferences modal and package metadata.
+
+
 
 
 

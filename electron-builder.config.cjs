@@ -95,7 +95,7 @@ const config = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Semply Ebook Reader',
-    uninstallDisplayName: 'Semply Ebook Reader (by Efedera)'
+    uninstallDisplayName: 'Semply Ebook Reader'
   },
   portable: {
     artifactName: 'Semply-Ebook-Reader-${version}-win-${arch}-portable.${ext}'

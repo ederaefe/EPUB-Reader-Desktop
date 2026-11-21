@@ -942,12 +942,9 @@ export const FullSettingsModal: React.FC = () => {
                       <h3 className="text-[15px] font-bold text-[var(--app-text-strong)]">
                         Semply Ebook Reader
                       </h3>
-                      <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400/90 border border-amber-500/30 uppercase tracking-wider font-semibold">
-                        Beta
-                      </span>
                     </div>
                     <p className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                      Version 1.0.8-beta.1 (Native Desktop Edition)
+                      Version 1.0.8 (Native Desktop Edition)
                     </p>
                     <p className="text-[11px] text-[var(--app-text-subtle)] font-medium mt-0.5">
                       Published by{' '}

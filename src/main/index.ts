@@ -426,7 +426,7 @@ function createWindow(): void {
   const saved = loadWindowState()
 
   mainWindow = new BrowserWindow({
-    title: 'Semply Ebook Reader - Efedera',
+    title: 'Semply Ebook Reader',
     ...(iconPath ? { icon: iconPath } : {}),
     ...(saved.x !== undefined && saved.y !== undefined ? { x: saved.x, y: saved.y } : {}),
     width: saved.width,

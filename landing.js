@@ -7,7 +7,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const GITHUB_REPO = 'ederaefe/EPUB-Reader-Desktop';
-  const FALLBACK_VERSION = 'v1.0.8-beta.1';
+  const FALLBACK_VERSION = 'v1.0.8';
   const RELEASES_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases`;
   const LATEST_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
 
