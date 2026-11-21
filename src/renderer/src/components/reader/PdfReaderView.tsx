@@ -599,6 +599,19 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           if (cancelled || !useAppStore.getState().isAutoscrollActive) return
           const cur = currentPageRef.current
           const tot = totalPagesRef.current
+          const vp = viewportRef.current
+          const canScrollVertically =
+            vp &&
+            vp.scrollHeight - vp.clientHeight > 20 &&
+            vp.scrollTop + vp.clientHeight < vp.scrollHeight - 10
+          if (canScrollVertically) {
+            vp.scrollBy({ top: vp.clientHeight * 0.85, behavior: 'smooth' })
+            setTimeout(() => {
+              if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+              armPage()
+            }, 450)
+            return
+          }
           const isLastSpread = isDual ? cur + 1 >= tot : cur >= tot
           if (isLastSpread) {
             adaptiveScrollEngine.stop()
@@ -731,7 +744,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           handlePrev()
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
-      } else if (e.key === ' ') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
@@ -766,7 +779,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault()
         toggleHelpModal()
-      } else if (e.key === '+' || e.key === '=') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.key === '=')) {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -774,7 +787,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         } else {
           setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))
         }
-      } else if (e.key === '-') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '-') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
@@ -782,7 +795,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         } else {
           setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))
         }
-      } else if (e.key === '[') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '[') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
@@ -790,7 +803,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         } else {
           handleChapterStep('prev')
         }
-      } else if (e.key === ']') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === ']') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -798,7 +811,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         } else {
           handleChapterStep('next')
         }
-      } else if (e.key === '0') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '0') {
         e.preventDefault()
         setPdfZoom(1.0)
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {

@@ -774,6 +774,10 @@ export const FullSettingsModal: React.FC = () => {
                 const countdownSec = settings.autoscrollCountdownSec ?? 20
                 const adaptiveSec = settings.autoscrollAdaptiveSec ?? 25
                 const microPauseEnabled = settings.autoscrollMicroPause ?? true
+                const isPdfDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+                const pdfDwellSec = isPdfDual
+                  ? (settings.pdfCountdownSecDual ?? 45)
+                  : (settings.pdfCountdownSecSingle ?? 25)
 
                 const handleModeChange = (mode: AutoscrollMode) => {
                   updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
@@ -784,6 +788,16 @@ export const FullSettingsModal: React.FC = () => {
                   const clamped = Math.max(3, Math.min(600, Math.round(sec)))
                   updateSettings({ autoscrollCountdownSec: clamped })
                   adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
+                }
+
+                const handlePdfCountdownChange = (sec: number) => {
+                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+                  if (isPdfDual) {
+                    updateSettings({ pdfCountdownSecDual: clamped, autoscrollCountdownSec: clamped })
+                  } else {
+                    updateSettings({ pdfCountdownSecSingle: clamped, autoscrollCountdownSec: clamped })
+                  }
+                  adaptiveScrollEngine.configure({ fixedCountdownSec: clamped, mode: 'countdown' })
                 }
 
                 const handleAdaptiveSecChange = (sec: number) => {
@@ -856,7 +870,38 @@ export const FullSettingsModal: React.FC = () => {
                       </button>
                     </div>
 
-                    {!isPdf && (
+                    {isPdf ? (
+                      <div className="space-y-2.5 pt-0.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                              Dwell per spread
+                            </span>
+                            <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                              ({isPdfDual ? 'Dual page' : 'Single page'})
+                            </span>
+                            {pdfDwellSec !== (isPdfDual ? 45 : 25) && (
+                              <button
+                                type="button"
+                                onClick={() => handlePdfCountdownChange(isPdfDual ? 45 : 25)}
+                                title={`Reset to default (${isPdfDual ? '45s' : '25s'})`}
+                                className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <SecondsNumberInput
+                            value={pdfDwellSec}
+                            min={3}
+                            max={600}
+                            step={5}
+                            onChange={handlePdfCountdownChange}
+                            ariaLabel="PDF Dwell per spread"
+                          />
+                        </div>
+                      </div>
+                    ) : (
                       <>
                         {/* Segmented Mode Selector */}
                     <div className="glass-pill-track grid-cols-2 p-1">

@@ -2627,3 +2627,61 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - In `PdfReaderView.tsx`, `isLastSpread` calculation (`isDual ? cur + 1 >= tot : cur >= tot`) must always govern both navigation button disabling and countdown termination to prevent re-rendering the final page solo in dual-spread layout.
 
+---
+
+## Increment 43: Auto-Flip Continuous Scroll Re-Arming, Hotkey Collision Hardening & PDF Dwell Settings Parity
+> **Agent**: @Agent-AutoFlipRefiner | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Resolved Continuous Vertical Scroll Re-Arming Freeze (`EpubReaderView.tsx`)**: In `advancePage()`, when `canScrollVertically` is true, scheduled an explicit `armPage()` invocation 450ms after calling `container.scrollBy({ top: ..., behavior: 'smooth' })` along with `rendition.reportLocation()`. This ensures that after smooth scrolling settles, the countdown timer accurately recalculates visible word metrics and re-arms for the subsequent scroll or chapter edge transition instead of halting permanently.
+2. **Hardened Hotkey Modifier Guards Against System Collisions (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**: Enforced strict `!e.ctrlKey && !e.metaKey && !e.altKey` validation on `Space`, `+`, `-`, `=`, `[`, and `]`. Restricted `Space` to `!e.shiftKey`, eliminating accidental triggers when pressing `Alt+Space` (system window menu on Windows), `Ctrl+Space` (IME switch for East Asian languages), `Shift+Space` (browser PageUp), or `Alt+[` / `Alt+]` (system or browser history navigation).
+3. **Supported Zoomed PDF Vertical Headroom Scrolling (`PdfReaderView.tsx`)**: Integrated vertical scroll headroom detection (`vp.scrollHeight - vp.clientHeight > 20 && vp.scrollTop + vp.clientHeight < vp.scrollHeight - 10`) inside `armPage()` in `PdfReaderView.tsx`. When reading a zoomed-in PDF, countdown expiration smoothly scrolls down 85% of the viewport and re-arms for the remainder of the page before turning spreads.
+4. **Synchronized PDF Dwell Time Extraction in AdaptiveScrollOverlay (`AdaptiveScrollOverlay.tsx`)**: Extracted `pdfCountdownSecDual` and `pdfCountdownSecSingle` from the store and derived `pdfDwellSec = isPdfDual ? (pdfCountdownSecDual ?? 45) : (pdfCountdownSecSingle ?? 25)`. Bound `countdownSec` to `isPdf ? pdfDwellSec : (autoscrollCountdownSec ?? 20)`, fixing preset button highlighting and input field desync where PDFs in dual mode mistakenly displayed 20s instead of 45s.
+5. **Restored PDF Dwell per Spread Controls in Full Settings (`FullSettingsModal.tsx`)**: Added a dedicated PDF dwell control card featuring `(Dual page)` or `(Single page)` labels, reset button to 45s/25s defaults, and `SecondsNumberInput` binding to `handlePdfCountdownChange`, providing 100% settings parity between `SettingsDrawer.tsx` and `FullSettingsModal.tsx`.
+6. **Input Field Escape Handling (`EpubReaderView.tsx`)**: Aligned `isTargetInput` handling in `EpubReaderView.tsx` with `PdfReaderView.tsx`, ensuring `Escape` cleanly blurs the focused input field before cascading to drawer/modal closures.
+7. **Expanded Automated Verification Suite (`scratch/test_autoflip_engines.ts`)**: Added 17 automated assertions validating hotkey modifier collision rejection (`Alt+Space`, `Ctrl+Space`, `Shift+Space`, `Alt+[`, `Alt+]`, `Alt+=`, `Alt+-`), scroll headroom calculation, and format-aware PDF dwell duration derivation.
+
+### Problem Statement
+1. In `EpubReaderView.tsx`, when `canScrollVertically` was true, `advancePage()` scrolled down 85% of the viewport but never scheduled `armPage()` to re-arm the countdown timer once smooth scrolling settled. Since `didScrollVertically` was true, the 1200ms watchdog safely aborted, causing Auto-Flip to permanently stop after a single vertical scroll.
+2. In `PdfReaderView.tsx` and `EpubReaderView.tsx`, hotkeys for `Space`, `+`, `-`, `=`, `[`, and `]` lacked strict `!e.ctrlKey && !e.metaKey && !e.altKey` modifier checks. This caused system-level shortcuts like `Alt+Space` (system window menu) or `Ctrl+Space` (IME switch) and `Alt+[` / `Alt+]` to be intercepted and trigger unwanted reader page turns or dwell time alterations.
+3. In `PdfReaderView.tsx`, zoomed-in pages with vertical scroll headroom immediately jumped to the next page upon countdown expiration rather than scrolling down the zoomed canvas first.
+4. In `AdaptiveScrollOverlay.tsx`, `countdownSec` was directly derived from `settings.autoscrollCountdownSec` (default 20s) instead of checking `isPdf` and `pdfCountdownSecDual`/`Single` (defaults 45s/25s), resulting in the overlay showing 20s and highlighting the 20s preset while the PDF engine was counting down from 45s.
+5. In `FullSettingsModal.tsx`, all dwell time controls were omitted when `isPdf` was true, preventing readers from inspecting or adjusting PDF dwell per spread.
+
+### Technical Fix
+1. In `EpubReaderView.tsx`, modified `advancePage()`:
+   ```ts
+   if (canScrollVertically) {
+     container.scrollBy({ top: container.clientHeight * 0.85, behavior: 'smooth' })
+     setTimeout(() => {
+       if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+       try {
+         ;(renditionRef.current as any)?.reportLocation?.()
+       } catch {}
+       armPage()
+     }, 450)
+   }
+   ```
+2. In `PdfReaderView.tsx` and `EpubReaderView.tsx`, wrapped key handlers for `Space`, `+`, `=`, `-`, `[`, and `]` with `!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey` (for Space) and `!e.ctrlKey && !e.metaKey && !e.altKey` (for zoom/nudge).
+3. In `PdfReaderView.tsx`, added vertical scroll headroom checking to `onExpire` in `armPage()`.
+4. In `AdaptiveScrollOverlay.tsx`, derived `effectiveCountdownSec = isPdf ? pdfDwellSec : (autoscrollCountdownSec ?? 20)`.
+5. In `FullSettingsModal.tsx`, added the `isPdf` branch inside the Reading tab Auto-Flip settings section with `SecondsNumberInput` wired to `handlePdfCountdownChange`.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 78 automated test assertions passed (monotonic countdown, sleep/suspend guard, EMA learning, skimming/idling guards, CJK ideograms, live mode switching, micro-pauses, PDF spread boundaries, modifier collision rejection, headroom detection, and dwell extraction parity).
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly (out/main: 133.26 kB, out/preload: 5.36 kB, out/renderer: 3,480.05 kB JS, 122.95 kB CSS).
+
+### Handoff Notes
+- In both reader engines, any programmatic vertical scrolling (`container.scrollBy` or `viewportRef.current.scrollBy`) must schedule `armPage()` with at least a 400–450ms settling timeout so browser smooth-scrolling animations complete before re-evaluating DOM visibility or CFI positions.
+
+

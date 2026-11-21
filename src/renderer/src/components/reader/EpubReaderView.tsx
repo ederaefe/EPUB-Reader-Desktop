@@ -726,7 +726,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else if (e.key === 'F8') {
         e.preventDefault()
         handleStopTTSRef.current()
-      } else if (e.key === ' ') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
         e.preventDefault()
         if (book.format !== 'pdf' && useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
@@ -742,7 +742,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace' || e.key === 'k') {
         e.preventDefault()
         navigateStepRef.current('prev')
-      } else if (e.key === '[') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '[') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
@@ -750,7 +750,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         } else {
           handleChapterStepRef.current('prev')
         }
-      } else if (e.key === ']') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === ']') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -767,7 +767,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         e.preventDefault()
         useAppStore.getState().toggleHelpModal()
-      } else if (e.key === '+' || e.key === '=') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.key === '=')) {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -776,7 +776,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           const cur = useAppStore.getState().settings.fontSize
           useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
         }
-      } else if (e.key === '-') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '-') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
@@ -1901,6 +1901,13 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
             container.scrollTop + container.clientHeight < container.scrollHeight - 10
           if (canScrollVertically) {
             container.scrollBy({ top: container.clientHeight * 0.85, behavior: 'smooth' })
+            setTimeout(() => {
+              if (cancelled || !useAppStore.getState().isAutoscrollActive) return
+              try {
+                ;(renditionRef.current as any)?.reportLocation?.()
+              } catch {}
+              armPage()
+            }, 450)
           } else {
             await handleNext()
           }
@@ -2113,7 +2120,12 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
   // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isTargetInput(e.target)) return
+      if (isTargetInput(e.target)) {
+        if (e.key === 'Escape') {
+          ;(e.target as HTMLElement)?.blur?.()
+        }
+        return
+      }
 
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
@@ -2229,7 +2241,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
 
-      if (e.key === ' ') {
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
         e.preventDefault()
         if (book.format !== 'pdf' && useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
@@ -2245,7 +2257,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace' || e.key === 'k') {
         e.preventDefault()
         handlePrev()
-      } else if (e.key === '[') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '[') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
@@ -2253,7 +2265,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         } else {
           handleChapterStepRef.current('prev')
         }
-      } else if (e.key === ']') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === ']') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -2261,7 +2273,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         } else {
           handleChapterStepRef.current('next')
         }
-      } else if (e.key === '+' || e.key === '=') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '+' || e.key === '=')) {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(2)
@@ -2270,7 +2282,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           const cur = useAppStore.getState().settings.fontSize
           useAppStore.getState().updateSettings({ fontSize: Math.min(42, cur + 2) })
         }
-      } else if (e.key === '-') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '-') {
         e.preventDefault()
         if (useAppStore.getState().isAutoscrollActive) {
           const updated = adaptiveScrollEngine.nudgeDwellSec(-2)

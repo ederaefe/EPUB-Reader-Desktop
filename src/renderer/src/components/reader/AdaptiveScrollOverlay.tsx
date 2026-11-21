@@ -38,7 +38,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     autoscrollAdaptive,
     autoscrollCountdownSec,
     autoscrollAdaptiveSec,
-    autoscrollMicroPause
+    autoscrollMicroPause,
+    pdfCountdownSecDual,
+    pdfCountdownSecSingle
   } = useAppStore(
     useShallow((s) => ({
       pageLayout: s.settings.pageLayout,
@@ -47,7 +49,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
       autoscrollAdaptive: s.settings.autoscrollAdaptive,
       autoscrollCountdownSec: s.settings.autoscrollCountdownSec,
       autoscrollAdaptiveSec: s.settings.autoscrollAdaptiveSec,
-      autoscrollMicroPause: s.settings.autoscrollMicroPause
+      autoscrollMicroPause: s.settings.autoscrollMicroPause,
+      pdfCountdownSecDual: s.settings.pdfCountdownSecDual,
+      pdfCountdownSecSingle: s.settings.pdfCountdownSecSingle
     }))
   )
 
@@ -57,6 +61,9 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const isPdf = activeBookFormat === 'pdf'
   const isPdfDual = (pageLayout ?? (pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
   const pdfDefaultDwell = isPdfDual ? 45 : 25
+  const pdfDwellSec = isPdfDual
+    ? (pdfCountdownSecDual ?? 45)
+    : (pdfCountdownSecSingle ?? 25)
 
   useEffect(() => {
     return adaptiveScrollEngine.subscribe((m) => setMetrics(m))
@@ -94,7 +101,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const effectiveMode: AutoscrollMode =
     autoscrollMode ?? (autoscrollAdaptive === false ? 'countdown' : 'adaptive')
-  const countdownSec = autoscrollCountdownSec ?? 20
+  const countdownSec = isPdf ? pdfDwellSec : (autoscrollCountdownSec ?? 20)
   const adaptiveSec = autoscrollAdaptiveSec ?? 25
   const microPauseEnabled = autoscrollMicroPause ?? true
 

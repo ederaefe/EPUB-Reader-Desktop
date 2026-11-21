@@ -175,3 +175,11 @@
   - **Real-Time Dynamic Cadence Tuning**: Changing cadence modes between Fixed and Smart Auto-Flip, stepping base seconds in settings, or clicking Reset now dynamically scales the running countdown clock in real time without restarting the timer.
   - **Pause-Safe Micro-Pauses**: If you pause Auto-Flip during the brief 300ms pause at chapter ends or section breaks, the page will never advance while paused. Unpausing naturally completes the page turn and arms the next countdown.
 
+- **Continuous Vertical Auto-Scroll Re-Arming & Cross-Format Dwell Parity**:
+  - **Uninterrupted Continuous Vertical Reading**: When reading reflowable books in continuous vertical mode, Auto-Flip smoothly glides the page down and automatically re-arms the countdown timer for the newly visible section once scrolling settles, eliminating frozen timers on continuous pages.
+  - **Zoomed PDF Vertical Headroom Support**: When reading a zoomed-in PDF page that extends beyond the screen height, Auto-Flip now scrolls down through the visible page content first before advancing to the next page or spread.
+  - **Universal System Hotkey Protection**: Cleanly protected `Space`, `+`, `-`, `=`, `[`, and `]` against system-level modifier collisions (`Alt + Space`, `Ctrl + Space`, `Alt + [`, `Alt + ]`, `Alt + +`, `Alt + -`). Hands-free reading now remains completely unaffected when switching input methods or opening OS system menus.
+  - **Synchronized PDF Dwell Displays**: The corner countdown overlay and Settings controls now accurately display the dedicated dwell time configured for your current layout (25 seconds for single page, 45 seconds for dual page), keeping presets and number inputs perfectly synchronized with the active reading timer.
+  - **Comprehensive Full Settings Controls**: Readers accessing Full Settings while viewing a PDF can now directly inspect and adjust dwell seconds per spread with instant reset options for both single and dual page modes.
+
+
