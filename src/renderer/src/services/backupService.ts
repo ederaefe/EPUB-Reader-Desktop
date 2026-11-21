@@ -168,7 +168,7 @@ export function sanitizeSettings(raw: unknown): Partial<UserSettings> {
   if (raw.autoscrollMode === 'adaptive' || raw.autoscrollMode === 'countdown') {
     out.autoscrollMode = raw.autoscrollMode
   }
-  const autoscrollCountdownSec = clampFinite(raw.autoscrollCountdownSec, 3, 600)
+  const autoscrollCountdownSec = clampFinite(raw.autoscrollCountdownSec, 2, 600)
   if (autoscrollCountdownSec !== undefined) out.autoscrollCountdownSec = Math.round(autoscrollCountdownSec)
   const autoscrollAdaptiveSec = clampFinite(raw.autoscrollAdaptiveSec, 3, 600)
   if (autoscrollAdaptiveSec !== undefined) out.autoscrollAdaptiveSec = Math.round(autoscrollAdaptiveSec)

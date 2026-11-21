@@ -120,7 +120,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   }
 
   const handleCountdownChange = (nextSec: number) => {
-    const clamped = Math.max(3, Math.min(600, Math.round(nextSec)))
+    const clamped = Math.max(2, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
     if (!isActive) {
       useAppStore.getState().setAutoscrollActive(true)

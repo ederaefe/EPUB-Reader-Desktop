@@ -3246,4 +3246,29 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - In `EpubReaderView.tsx`, never introduce artificial spine-jumping fallbacks inside `navigateStep`. `rendition.next()` and `rendition.prev()` handle intra-chapter columns and inter-chapter transitions natively.
 - Backspace and Escape must never navigate to the library; reader dismissal is strictly controlled via `ReaderTopBar`.
 
+---
+
+## Increment 55: Fixed Countdown 2s Minimum Floor Clamping & Backup Schema Alignment
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Harmonized Countdown Clamping Floor in HUD Overlay (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`)**:
+   - Replaced residual `Math.max(3, ...)` in `handleCountdownChange` with `Math.max(2, ...)` to achieve complete parity with `minFloor` (2s).
+   - Direct numerical input of `2` or downward nudges from `4` to `2` now cleanly persist to user settings and rearm the countdown engine without being artificially bumped to 3s.
+2. **Aligned Backup Schema Sanitation (`src/renderer/src/services/backupService.ts`)**:
+   - Updated `clampFinite(raw.autoscrollCountdownSec, 3, 600)` to `clampFinite(raw.autoscrollCountdownSec, 2, 600)`.
+   - Restoring settings from JSON backups or cloud sync profiles now permits the minimum 2s floor.
+
+### Touched Files
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/services/backupService.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed cleanly.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 23.22s.
+
+
 
