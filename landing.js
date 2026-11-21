@@ -54,11 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
     linux: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.001 2c-2.41 0-4.001 1.87-4.001 4.168 0 .86.23 1.68.64 2.39-1.63 1.11-2.64 2.94-2.64 4.942 0 1.37.52 2.65 1.4 3.63-.44.75-1.1 1.44-1.92 1.95-.3.19-.24.65.11.75 1.77.5 3.32-.07 4.41-.95.63.18 1.3.28 2 .28s1.37-.1 2-.28c1.09.88 2.64 1.45 4.41.95.35-.1.41-.56.11-.75-.82-.51-1.48-1.2-1.92-1.95.88-.98 1.4-2.26 1.4-3.63 0-2.002-1.01-3.832-2.64-4.942.41-.71.64-1.53.64-2.39 0-2.298-1.591-4.168-4.001-4.168z"/></svg>`
   };
 
-  // Fallback download targets
+  // Fallback download targets (routed via Vercel dynamic download redirector)
   const fallbackUrls = {
-    windows: `${LATEST_RELEASE_URL}/download/Semply-Setup.exe`,
-    macos: `${LATEST_RELEASE_URL}/download/Semply.dmg`,
-    linux: `${LATEST_RELEASE_URL}/download/Semply.AppImage`
+    windows: '/api/download?os=win',
+    macos: '/api/download?os=mac',
+    linux: '/api/download?os=linux'
   };
 
   function updatePlatformPillsUI(os) {
@@ -100,11 +100,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Array.isArray(assets) && assets.length > 0) {
       let matchedAsset = null;
       if (activeOS === 'windows') {
-        matchedAsset = assets.find(a => a.name.endsWith('.exe')) || assets[0];
+        matchedAsset = assets.find(a => a.name.endsWith('.exe') && a.name.includes('setup')) ||
+                       assets.find(a => a.name.endsWith('.exe') && !a.name.includes('portable')) ||
+                       assets.find(a => a.name.endsWith('.exe')) ||
+                       assets[0];
       } else if (activeOS === 'macos') {
-        matchedAsset = assets.find(a => a.name.endsWith('.dmg') || a.name.endsWith('.zip')) || assets[0];
+        matchedAsset = assets.find(a => a.name.endsWith('.dmg')) ||
+                       assets.find(a => a.name.endsWith('.zip')) ||
+                       assets[0];
       } else if (activeOS === 'linux') {
-        matchedAsset = assets.find(a => a.name.endsWith('.AppImage') || a.name.endsWith('.deb')) || assets[0];
+        matchedAsset = assets.find(a => a.name.endsWith('.AppImage')) ||
+                       assets.find(a => a.name.endsWith('.deb')) ||
+                       assets[0];
       }
 
       if (matchedAsset) {

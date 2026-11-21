@@ -3692,6 +3692,42 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - The website now operates with clean evergreen download and documentation labels without hardcoded or dynamically injected version strings.
 
+---
+
+## Increment 67: Enforce NSIS Setup Installer Delivery Over Portable Binaries
+> **Agent**: @Agent-InstallerRouting | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Prioritized NSIS Setup Installer in Client Asset Resolution**:
+   - In `landing.js`, refined `activeOS === 'windows'` asset matching to explicitly filter for `a.name.endsWith('.exe') && a.name.includes('setup')` before falling back to non-portable executables (`!a.name.includes('portable')`).
+   - Replaced static placeholder GitHub URLs in `fallbackUrls` with dynamic serverless endpoints (`/api/download?os=win`), which already strictly enforce non-portable setup binary routing.
+2. **Initial Download CTA Pre-Routing**:
+   - In `index.html`, set the primary download anchor's default `href` directly to `/api/download?os=win`, guaranteeing immediate routing to the NSIS setup installer even prior to client-side release querying.
+
+### Problem Statement
+1. **Unwanted Portable Binary Selection on Website**: In `landing.js`, `assets.find(a => a.name.endsWith('.exe'))` greedily matched `Semply-Ebook-Reader-*-win-x64-portable.exe` because GitHub's asset array ordered portable ahead of setup. Portable builds do not register desktop shortcuts or automatic background updates.
+
+### Technical Fix
+1. **Asset Filter Realignment** (`landing.js`):
+   - Changed Windows asset matcher from loose `.endsWith('.exe')` to dual-tier filter checking `name.includes('setup')` and excluding `name.includes('portable')`.
+2. **Fallback Integration** (`landing.js`, `index.html`):
+   - Wired fallback download targets to Vercel's proxy handler (`/api/download?os=win`, `/api/download?os=mac`, `/api/download?os=linux`).
+
+### Touched Files
+- `landing.js`
+- `index.html`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- Node test fixture verifying asset selection against live GitHub release payload: strictly selected `Semply-Ebook-Reader-1.0.8-beta.1-win-x64-setup.exe`.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `git status`: Working tree clean after commit.
+
+### Handoff Notes
+- All download interactions across both static HTML fallback and dynamic client-side GitHub API matching now guarantee delivery of the NSIS setup installer with auto-update integration enabled.
+
+
 
 
 
