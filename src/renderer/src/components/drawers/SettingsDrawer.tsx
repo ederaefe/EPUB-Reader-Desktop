@@ -119,14 +119,6 @@ const PDF_ZOOM_PRESETS = [
   { id: 'full', label: 'Full', scale: 1.6 }
 ] as const
 
-const getPdfZoomPresetLabel = (zoom: number): string => {
-  const rounded = Math.round(zoom * 100)
-  if (Math.abs(zoom - 0.85) < 0.06) return 'Fit (85%)'
-  if (Math.abs(zoom - 1.2) < 0.06) return 'Default (120%)'
-  if (Math.abs(zoom - 1.6) < 0.06) return 'Full (160%)'
-  return `${rounded}%`
-}
-
 export const SettingsDrawer: React.FC = () => {
   const {
     activeBook,
@@ -558,10 +550,14 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Zoom Stepper: - [ size ] + placed directly below Page layout with subtle neo styling */}
+                {/* Zoom: - [ x% ] + matching exact glass-pill-track alignment */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[12px] font-semibold text-[var(--app-text)]">Zoom</span>
-                  <div className="inline-flex items-center h-7 w-[156px] rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-sm overflow-hidden shrink-0">
+                  <div
+                    className="glass-pill-track grid-cols-3 w-[156px]"
+                    role="group"
+                    aria-label="Zoom controls"
+                  >
                     <button
                       type="button"
                       onClick={() => {
@@ -572,40 +568,34 @@ export const SettingsDrawer: React.FC = () => {
                         }
                       }}
                       disabled={isOriginalPdf ? pdfZoom <= 0.5 : settings.fontSize <= 12}
-                      className="w-7 h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                      className="glass-pill-btn flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                       title="Zoom out (Ctrl -)"
+                      aria-label="Zoom out"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
                     <button
                       type="button"
+                      data-active="true"
                       onClick={() => {
                         if (isOriginalPdf) {
-                          if (Math.abs(pdfZoom - 0.85) < 0.08) setPdfZoom(1.2)
-                          else if (Math.abs(pdfZoom - 1.2) < 0.08) setPdfZoom(1.6)
-                          else setPdfZoom(0.85)
+                          if (Math.abs(pdfZoom - 1.2) < 0.05) setPdfZoom(1.0)
+                          else setPdfZoom(1.2)
                         } else {
-                          if (Math.abs(settings.fontSize - 16) <= 1) updateSettings({ fontSize: 21 })
-                          else if (Math.abs(settings.fontSize - 21) <= 1) updateSettings({ fontSize: 28 })
-                          else updateSettings({ fontSize: 16 })
+                          updateSettings({ fontSize: 21 })
                         }
                       }}
-                      className="flex-1 h-full flex items-center justify-center px-1 text-[10.5px] font-semibold tracking-tight text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] active:scale-[0.98] transition-all cursor-pointer select-none"
+                      className="glass-pill-btn flex items-center justify-center font-mono font-semibold text-[11px] tabular-nums cursor-pointer"
                       title={
                         isOriginalPdf
-                          ? `Zoom: ${Math.round(pdfZoom * 100)}% (Click to cycle Fit (85%) → Default (120%) → Full (160%))`
-                          : `Zoom: ${Math.round((settings.fontSize / 21) * 120)}% (Click to cycle Fit → Default → Full)`
+                          ? `Zoom: ${Math.round(pdfZoom * 100)}% (Click to toggle 120% / 100%)`
+                          : `Zoom: ${Math.round((settings.fontSize / 21) * 100)}% (Click to reset to 100%)`
                       }
+                      aria-label="Reset zoom"
                     >
                       {isOriginalPdf
-                        ? getPdfZoomPresetLabel(pdfZoom)
-                        : Math.abs(settings.fontSize - 16) <= 1
-                          ? 'Fit (85%)'
-                          : Math.abs(settings.fontSize - 21) <= 1
-                            ? 'Default (120%)'
-                            : Math.abs(settings.fontSize - 28) <= 1
-                              ? 'Full (160%)'
-                              : `${Math.round((settings.fontSize / 21) * 120)}%`}
+                        ? `${Math.round(pdfZoom * 100)}%`
+                        : `${Math.round((settings.fontSize / 21) * 100)}%`}
                     </button>
                     <button
                       type="button"
@@ -617,10 +607,11 @@ export const SettingsDrawer: React.FC = () => {
                         }
                       }}
                       disabled={isOriginalPdf ? pdfZoom >= 3.0 : settings.fontSize >= 42}
-                      className="w-7 h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                      className="glass-pill-btn flex items-center justify-center disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                       title="Zoom in (Ctrl +)"
+                      aria-label="Zoom in"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

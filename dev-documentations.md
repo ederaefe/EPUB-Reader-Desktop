@@ -3030,3 +3030,36 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - Desktop security boundaries (IPC channel whitelists, local file system sandboxing, and network egress seals) continue operating at full strength in `src/main/security/securityManager.ts` by default.
 - Read Aloud can be controlled directly via `F7` (play/pause) and `F8` (stop) hotkeys or via the `More` tab in `SettingsDrawer`.
+
+
+---
+
+## Increment 50: Unified Glassmorphic Zoom Segmented Track & Minimalist Percentage Pill
+> **Agent**: @Agent-DesignArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Glassmorphic Zoom Track Harmonization** (`src/renderer/src/components/drawers/SettingsDrawer.tsx`):
+   - Replaced the rectangular bordered stepper box with the standard `.glass-pill-track` container (`w-[156px]`, `grid-cols-3`).
+   - Aligned the Zoom row with the exact width, curvature, backdrop-blur, and padding of the preceding typography controls (`Text size`, `Line spacing`, `Text weight`, and `Page layout`).
+   - Implemented the `-` (Minus) and `+` (Plus) buttons as independent `.glass-pill-btn` elements with smooth active scale transitions (`active:scale-[0.96]`) and hover transparency.
+2. **Centered Active Percentage Pill Display**:
+   - Replaced verbose preset text strings (`Default (120%)`, `Fit (85%)`, `Full (160%)`) with a minimalist percentage display (`${zoomPercent}%`, e.g., `120%`, `100%`).
+   - Marked the middle percentage button with `data-active="true"`, elevating it into the signature glassmorphic selected pill with top inner highlight, gradient glow, and subtle drop shadow.
+   - Configured clicking the middle percentage pill to reset or toggle zoom scale (120% default for PDF, 100% baseline for EPUB).
+   - Removed dead helper function `getPdfZoomPresetLabel`.
+
+### Problem Statement
+1. Inconsistent Stepper Geometry in Display Settings (`SettingsDrawer.tsx`): The Zoom row previously utilized a squarish rectangular container (`rounded-md`, `h-7`) with rigid vertical dividers that clashed with the surrounding rounded-full glass pill tracks.
+2. Cluttered Preset Labeling: Displaying compound labels like `Default (120%)` overcrowded the compact 156px segment and deviated from the pure glyph/icon design language across the rest of the drawer.
+
+### Touched Files
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 TypeScript compilation errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 9.75s (out/main: 134.20 kB, out/preload: 5.36 kB, out/renderer: 3,472.57 kB JS, 128.74 kB CSS).
+
+### Handoff Notes
+- In `SettingsDrawer.tsx`, the zoom control now strictly inherits the global `.glass-pill-track` and `.glass-pill-btn` styles from `src/renderer/src/index.css`, guaranteeing seamless color contrast across Night, Dark Sepia, Light Sepia, and Day reading themes.

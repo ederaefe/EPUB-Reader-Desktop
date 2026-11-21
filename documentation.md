@@ -230,3 +230,8 @@
 - **Simplified Preferences & Dedicated Audio Controls**:
   - **Unobtrusive Background Security**: Security safeguards (such as strict local file access and local network seals) are now active by default behind the scenes without cluttering the Settings menu with technical configuration options.
   - **Read Aloud in More Settings**: Voice narration controls (play/pause, mute, and speed selection) have moved to the **More** tab in the Reader Settings drawer, leaving the **Auto-Flip** tab focused purely on automated page turning and pacing.
+
+
+- **Harmonized Glassmorphic Zoom Segmented Track**:
+  - **Unified Geometry & Alignment**: The Zoom row directly beneath Page Layout now uses the exact same curved glass track (`156px` width) and button spacing as Text Size, Line Spacing, and Page Layout.
+  - **Centered Percentage Pill**: Replaced descriptive labels with a clean, centered glassmorphic percentage indicator (e.g. `120%`, `100%`) flanked by independent minus and plus pill buttons. Clicking the center pill resets the reading scale to default.
