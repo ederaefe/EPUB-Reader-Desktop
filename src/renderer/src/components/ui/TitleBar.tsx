@@ -25,7 +25,7 @@ export const TitleBar: React.FC = () => {
   return (
     <header className="app-drag-region h-8 w-full bg-[#0a0a0a] border-b border-white/[0.07] flex items-center justify-between px-3 z-50 select-none">
       {/* Left side */}
-      <div className={`flex items-center gap-2 min-w-[200px] transition-opacity duration-150 ${isFocused ? 'opacity-100' : 'opacity-45'}`}>
+      <div className={`flex items-center gap-2 min-w-[240px] transition-opacity duration-150 ${isFocused ? 'opacity-100' : 'opacity-45'}`}>
         <div className="flex items-center gap-2">
           <img
             src={semplyLogo}
@@ -35,6 +35,12 @@ export const TitleBar: React.FC = () => {
           />
           <span className="text-[12px] font-medium tracking-[-0.01em] text-[#d4d4d4]">
             Semply
+          </span>
+          <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400/90 border border-amber-500/30 uppercase tracking-wider font-semibold">
+            Beta
+          </span>
+          <span className="text-[10px] text-[#777777] font-normal tracking-normal hidden sm:inline">
+            by Dera Labs
           </span>
         </div>
       </div>

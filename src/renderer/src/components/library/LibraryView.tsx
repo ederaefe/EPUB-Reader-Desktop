@@ -85,8 +85,20 @@ export const LibraryView: React.FC = () => {
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedBookIds, setSelectedBookIds] = useState<Set<number>>(new Set())
   const [showBulkCategoryMenu, setShowBulkCategoryMenu] = useState(false)
+  const bulkCategoryMenuRef = useRef<HTMLDivElement>(null)
   const lastSelectedIdRef = useRef<number | null>(null)
   const selectAllInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!showBulkCategoryMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bulkCategoryMenuRef.current && !bulkCategoryMenuRef.current.contains(e.target as Node)) {
+        setShowBulkCategoryMenu(false)
+      }
+    }
+    window.addEventListener('mousedown', handleClickOutside, true)
+    return () => window.removeEventListener('mousedown', handleClickOutside, true)
+  }, [showBulkCategoryMenu])
 
   const [sortBy, setSortBy] = useState<'title' | 'author' | 'date' | 'notes' | 'progress'>('date')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')

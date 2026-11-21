@@ -390,7 +390,9 @@
           <li><strong>Built-in Shelves:</strong> Filter quickly by <strong>All</strong>, <strong>Recently Read</strong>, <strong>Favorites</strong>, <strong>Formats</strong> (EPUB or PDF), <strong>Read</strong>, and <strong>Deleted</strong> (soft-delete trash with one-click Restore).</li>
           <li><strong>Custom Color Categories:</strong> Click <strong>+ Add new category</strong> in the sidebar, enter a name, and pick from 9 preset swatches or any custom hex color.</li>
           <li><strong>5-Column Sorting:</strong> Click <strong>Title</strong>, <strong>Author</strong>, <strong>Date</strong>, <strong>Notes</strong>, or <strong>Progress</strong> to toggle ascending or descending order.</li>
-          <li><strong>Book Context Menu:</strong> Right-click any book to Open, Favorite, Mark Read/Unread, assign a category, Refresh Cover, <strong>Convert PDF to EPUB (Offline)</strong>, <strong>Reveal in Explorer</strong>, or Move to Trash.</li>
+          <li><strong>Consolidated "Move to:" Submenu:</strong> Right-click any book to open the clean <strong>Move to:</strong> submenu. Color swatches show each shelf, and an explicit <strong>Remove from: [Category]</strong> button appears at the top if the book is already filed.</li>
+          <li><strong>Intelligent 4-Way Viewport Flipping:</strong> Context menus and submenus automatically measure on-screen space to flip left/right and up/down with smooth mousewheel scrolling, preventing any offscreen menu clipping at window borders.</li>
+          <li><strong>Book Actions:</strong> Open/Continue, Favorite, Mark Read/Unread, Refresh Cover, <strong>Convert PDF to EPUB (Offline)</strong>, <strong>Reveal in Explorer</strong>, or Move to Trash.</li>
         </ul>
       </section>
 
@@ -412,10 +414,14 @@
           <li><strong>PDF / More:</strong> Switch between <strong>Original PDF</strong> and <strong>Reflow EPUB</strong> (when viewing a PDF), export a PDF as an offline EPUB, or jump to <strong>All Preferences</strong> and <strong>Keyboard Shortcuts</strong>.</li>
         </ul>
 
-        <h3>Distraction-Free Fullscreen &amp; Quiet Progress</h3>
+        <h3>Distraction-Free Fullscreen, Page Orientation &amp; Navigation</h3>
         <ul>
           <li><strong>True Immersive Fullscreen (<kbd>F11</kbd>):</strong> Hides the titlebar, top toolbar, footer, side arrows, and drawers so only your book text fills the screen. Hover the top-right corner or press <kbd>Esc</kbd> or <kbd>F11</kbd> to exit.</li>
-          <li><strong>Dual-State Progress Bar:</strong> At rest, the bottom edge displays five subtle dots. Move your cursor over the bottom strip to reveal the exact page counter and a full-width page scrubber.</li>
+          <li><strong>Persistent Bare Page Number:</strong> A minimalist page indicator (e.g. <code>34</code>) remains visible in the top-right header and in the floating fullscreen exit badge, ensuring constant spatial orientation even when the bottom progress bar is hidden.</li>
+          <li><strong>Interactive Browser "Go to Page" (<kbd>[34] / 56</kbd>):</strong> The current page in the progress bar is encased in a tactile box. Clicking it reveals an autofocus input with a blinking cursor (theme-inverted for high readability). Type any target page number and press <kbd>Enter</kbd> to jump straight there in both EPUB and PDF modes.</li>
+          <li><strong>Zero-CPU 10-Second Cursor Concealment:</strong> After 10 seconds of reading dormancy, the mouse cursor automatically vanishes across EPUB and PDF views. Moving the mouse, clicking, or pressing any key immediately restores the pointer with zero CPU overhead. Hiding pauses automatically whenever menus, drawers, or selections are open.</li>
+          <li><strong>Smooth Page-by-Page Reading:</strong> Arrow keys smoothly advance through each column and page, skipping to the next chapter only when you reach the genuine chapter boundary.</li>
+          <li><strong>Dual-State Progress Bar:</strong> At rest, the bottom edge displays five subtle dots. Move your cursor over the bottom strip to reveal the exact page counter, interactive go-to-page box, and a full-width page scrubber.</li>
           <li><strong>Content-Only Zoom:</strong> Press <kbd>Ctrl</kbd> + <kbd>+</kbd>, <kbd>Ctrl</kbd> + <kbd>-</kbd>, or <kbd>Ctrl</kbd> + <kbd>0</kbd> to scale your book text size (or PDF page zoom) cleanly without distorting window buttons or toolbars.</li>
         </ul>
       </section>
@@ -438,6 +444,8 @@
           <li>Automatically removes repeating running headers, footers, and page numbers.</li>
           <li>Preserves headings, bold/italic emphasis, monospace code blocks, chapter bookmarks, and embedded illustrations.</li>
           <li>Safely preserves scanned pages or full-page diagrams as crisp responsive images so nothing is lost.</li>
+          <li><strong>Non-Blocking Event Loop Processing:</strong> Cooperative WASM yielding guarantees the app never freezes or becomes "Not Responding" even during hundreds of image-based or scanned pages.</li>
+          <li><strong>Mid-Flight Reflow Cancellation:</strong> Easily abort any conversion in progress by clicking <strong>Cancel Reflow</strong> in the progress overlay, pressing <kbd>Esc</kbd>, or tapping Cancel in the Settings Drawer to immediately clear progress.</li>
           <li>Caches the reflowed EPUB locally so reopening Reflow Mode later is instantaneous.</li>
           <li>Unlocks every EPUB tool on your PDF: custom fonts, sizing, highlights, notes, full-book Find, Read Aloud, and Auto-Scroll.</li>
         </ul>
@@ -467,6 +475,8 @@
 
         <h3>Editing, Organizing &amp; Exporting Notes</h3>
         <ul>
+          <li><strong>Classic Literary Underline:</strong> Underline highlights render as a delicate SVG bottom stroke with rounded caps rather than a heavy rectangular box, preserving pristine paragraph typography.</li>
+          <li><strong>Unclipped Selection Action Bar:</strong> Direct pixel clamping ensures the floating highlight micro-bar and all note actions remain 100% visible and unclipped when selecting words at the outer page margins.</li>
           <li><strong>Click any highlight on the page:</strong> Switch its color live, add or edit a comment (<kbd>Ctrl</kbd> + <kbd>Enter</kbd> to save), copy the quote and note together, read it aloud, or delete it with an instant Undo toast.</li>
           <li><strong>Notes Drawer:</strong> Filter by color or commented-only notes, search across your annotations, sort by Page Order / Newest / Oldest / Color, or toggle <strong>Group by Chapter</strong>.</li>
           <li><strong>Multi-Format Export:</strong> Export a book's highlights and notes via the native Save dialog as a styled standalone <strong>HTML</strong> report, <strong>Markdown (.md)</strong>, or <strong>Plain Text</strong>.</li>
@@ -502,20 +512,20 @@
           <button type="button" class="copy-anchor" data-copy-id="auto-scroll" aria-label="Copy link to Auto-Scroll"># link</button>
         </div>
         <p>
-          Enable hands-free page turning from <strong>Settings &rarr; Flow</strong> (or <strong>All Preferences &rarr; Reading settings</strong>). Both modes accept an exact manual duration from <code>3</code> to <code>600</code> seconds.
+          Enable hands-free page turning from <strong>Settings &rarr; Flow</strong> (or <strong>All Preferences &rarr; Reading settings</strong>). Both modes accept an exact manual duration from <code>2</code> to <code>600</code> seconds.
         </p>
 
         <div class="card-grid">
           <article class="card">
             <h3>Fixed Timer</h3>
             <p>
-              Turns the page on a strict, predictable countdown (default <strong>20s</strong>). Ideal for steady skimming or timed reading drills.
+              Turns the page on a strict, predictable countdown (default <strong>20s</strong>, with a low <strong>2s floor</strong>). Ideal for rapid skimming or fast-paced reading exercises.
             </p>
           </article>
           <article class="card">
-            <h3>Smart Pace</h3>
+            <h3>Smart Pace (Adaptive Calibration)</h3>
             <p>
-              Scales your manual base time (default <strong>25s</strong> for a typical 180-word spread) to the actual number of words currently visible on screen, with optional <strong>300ms micro-pauses</strong> at chapter dividers and blockquotes.
+              Scales your manual base time to the exact word density of the active spread. When activated on any page (past the frontmatter), it begins a rolling <strong>7-page calibration batch</strong> using your saved reading stats, with <strong>300ms micro-pauses</strong> at section breaks and chapter-end grace buffers (+3s).
             </p>
           </article>
         </div>

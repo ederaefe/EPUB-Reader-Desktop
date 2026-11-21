@@ -7,7 +7,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const GITHUB_REPO = 'ederaefe/EPUB-Reader-Desktop';
-  const FALLBACK_VERSION = 'v1.0.0';
+  const FALLBACK_VERSION = 'v1.0.8-beta.1';
   const RELEASES_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases`;
   const LATEST_RELEASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest`;
 
@@ -179,8 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ignore storage errors
   }
 
-  // Query GitHub API asynchronously
-  fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
+  // Query GitHub API asynchronously (fetches newest release, including beta releases)
+  fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=5`, {
     headers: { 'Accept': 'application/vnd.github.v3+json' },
     cache: 'no-cache'
   })
@@ -188,14 +188,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     })
-    .then(data => {
-      if (data && data.tag_name) {
-        applyReleaseData(data.tag_name, data.assets || [], data.published_at);
+    .then(releases => {
+      const latest = Array.isArray(releases) && releases.length > 0 ? releases[0] : null;
+      if (latest && latest.tag_name) {
+        applyReleaseData(latest.tag_name, latest.assets || [], latest.published_at);
         try {
           localStorage.setItem('semply_latest_release', JSON.stringify({
-            tag_name: data.tag_name,
-            assets: data.assets,
-            published_at: data.published_at,
+            tag_name: latest.tag_name,
+            assets: latest.assets,
+            published_at: latest.published_at,
             cached_at: Date.now()
           }));
         } catch (e) {}

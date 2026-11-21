@@ -1,6 +1,6 @@
 {
   "name": "semply-ebook-reader",
-  "version": "1.0.3",
+  "version": "1.0.8-beta.1",
   "description": "Semply Ebook Reader - Clean, open cross-platform EPUB and document reader",
   "homepage": "https://semply.app",
   "license": "MIT",
@@ -9,7 +9,8 @@
     "url": "https://github.com/ederaefe/EPUB-Reader-Desktop.git"
   },
   "main": "out/main/index.js",
-  "author": "ederaefe",
+  "author": "Dera Labs",
+  "appPublisher": "Dera Labs",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

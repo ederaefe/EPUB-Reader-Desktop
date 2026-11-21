@@ -3539,6 +3539,45 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - Preferences continue binding directly to `settings.copyExternal`, `settings.autoUpdate`, and `settings.sendStats` via `updateSettings` with full reactive persistence.
 
+---
+
+## Increment 63: Beta Release Preparation, "Dera Labs" Publisher Branding & Automated Website Deployment
+> **Agent**: @Agent-ReleaseDeployer | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Dera Labs Publisher Attribution**:
+   - Elevated publisher attribution across all desktop runtime and build layers:
+     - `src/renderer/src/components/ui/TitleBar.tsx`: Added amber-bordered `Beta` badge and persistent `by Dera Labs` attribution in the custom native window titlebar.
+     - `src/renderer/src/components/modals/FullSettingsModal.tsx`: Updated About tab with `Version 1.0.8-beta.1 (Native Desktop Edition)`, amber `Beta` badge, and explicit `Published by Dera Labs` label.
+     - `src/main/index.ts`: Set native window title to `Semply Ebook Reader - Dera Labs` and configured Windows AppUserModelId to `com.deralabs.semply-ebook-reader`.
+     - `package.json`: Updated version to `1.0.8-beta.1`, author to `Dera Labs <support@deralabs.com>`, and `appPublisher` to `Dera Labs`.
+     - `electron-builder.config.cjs`: Configured `appId: 'com.deralabs.semply-ebook-reader'`, `publisherName: 'Dera Labs'`, `nsis.publisher: 'Dera Labs'`, and Linux maintainer to `Dera Labs`.
+2. **Automated Website Release Deployment**:
+   - `landing.js`: Updated `FALLBACK_VERSION = 'v1.0.8-beta.1'` and enhanced GitHub release querying to poll `/releases?per_page=5` (with fallback to `/releases/latest`), ensuring that beta and prereleases automatically update the website download buttons and version badges.
+   - `api/download.js`: Updated the Vercel serverless redirect proxy to inspect the newest releases (including beta tags), ensuring `/api/download?os=win` automatically routes users to the latest beta binaries.
+   - `index.html`: Updated footer branding with `Published by Dera Labs` and release link to `v1.0.8-beta.1`.
+3. **GitHub Actions Workflow Prerelease Automation**:
+   - In `.github/workflows/release.yml`, configured `prerelease: ${{ contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') || contains(github.ref_name, '-alpha') }}`, allowing automatic release flagging when beta tags are pushed.
+
+### Touched Files
+- `package.json`
+- `electron-builder.config.cjs`
+- `src/main/index.ts`
+- `src/renderer/src/components/ui/TitleBar.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `.github/workflows/release.yml`
+- `landing.js`
+- `api/download.js`
+- `index.html`
+- `documentations/index.html`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `landing.js` & `api/download.js`: Fallback and release resolution verified.
+
+
 
 
 

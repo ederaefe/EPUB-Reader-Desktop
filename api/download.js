@@ -11,17 +11,33 @@ export default async function handler(req, res) {
   const repo = 'EPUB-Reader-Desktop';
 
   try {
-    // 2. Fetch latest release with a specific User-Agent for GitHub
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
+    // 2. Fetch latest releases (including prereleases/betas) with a specific User-Agent
+    let data = null;
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=5`, {
       headers: { 
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'Semply-Download-Proxy' 
       }
     });
     
-    if (!response.ok) throw new Error('Failed to fetch latest release from GitHub');
-    
-    const data = await response.json();
+    if (response.ok) {
+      const releases = await response.json();
+      if (Array.isArray(releases) && releases.length > 0) {
+        data = releases[0];
+      }
+    }
+
+    if (!data) {
+      // Fallback to /releases/latest
+      const fallbackRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`, {
+        headers: { 
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Semply-Download-Proxy' 
+        }
+      });
+      if (!fallbackRes.ok) throw new Error('Failed to fetch latest release from GitHub');
+      data = await fallbackRes.json();
+    }
     
     // 3. Find the asset matching the requested OS
     const asset = data.assets.find(a => {

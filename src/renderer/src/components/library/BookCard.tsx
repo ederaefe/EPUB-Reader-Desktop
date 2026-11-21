@@ -211,56 +211,6 @@ const BookCardBase: React.FC<BookCardProps> = ({
       }
     )
 
-    if (categories.length > 0) {
-      items.push({ id: 'div-cats', divider: true })
-
-      const categoryChildren: ContextMenuItem[] = []
-
-      // If the book is currently in a category, offer explicit removal at the top of the submenu
-      if (!isBatchContext && book.categoryId) {
-        const currentCat = categories.find((c) => c.id === book.categoryId)
-        categoryChildren.push({
-          id: 'remove-category',
-          label: `Remove from: ${currentCat?.name || 'Category'}`,
-          icon: <span className="w-2.5 h-2.5 rounded-full inline-block bg-red-500 shrink-0" />,
-          danger: true,
-          onClick: () => {
-            if (onAssignCategoryAction) {
-              onAssignCategoryAction(book, null)
-            } else if (book.id) {
-              db.books.update(book.id, { categoryId: null }).then(onUpdate)
-            }
-          }
-        })
-        categoryChildren.push({ id: 'div-remove-category', divider: true })
-      }
-
-      categories.forEach((cat) => {
-        const isCurrent = !isBatchContext && book.categoryId === cat.id
-        categoryChildren.push({
-          id: `cat-${cat.id}`,
-          label: `${cat.name}${isCurrent ? ' (Current)' : ''}${batchSuffix}`,
-          icon: <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: cat.color }} />,
-          disabled: isCurrent,
-          onClick: () => {
-            const nextCat = isCurrent ? null : cat.id!
-            if (onAssignCategoryAction) {
-              onAssignCategoryAction(book, nextCat)
-            } else if (book.id) {
-              db.books.update(book.id, { categoryId: nextCat }).then(onUpdate)
-            }
-          }
-        })
-      })
-
-      items.push({
-        id: 'move-to-category',
-        label: `Move to:${batchSuffix}`,
-        icon: <Folder className="w-3.5 h-3.5 text-[#2a69df]" />,
-        children: categoryChildren
-      })
-    }
-
     if (!isBatchContext) {
       items.push(
         { id: 'div-tools', divider: true },

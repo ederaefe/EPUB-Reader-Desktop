@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronRight } from 'lucide-react'
 
 export interface ContextMenuItem {
@@ -24,6 +25,7 @@ interface ContextMenuProps {
 /**
  * Intelligent Submenu Popup with 4-way boundary collision detection,
  * automatic horizontal/vertical viewport flipping, and scroll clamping.
+ * Portaled to document.body to avoid clipping by overflow-y containers.
  */
 const SubmenuPopup: React.FC<{
   children: React.ReactNode
@@ -32,7 +34,9 @@ const SubmenuPopup: React.FC<{
   const subRef = useRef<HTMLDivElement>(null)
   const [style, setStyle] = useState<React.CSSProperties>({
     visibility: 'hidden',
-    position: 'absolute'
+    position: 'fixed',
+    top: 0,
+    left: 0
   })
 
   useLayoutEffect(() => {
@@ -51,34 +55,38 @@ const SubmenuPopup: React.FC<{
     const spaceLeft = itemRect.left
     const openLeft = spaceRight < subWidth + pad && spaceLeft >= subWidth + pad
 
+    const left = openLeft
+      ? Math.max(pad, Math.round(itemRect.left - subWidth - 4))
+      : Math.min(window.innerWidth - subWidth - pad, Math.round(itemRect.right + 4))
+
     // Vertical placement:
-    // Default: align top of submenu with top of item (-4px padding)
-    let top = -4
-    if (itemRect.top + subHeight + pad > window.innerHeight) {
-      // Flip upwards: align bottom of submenu with bottom of item
-      top = Math.round(itemRect.height - subHeight + 4)
-      if (itemRect.top + top < pad) {
-        top = Math.round(pad - itemRect.top)
-      }
+    let top = itemRect.top - 4
+    if (top + subHeight + pad > window.innerHeight) {
+      top = Math.max(pad, window.innerHeight - subHeight - pad)
+    }
+    if (top < pad) {
+      top = pad
     }
 
     setStyle({
       visibility: 'visible',
-      position: 'absolute',
-      top,
-      [openLeft ? 'right' : 'left']: 'calc(100% + 4px)',
+      position: 'fixed',
+      top: Math.round(top),
+      left: Math.round(left),
       maxHeight: `min(420px, ${Math.max(160, window.innerHeight - 32)}px)`
     })
   }, [parentItemEl])
 
-  return (
+  return createPortal(
     <div
       ref={subRef}
+      data-context-submenu="true"
       style={style}
-      className="z-[101] min-w-[170px] max-w-[260px] overflow-y-auto bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.4)] p-1 text-[12px] text-[var(--app-text)] select-none animate-in fade-in zoom-in-95 duration-75 custom-scrollbar"
+      className="z-[105] min-w-[170px] max-w-[260px] overflow-y-auto bg-[var(--app-surface)] border border-[var(--app-border-strong)] rounded-lg shadow-[0_14px_36px_rgba(0,0,0,0.4)] p-1 text-[12px] text-[var(--app-text)] select-none animate-in fade-in zoom-in-95 duration-75 custom-scrollbar"
     >
       {children}
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -118,7 +126,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
 
   useEffect(() => {
     const handlePointerDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Element
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        !target.closest?.('[data-context-submenu]')
+      ) {
         onClose()
       }
     }

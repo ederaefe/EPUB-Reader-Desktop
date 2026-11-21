@@ -15,7 +15,7 @@ const hasAppleNotarizeCreds = Boolean(
 const config = {
   appId: 'com.ederaefe.semply-ebook-reader',
   productName: 'Semply Ebook Reader',
-  copyright: 'Copyright (c) 2026 ederaefe. Licensed under the MIT License.',
+  copyright: 'Copyright (c) 2026 Dera Labs. Licensed under the MIT License.',
   asar: true,
   asarUnpack: ['**/node_modules/mupdf/**/*', '**/*.wasm'],
   directories: {
@@ -61,7 +61,7 @@ const config = {
       signingHashAlgorithms: ['sha256'],
       rfc3161TimeStampServer: 'http://timestamp.digicert.com',
       timeStampServer: 'http://timestamp.digicert.com',
-      publisherName: 'Dera Tech Inc'
+      publisherName: 'Dera Labs'
     },
     ...(hasAzureSigning
       ? {
@@ -94,7 +94,8 @@ const config = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Semply Ebook Reader',
-    uninstallDisplayName: 'Semply Ebook Reader'
+    publisher: 'Dera Labs',
+    uninstallDisplayName: 'Semply Ebook Reader (by Dera Labs)'
   },
   portable: {
     artifactName: 'Semply-Ebook-Reader-${version}-win-${arch}-portable.${ext}'
@@ -126,7 +127,7 @@ const config = {
   linux: {
     icon: 'build/icon.png',
     category: 'Office',
-    maintainer: 'ederaefe',
+    maintainer: 'Dera Labs',
     synopsis: 'Fast, local-first EPUB and PDF desktop reader with offline MuPDF reflow',
     artifactName: 'Semply-Ebook-Reader-${version}-linux-${arch}.${ext}',
     desktop: {
