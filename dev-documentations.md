@@ -3209,3 +3209,41 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `safeGetRenditionLocation` checks `rendition.location?.start?.cfi` first before falling back to `rendition.currentLocation()`.
 - Keyboard navigation is immediately responsive on mount without requiring an explicit canvas click.
 
+---
+
+## Increment 54: Chapter Skip Elimination, Backspace Page Navigation & Reader Dismissal Hardening
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Purged False Chapter-Skipping Fallback (`src/renderer/src/components/reader/EpubReaderView.tsx`)**:
+   - Diagnosed why reading *The Fifth Season* skipped whole chapters (jumping from page 4 to page 26, then to page 41):
+     - In Increment 53, an aggressive fallback in `navigateStep` checked `if (direction === 'next' && (!loc?.start?.cfi || loc.start.cfi === startCfi))` immediately following `await rendition.next()`.
+     - Because `rendition.next()` uses an asynchronous `requestAnimationFrame` before emitting `relocated` and updating `rendition.location`, `loc.start.cfi` was still synchronously identical to `startCfi` right after the promise resolved.
+     - The fallback erroneously inferred that column progression had stalled and called `rendition.display(nextItem.href)`, forcing an instant jump to the next spine chapter.
+     - Completely removed this manual spine thrashing. `rendition.next()` and `rendition.prev()` now operate with epub.js's native multi-column scrolling, advancing page-by-page and transitioning chapters only when the column bounds are genuinely exceeded.
+2. **Prevented Accidental Reader Dismissal / Book Closing (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Diagnosed why the book kept closing unexpectedly during reading:
+     - Both `attachIframeHooks` and window `handleKeyDown` previously classified `Backspace` and `Alt+ArrowLeft` as `isBackKey` and invoked `onBackRef.current()`, dumping the user out of the book and back to the library whenever they attempted to go back a page.
+     - Routed `Backspace` and `Alt+ArrowLeft` to `navigateStepRef.current('prev')` in EPUB and `handlePrev()` in PDF, restoring standard e-reader page navigation behavior.
+     - Removed `onBack()` from the bare `Escape` key handler across EPUB and PDF views. `Escape` now strictly closes open drawers (TOC, Search, Bookmarks, Notes, Settings), popovers, and fullscreen mode without ever closing the book. Closing the reader is reserved exclusively for the deliberate `< Library` button in the top bar.
+
+### Problem Statement
+1. Chapter Skipping on Next Page: Tapping Next or pressing `ArrowRight` on page 4 skipped directly to page 26 (chapter 2), and tapping Next on page 26 skipped directly to page 41 (chapter 3).
+2. Spontaneous Book Closing: Pressing `Backspace` to return to a previous page or hitting `Escape` abruptly closed the reader view and returned to the library.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer processes.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 25.45s (`out/main`: 134.20 kB, `out/preload`: 5.36 kB, `out/renderer`: 3,473.26 kB JS, 128.29 kB CSS).
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, never introduce artificial spine-jumping fallbacks inside `navigateStep`. `rendition.next()` and `rendition.prev()` handle intra-chapter columns and inter-chapter transitions natively.
+- Backspace and Escape must never navigate to the library; reader dismissal is strictly controlled via `ReaderTopBar`.
+
+

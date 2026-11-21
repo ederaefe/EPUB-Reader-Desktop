@@ -639,7 +639,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           st.toggleNotesDrawer(false)
           st.toggleSettingsDrawer(false)
         } else {
-          onBackRef.current()
+          navigateStepRef.current('prev')
         }
         return
       }
@@ -852,7 +852,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           }
           return
         }
-        onBackRef.current()
+        return
       } else if (e.key === 'F11') {
         e.preventDefault()
         const next = !useAppStore.getState().isImmersiveFullscreen
@@ -1599,7 +1599,6 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       adaptiveScrollEngine.setSuspension('layout', true)
     }
 
-    const startCfi = currentCfiRef.current
     isNavigatingRef.current = true
     try {
       if (direction === 'next') {
@@ -1607,30 +1606,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else {
         await rendition.prev()
       }
-      let loc = safeGetRenditionLocation(rendition)
-      // Fallback: If rendition.next() failed to advance on fresh open (e.g. section boundary stall, unindexed initial location, or pre-paginated cover)
-      if (direction === 'next' && (!loc?.start?.cfi || loc.start.cfi === startCfi)) {
-        const allSpine: any[] = (epubBookRef.current?.spine as any)?.spineItems || []
-        const linearSpine = allSpine.filter((item) => item && item.linear !== false && item.linear !== 'no')
-        const spineList = linearSpine.length > 0 ? linearSpine : allSpine
-        const activeHref = (currentHrefRef.current || loc?.start?.href || '')?.split('#')[0]
-        const activeIdx = spineList.findIndex(
-          (item) => item?.href && (item.href === activeHref || activeHref?.endsWith(item.href))
-        )
-        if (activeIdx >= 0 && activeIdx < spineList.length - 1) {
-          const nextItem = spineList[activeIdx + 1]
-          if (nextItem?.href) {
-            await rendition.display(nextItem.href)
-            loc = safeGetRenditionLocation(rendition)
-          }
-        } else if (activeIdx === -1 && spineList.length > 1) {
-          const fallbackItem = spineList[1] || spineList[0]
-          if (fallbackItem?.href) {
-            await rendition.display(fallbackItem.href)
-            loc = safeGetRenditionLocation(rendition)
-          }
-        }
-      }
+      const loc = safeGetRenditionLocation(rendition)
       if (loc?.start?.cfi) {
         currentCfiRef.current = loc.start.cfi
         setCurrentCfi(loc.start.cfi)
@@ -2265,7 +2241,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           st.toggleNotesDrawer(false)
           st.toggleSettingsDrawer(false)
         } else {
-          onBackRef.current()
+          navigateStepRef.current('prev')
         }
         return
       }
@@ -2504,7 +2480,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           }
           return
         }
-        onBack()
+        return
       }
     }
 

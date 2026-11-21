@@ -245,3 +245,5 @@
   - **Instant Initial Page Navigation**: Opening a book for the first time now supports immediate page turning via either the screen arrow buttons or keyboard navigation (`Right Arrow` / `Left Arrow`) without delay or stall.
   - **Refined Speedometer Metrics**: The HUD Speedometer displays unified, clean numbers and units (`750 WPM` and `14 SPP`) with explanatory hover tooltips and minimal visual noise.
   - **2-Second Fixed Mode Floor**: Fixed countdown mode can now be set as low as 2 seconds per page for rapid browsing or fast reading exercises.
+  - **Smooth Page-by-Page Reading Without Chapter Skips**: Tapping Next or pressing `Right Arrow` advances naturally through each page and column of a chapter, transitioning chapters only when you reach the actual end of a chapter.
+  - **Protected Reading Sessions**: `Backspace` and `Alt+Left Arrow` navigate to the previous page instead of closing the book, and `Escape` dismisses open drawers without exiting your reading session. Exiting to the library is handled deliberately through the top bar's Library button.

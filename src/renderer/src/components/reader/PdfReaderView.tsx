@@ -679,7 +679,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           st.toggleNotesDrawer(false)
           st.toggleSettingsDrawer(false)
         } else {
-          onBack()
+          handlePrev()
         }
         return
       }
@@ -872,7 +872,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           }
           return
         }
-        onBack()
+        return
       }
     }
     window.addEventListener('keydown', onKeyDown)
