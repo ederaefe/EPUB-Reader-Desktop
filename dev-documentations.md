@@ -2894,8 +2894,8 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `documentation.md`
 
 ### Verification Matrix
-- `npx tsx scratch/test_autoflip_engines.ts`: 101/101 test assertions passed cleanly.
-- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npx tsx scratch/test_autoflip_engines.ts`: 111/111 test assertions passed cleanly (monotonic countdown, sleep/suspend guard, EMA learning, retreat accumulation 11s+5s=16s via `recordNavigation`, premature flip rollback, sequential rapid scrub detection, accidental bounce preservation <= 1500ms, skimming recovery, scrub batch reset, WPM/SPP dual metrics with strict 10s floor, stepper input parsing, modifier collision filtering, continuous vertical headroom, lone odd-page spread compensation, and countdown re-arming).
+- `npm run typecheck` (`tsc --noEmit`): Passed with 0 errors across main, preload, and renderer sources.
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 13.75s.
 
 ### Handoff Notes
