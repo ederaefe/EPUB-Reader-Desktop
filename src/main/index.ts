@@ -37,6 +37,10 @@ import {
 
 const ALLOWED_EXTERNAL_BROWSER_HOSTS = [
   'github.com',
+  'efedera.me',
+  'semply.app',
+  'semply.vercel.app',
+  'vercel.app',
   'wikipedia.org',
   'wiktionary.org',
   'merriam-webster.com',
@@ -45,12 +49,31 @@ const ALLOWED_EXTERNAL_BROWSER_HOSTS = [
   'collinsdictionary.com',
   'translate.google.com',
   'deepl.com',
-  'vocabulary.com'
+  'vocabulary.com',
+  'proton.me'
 ]
 
 function isAllowedExternalBrowserHost(hostname: string): boolean {
   const host = hostname.toLowerCase()
   return ALLOWED_EXTERNAL_BROWSER_HOSTS.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))
+}
+
+function isAllowedExternalUrl(rawUrl: string): boolean {
+  if (typeof rawUrl !== 'string') return false
+  const trimmed = rawUrl.trim()
+  if (trimmed.startsWith('mailto:')) {
+    return /^mailto:[^<>\r\n]+$/i.test(trimmed)
+  }
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      if (parsed.username || parsed.password) return false
+      return isAllowedExternalBrowserHost(parsed.hostname)
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -529,6 +552,11 @@ function createWindow(): void {
       }
     }
     event.preventDefault()
+    if (isAllowedExternalUrl(url)) {
+      shell.openExternal(url).catch((err) => {
+        console.warn('[Shell] will-navigate openExternal failed:', err)
+      })
+    }
   })
 
   // Block untrusted subframe navigations (while permitting EPUB srcdoc/blob and internal #anchor links)
@@ -602,14 +630,10 @@ function createWindow(): void {
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     try {
-      const parsed = new URL(details.url)
-      if (
-        parsed.protocol === 'https:' &&
-        !parsed.username &&
-        !parsed.password &&
-        isAllowedExternalBrowserHost(parsed.hostname)
-      ) {
-        shell.openExternal(parsed.toString())
+      if (isAllowedExternalUrl(details.url)) {
+        shell.openExternal(details.url).catch((err) => {
+          console.warn('[Shell] setWindowOpenHandler openExternal failed:', err)
+        })
       }
     } catch {
       // Ignore invalid or disallowed URLs
@@ -683,6 +707,15 @@ handleTrusted('shell:showItemInFolder', (_, filePath: string) => {
   } catch {
     return false
   }
+})
+handleTrusted('shell:openExternal', (_, rawUrl: string) => {
+  if (typeof rawUrl === 'string' && isAllowedExternalUrl(rawUrl)) {
+    shell.openExternal(rawUrl).catch((err) => {
+      console.warn('[Shell] openExternal failed:', err)
+    })
+    return true
+  }
+  return false
 })
 handleTrusted('window:setBackgroundColor', (_, color: string) => {
   if (mainWindow && typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)) {

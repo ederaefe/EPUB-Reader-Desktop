@@ -91,7 +91,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleOpenGitHubIssues = () => {
     const issuesUrl = 'https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new'
-    window.open(issuesUrl, '_blank', 'noopener,noreferrer')
+    if (window.desktopAPI?.openExternal) {
+      window.desktopAPI.openExternal(issuesUrl)
+    } else {
+      window.open(issuesUrl, '_blank', 'noopener,noreferrer')
+    }
   }
 
   handleCopyEmail = async () => {

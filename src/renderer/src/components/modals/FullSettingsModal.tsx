@@ -229,6 +229,15 @@ export const FullSettingsModal: React.FC = () => {
     })
   }
 
+  const handleOpenExternal = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    e.preventDefault()
+    if (window.desktopAPI?.openExternal) {
+      window.desktopAPI.openExternal(url)
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
   return (
     <div
       onClick={() => toggleFullSettingsModal(false)}
@@ -952,6 +961,7 @@ export const FullSettingsModal: React.FC = () => {
                         href="https://efedera.me"
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => handleOpenExternal(e, 'https://efedera.me')}
                         className="underline hover:text-[var(--app-text)] transition-colors"
                       >
                         Efedera
@@ -1005,6 +1015,7 @@ export const FullSettingsModal: React.FC = () => {
                     href="https://github.com/ederaefe/EPUB-Reader-Desktop"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleOpenExternal(e, 'https://github.com/ederaefe/EPUB-Reader-Desktop')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
@@ -1014,6 +1025,7 @@ export const FullSettingsModal: React.FC = () => {
                     href="https://semply.vercel.app/documentations"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleOpenExternal(e, 'https://semply.vercel.app/documentations')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <FileText className="w-3.5 h-3.5" />
@@ -1023,6 +1035,7 @@ export const FullSettingsModal: React.FC = () => {
                     href="https://efedera.me"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleOpenExternal(e, 'https://efedera.me')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <Globe className="w-3.5 h-3.5 text-amber-400" />
@@ -1032,6 +1045,7 @@ export const FullSettingsModal: React.FC = () => {
                     href="https://semply.vercel.app"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleOpenExternal(e, 'https://semply.vercel.app')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <Globe className="w-3.5 h-3.5" />
@@ -1041,6 +1055,7 @@ export const FullSettingsModal: React.FC = () => {
                     href="https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new"
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => handleOpenExternal(e, 'https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <AlertCircle className="w-3.5 h-3.5" />
@@ -1048,6 +1063,7 @@ export const FullSettingsModal: React.FC = () => {
                   </a>
                   <a
                     href="mailto:efeoghene@proton.me?subject=Semply%20Feedback"
+                    onClick={(e) => handleOpenExternal(e, 'mailto:efeoghene@proton.me?subject=Semply%20Feedback')}
                     className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold"
                   >
                     <Mail className="w-3.5 h-3.5" />

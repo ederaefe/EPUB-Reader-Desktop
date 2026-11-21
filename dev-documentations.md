@@ -3775,6 +3775,48 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - App chrome is completely free of intrusive publisher labels and beta badges. All attribution resides respectfully within the About preferences modal and package metadata.
 
+---
+
+## Increment 69: Fix External Link & Mailto Navigation in About Modal
+> **Agent**: @Agent-LinkFixer | **Status**: [COMPLETED]
+
+### What Was Done
+Resolved silent external link failures in the About preferences modal and error boundary by updating the main process URL filter to permit official domains and `mailto:` protocols, exposing a secure `openExternal` bridge via IPC, and wiring explicit click handlers in the renderer.
+
+### Problem Statement
+1. **Restricted Browser Host Allowlist**: `ALLOWED_EXTERNAL_BROWSER_HOSTS` only contained dictionaries and `github.com`. Official product domains (`efedera.me`, `semply.vercel.app`, `semply.app`, `vercel.app`) were rejected and dropped by `setWindowOpenHandler`.
+2. **Missing Mailto & Protocol Handling**: `setWindowOpenHandler` strictly checked `parsed.protocol === 'https:'`, completely discarding `mailto:` schemes. Additionally, `will-navigate` intercepted in-window navigations and called `event.preventDefault()` without routing allowed links to the system browser.
+3. **Missing Preload IPC Bridge**: No `openExternal` API existed on `window.desktopAPI`, forcing reliance on default browser link behavior which is intentionally blocked by Electron's security boundaries.
+
+### Technical Fix
+1. **Host Allowlist Expansion & Safe URL Validator (`src/main/index.ts`)**:
+   - Expanded `ALLOWED_EXTERNAL_BROWSER_HOSTS` to include `efedera.me`, `semply.app`, `semply.vercel.app`, `vercel.app`, and `proton.me`.
+   - Created `isAllowedExternalUrl(rawUrl: string)` to validate `mailto:` formats (preventing CRLF injection) and sanitize `https:`/`http:` URLs by disallowing embedded user credentials and requiring domain matching against the allowlist.
+   - Updated `mainWindow.webContents.on('will-navigate')` to check `isAllowedExternalUrl` and invoke `shell.openExternal(url)` on permitted targets.
+   - Updated `mainWindow.webContents.setWindowOpenHandler` to validate targets with `isAllowedExternalUrl` and delegate to `shell.openExternal(details.url)` before returning `{ action: 'deny' }`.
+   - Implemented `handleTrusted('shell:openExternal', (_, rawUrl) => ...)` to provide a secure IPC endpoint.
+2. **Preload Exposure (`src/preload/index.ts`)**:
+   - Exposed `openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url)` in `DesktopAPI`.
+3. **Renderer Event Handling (`FullSettingsModal.tsx`, `ErrorBoundary.tsx`)**:
+   - Implemented `handleOpenExternal` helper prioritizing `window.desktopAPI.openExternal(url)` with fallback to `window.open(url, '_blank', 'noopener,noreferrer')`.
+   - Attached explicit `onClick={(e) => handleOpenExternal(e, ...)}` handlers to the publisher link and all 6 action buttons (GitHub, Docs, efedera.me, Website, Report Issue, and Email Support).
+
+### Touched Files
+- `src/main/index.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `src/renderer/src/components/ui/ErrorBoundary.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npm run typecheck` (`tsc --noEmit`): 0 compilation errors across main, preload, and renderer.
+- `git status`: Clean working directory upon staging.
+
+### Handoff Notes
+- External URL navigation remains completely air-gapped from arbitrary WebContents navigation while allowing all verified product documentation, publisher, and support links.
+
+
 
 
 

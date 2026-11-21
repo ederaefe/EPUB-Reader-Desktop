@@ -27,6 +27,7 @@ export interface DesktopAPI {
   setBackgroundColor: (color: string) => Promise<void>
   setWindowTitle: (title: string) => Promise<void>
   showItemInFolder: (filePath: string) => Promise<boolean>
+  openExternal: (url: string) => Promise<boolean>
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => () => void
   onWindowMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void
   onWindowFocusChange: (callback: (isFocused: boolean) => void) => () => void
@@ -107,6 +108,7 @@ const api: DesktopAPI = {
   setBackgroundColor: (color: string) => ipcRenderer.invoke('window:setBackgroundColor', color),
   setWindowTitle: (title: string) => ipcRenderer.invoke('window:setTitle', title),
   showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   onFullscreenChange: (callback: (isFullscreen: boolean) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, isFullscreen: boolean) => callback(isFullscreen)
     ipcRenderer.on('window:fullscreenChanged', listener)
