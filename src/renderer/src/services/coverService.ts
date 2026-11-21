@@ -71,7 +71,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const chunks: string[] = []
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const slice = bytes.subarray(i, i + chunkSize)
-    chunks.push(String.fromCharCode.apply(null, Array.from(slice)))
+    chunks.push(String.fromCharCode.apply(null, slice as unknown as number[]))
   }
   return window.btoa(chunks.join(''))
 }

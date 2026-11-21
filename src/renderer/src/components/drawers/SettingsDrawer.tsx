@@ -109,8 +109,8 @@ const isFontWeightActive = (cur: number | undefined, val: number) => {
   return current >= 600
 }
 
-const TIMER_PRESETS = [10, 20, 30, 45]
-const SMART_SEC_PRESETS = [15, 25, 35, 50]
+const TIMER_PRESETS = [10, 15, 20, 30, 45, 60]
+const SMART_SEC_PRESETS = [10, 15, 20, 30, 45, 60]
 const TTS_SPEEDS = [0.8, 1.0, 1.2, 1.5, 2.0]
 
 const PDF_ZOOM_PRESETS = [
@@ -225,7 +225,7 @@ export const SettingsDrawer: React.FC = () => {
   }
 
   const handleAdaptiveSecChange = (sec: number) => {
-    const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+    const clamped = Math.max(10, Math.min(600, Math.round(sec)))
     updateSettings({ autoscrollAdaptiveSec: clamped })
     adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
   }
@@ -320,7 +320,7 @@ export const SettingsDrawer: React.FC = () => {
             {(
               [
                 { id: 'display', label: 'Display' },
-                { id: 'scroll', label: 'Scroll' },
+                { id: 'scroll', label: 'Auto-Flip' },
                 { id: 'more', label: 'More' }
               ] as const
             ).map((tab) => {
@@ -747,12 +747,12 @@ export const SettingsDrawer: React.FC = () => {
           {/* ===================== TAB 2: SCROLL ===================== */}
           {activeTab === 'scroll' && (
             <div className="space-y-6">
-              {/* Auto-Scroll (Flat, Subtle Controls) */}
+              {/* Auto-Flip (Flat, Subtle Controls) */}
               <div className="space-y-3.5">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="text-[12px] font-semibold text-[var(--app-text-strong)] flex items-center gap-1.5">
-                      <span>Auto-Scroll</span>
+                      <span>Auto-Flip</span>
                       {isAutoscrollActive && (
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--app-accent)]" />
                       )}
@@ -796,8 +796,8 @@ export const SettingsDrawer: React.FC = () => {
                       className="w-8 h-4 rounded-full p-0.5 flex items-center transition-colors shrink-0 cursor-pointer"
                       title={
                         isAutoscrollActive
-                          ? 'Turn off Auto-Scroll'
-                          : 'Turn on Auto-Scroll'
+                          ? 'Turn off Auto-Flip'
+                          : 'Turn on Auto-Flip'
                       }
                     >
                       <span
@@ -869,7 +869,7 @@ export const SettingsDrawer: React.FC = () => {
                       <div
                         className="glass-pill-track grid-cols-2 w-[140px]"
                         role="radiogroup"
-                        aria-label="Auto-scroll pacing mode"
+                        aria-label="Auto-flip pacing mode"
                       >
                         {(
                           [
@@ -925,7 +925,7 @@ export const SettingsDrawer: React.FC = () => {
                           />
                         </div>
 
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-6 gap-1">
                           {TIMER_PRESETS.map((sec) => {
                             const active = countdownSec === sec
                             return (
@@ -934,7 +934,7 @@ export const SettingsDrawer: React.FC = () => {
                                 type="button"
                                 data-active={active ? 'true' : 'false'}
                                 onClick={() => handleCountdownChange(sec)}
-                                className="glass-preset-btn"
+                                className="glass-preset-btn !text-[11px] !px-1"
                               >
                                 {sec}s
                               </button>
@@ -950,12 +950,12 @@ export const SettingsDrawer: React.FC = () => {
                               Base sec
                             </span>
                             <span className="font-mono text-[9.5px] text-[var(--app-text-subtle)] font-normal">
-                              Scales by words
+                              Scales by words (min 10s)
                             </span>
                           </div>
                           <SecondsNumberInput
                             value={adaptiveSec}
-                            min={3}
+                            min={10}
                             max={600}
                             step={5}
                             compact
@@ -964,7 +964,7 @@ export const SettingsDrawer: React.FC = () => {
                           />
                         </div>
 
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-6 gap-1">
                           {SMART_SEC_PRESETS.map((sec) => {
                             const active = adaptiveSec === sec
                             return (
@@ -973,7 +973,7 @@ export const SettingsDrawer: React.FC = () => {
                                 type="button"
                                 data-active={active ? 'true' : 'false'}
                                 onClick={() => handleAdaptiveSecChange(sec)}
-                                className="glass-preset-btn"
+                                className="glass-preset-btn !text-[11px] !px-1"
                               >
                                 {sec}s
                               </button>
@@ -987,7 +987,7 @@ export const SettingsDrawer: React.FC = () => {
                               Pause at breaks
                             </div>
                             <div className="text-[9.5px] text-[var(--app-text-subtle)] font-normal">
-                              +1.5s after section breaks
+                              +3s at section breaks & chapter ends
                             </div>
                           </div>
                           <button

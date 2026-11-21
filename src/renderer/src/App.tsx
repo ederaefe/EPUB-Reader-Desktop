@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { FileUp } from 'lucide-react'
 import { applyDocumentTheme, useAppStore } from './stores/useAppStore'
+import { useShallow } from 'zustand/react/shallow'
 import { db } from './db'
 import { TitleBar } from './components/ui/TitleBar'
 import { LibraryView } from './components/library/LibraryView'
@@ -27,23 +28,40 @@ export const App: React.FC = () => {
     activeBook,
     currentChapterTitle,
     pdfViewMode,
-    reflowEpubBuffer,
     isImmersiveFullscreen,
-    settings,
-    setView,
-    setActiveBook,
-    setPdfViewMode,
-    setReflowEpubBuffer,
-    setPdfConversionState,
-    setImmersiveFullscreen,
-    toggleHelpModal,
-    hydrateSettingsFromDb,
-    updateSettings,
-    setPdfZoom,
-    showToast,
-    bumpLibraryVersion,
-    setIsOnline
-  } = useAppStore()
+    theme,
+    dimming,
+    warmFilterEnabled,
+    warmFilterTemp,
+    warmFilterIntensity
+  } = useAppStore(
+    useShallow((s) => ({
+      currentView: s.currentView,
+      activeBook: s.activeBook,
+      currentChapterTitle: s.currentChapterTitle,
+      pdfViewMode: s.pdfViewMode,
+      isImmersiveFullscreen: s.isImmersiveFullscreen,
+      theme: s.settings.theme,
+      dimming: s.settings.dimming,
+      warmFilterEnabled: s.settings.warmFilterEnabled,
+      warmFilterTemp: s.settings.warmFilterTemp,
+      warmFilterIntensity: s.settings.warmFilterIntensity
+    }))
+  )
+
+  const setView = useAppStore((s) => s.setView)
+  const setActiveBook = useAppStore((s) => s.setActiveBook)
+  const setPdfViewMode = useAppStore((s) => s.setPdfViewMode)
+  const setReflowEpubBuffer = useAppStore((s) => s.setReflowEpubBuffer)
+  const setPdfConversionState = useAppStore((s) => s.setPdfConversionState)
+  const setImmersiveFullscreen = useAppStore((s) => s.setImmersiveFullscreen)
+  const toggleHelpModal = useAppStore((s) => s.toggleHelpModal)
+  const hydrateSettingsFromDb = useAppStore((s) => s.hydrateSettingsFromDb)
+  const updateSettings = useAppStore((s) => s.updateSettings)
+  const setPdfZoom = useAppStore((s) => s.setPdfZoom)
+  const showToast = useAppStore((s) => s.showToast)
+  const bumpLibraryVersion = useAppStore((s) => s.bumpLibraryVersion)
+  const setIsOnline = useAppStore((s) => s.setIsOnline)
 
   const [isDraggingFile, setIsDraggingFile] = useState(false)
 
@@ -64,8 +82,8 @@ export const App: React.FC = () => {
   }, [setIsOnline])
 
   useEffect(() => {
-    applyDocumentTheme(settings.theme)
-  }, [settings.theme])
+    applyDocumentTheme(theme)
+  }, [theme])
 
   // Sync native OS Taskbar / Alt+Tab window title dynamically
   useEffect(() => {
@@ -412,25 +430,26 @@ export const App: React.FC = () => {
     }
   }, [toggleHelpModal, setImmersiveFullscreen, openLocalBookPath, updateSettings])
 
-  const handleActivatePdfReflow = async () => {
+  const handleActivatePdfReflow = useCallback(async () => {
     await switchActivePdfViewMode('reflow')
-  }
+  }, [])
 
-  const handleBackToLibrary = () => {
-    if (isImmersiveFullscreen) {
-      setImmersiveFullscreen(false)
+  const handleBackToLibrary = useCallback(() => {
+    const s = useAppStore.getState()
+    if (s.isImmersiveFullscreen) {
+      s.setImmersiveFullscreen(false)
       window.desktopAPI?.setFullscreen?.(false)
     }
-    setActiveBook(null)
-    setView('library')
-    bumpLibraryVersion()
-  }
+    s.setActiveBook(null)
+    s.setView('library')
+    s.bumpLibraryVersion()
+  }, [])
 
   const hideTitleBar = isImmersiveFullscreen && currentView === 'reader' && !!activeBook
   const warmFilter = getWarmFilterOverlay(
-    settings.warmFilterEnabled || false,
-    settings.warmFilterTemp || 3200,
-    settings.warmFilterIntensity || 40
+    warmFilterEnabled || false,
+    warmFilterTemp || 3200,
+    warmFilterIntensity || 40
   )
 
   const handleWindowDragOver = (e: React.DragEvent) => {
@@ -549,6 +568,8 @@ export const App: React.FC = () => {
         metadataHydrated: true
       })
       importedCount++
+      // Cooperative yield to keep main thread responsive and allow UI painting
+      await new Promise((resolve) => setTimeout(resolve, 16))
     }
     if (importedCount > 0) {
       bumpLibraryVersion()
@@ -602,9 +623,9 @@ export const App: React.FC = () => {
       )}
 
       {/* App-Wide Dimming Overlay */}
-      {settings.dimming > 0 && (
+      {dimming > 0 && (
         <div
-          style={{ opacity: settings.dimming / 100 }}
+          style={{ opacity: dimming / 100 }}
           className="fixed inset-0 bg-black pointer-events-none z-[95] transition-opacity duration-200"
         />
       )}

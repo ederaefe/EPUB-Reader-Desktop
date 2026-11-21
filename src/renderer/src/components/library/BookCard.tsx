@@ -39,7 +39,7 @@ interface BookCardProps {
   onDeleteRequest?: (book: Book) => void
 }
 
-export const BookCard: React.FC<BookCardProps> = ({
+const BookCardBase: React.FC<BookCardProps> = ({
   book,
   categories = [],
   onOpen,
@@ -564,3 +564,38 @@ export const BookCard: React.FC<BookCardProps> = ({
     </>
   )
 }
+
+function areBookCardPropsEqual(prev: BookCardProps, next: BookCardProps): boolean {
+  // Compare core book fields
+  if (prev.book.id !== next.book.id) return false
+  if (prev.book.filePath !== next.book.filePath) return false
+  if (prev.book.title !== next.book.title) return false
+  if (prev.book.author !== next.book.author) return false
+  if (prev.book.coverDataUrl !== next.book.coverDataUrl) return false
+  if (prev.book.progressPercent !== next.book.progressPercent) return false
+  if (prev.book.currentPage !== next.book.currentPage) return false
+  if (prev.book.totalPages !== next.book.totalPages) return false
+  if (prev.book.isFavorite !== next.book.isFavorite) return false
+  if (prev.book.isRead !== next.book.isRead) return false
+  if (prev.book.isPinned !== next.book.isPinned) return false
+  if (prev.book.categoryId !== next.book.categoryId) return false
+  if (prev.book.format !== next.book.format) return false
+  if (prev.book.preferredPdfMode !== next.book.preferredPdfMode) return false
+  if (prev.book.notesCount !== next.book.notesCount) return false
+
+  // Compare visual & selection states
+  if (prev.isSelected !== next.isSelected) return false
+  if (prev.isSelectionMode !== next.isSelectionMode) return false
+  if (prev.viewMode !== next.viewMode) return false
+  if (prev.selectedCount !== next.selectedCount) return false
+  // Compare assigned category attributes and categories count
+  const prevAssigned = prev.categories?.find((c) => c.id === prev.book.categoryId)
+  const nextAssigned = next.categories?.find((c) => c.id === next.book.categoryId)
+  if (prevAssigned?.name !== nextAssigned?.name || prevAssigned?.color !== nextAssigned?.color) return false
+  if (prev.categories?.length !== next.categories?.length) return false
+
+  // Action callbacks are intentionally omitted so inline closures in LibraryView do not bust memoization
+  return true
+}
+
+export const BookCard = React.memo<BookCardProps>(BookCardBase, areBookCardPropsEqual)

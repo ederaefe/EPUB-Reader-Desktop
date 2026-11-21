@@ -2350,3 +2350,280 @@ In Increment 35, `overflow: hidden !important; overflow-x: hidden !important; ov
 
 ### Handoff Notes
 - In `EpubReaderView.tsx`, never inject `overflow-x: hidden` or `overflow: hidden` into the iframe `body` or `html`. Doing so breaks Chromium's multi-column Range measurement in `epub.js`, collapsing chapters to 1 page and causing chapter-skip thrashing. Scrollbar suppression must always be achieved through `::-webkit-scrollbar` pseudo-element rules and the outer `viewerRef` container.
+
+---
+
+## Increment 38: Decoupled Auto-Flip Engine Architecture, Relocation Countdown Synchronization & Un-Pilled Navigation Chevrons
+> **Agent**: @Agent-AutoFlipCore | **Status**: [COMPLETED]
+
+### What Was Done
+Decomposed the monolithic auto-scroll system into two decoupled standalone engines (`CountdownScrollEngine` and `AdaptivePacingEngine`) unified via a backward-compatible `AutoScrollCoordinator` facade in `adaptiveScrollService.ts`. Rebranded user-facing terminology to "Auto-Flip", bound `rendition.on('relocated')` directly to `armPageRef.current()` to resolve countdown-without-flip and double-flip desyncs, implemented format-aware page advancement (paginated spread turns vs. continuous smooth scroll), added on-the-fly hotkey speed nudging (`+`/`-` and `[`/`]`), implemented a 3-second end-of-chapter grace buffer, established Spacebar play/pause parity across PDF and EPUB, and replaced bulky pill side navigation chevrons with subtle, un-pilled chevrons with 56px/72px enter/exit hysteresis.
+
+### Problem Statement
+1. **Desync on Relocation ("Counts Down but Doesn't Flip" & Double-Flip)** (`EpubReaderView.tsx` line 1258): `rendition.on('relocated')` updated location state but did not invoke `armPageRef.current()`. Consequently, manual turns or auto-advance turns left the timer running against prior page metrics or caused double-flips.
+2. **The Rewind Trap (Backwards Navigation Override)** (`EpubReaderView.tsx` line 1563, `PdfReaderView.tsx` line 433): Navigating backwards did not disarm forward auto-advance timers, causing the engine to turn forward right after rewinding.
+3. **Early Reading Cadence Skewing (Skimming Frontmatter & TOC)** (`adaptivePacingEngine.ts`): Profiling WPM during title, copyright, and TOC pages permanently corrupted learned reading cadence before Chapter 1.
+4. **Heavy Pill Chevron Occlusion & Perimeter Jitter** (`SideNavigation.tsx` lines 27, 68): A 220px hover zone and heavy pill container (`bg-[var(--app-surface)]/85`, border, shadow) occluded margin notes, footnote markers, and text selections with perimeter flickering.
+5. **Spacebar Collision in PDF Mode** (`PdfReaderView.tsx` line 641): Pressing Spacebar in PDF mode forcefully advanced pages regardless of whether Auto-Flip was active, breaking parity with EPUB.
+
+### Technical Fix
+1. **Standalone Pure Countdown Engine (`src/renderer/src/services/countdownScrollEngine.ts`)**:
+   - Monotonic 1000ms integer clock accumulator (`remainingSec`, `totalSec`).
+   - Zero DOM overhead or word counting.
+   - Nuclear queue purge on pause/stop (`clearInterval`, nullification of expiration callback references).
+   - On-the-fly duration nudges via `adjustSeconds(delta)` without timer restarts or jitter.
+   - 60-minute hardware safety watchdog and >3000ms sleep/suspend auto-pause guard.
+2. **Standalone Smart Adaptive Pacing Engine (`src/renderer/src/services/adaptivePacingEngine.ts`)**:
+   - Layout awareness: Single-page (`spreadFactor = 1`) vs Dual-page (`spreadFactor = 2`).
+   - Passive background learning begins at page 5 (spread 3 in dual mode), ignoring frontmatter.
+   - Formally engages calibrated dynamic pacing at page >= 20 (single) or page >= 22 (dual/spread 11).
+   - Enforces strict 10-second minimum dwell floor (`Math.max(10, ...)`).
+   - Stable batch cadence calibration every 7 pages/spreads.
+   - Automatic +3-second grace buffer on chapter ends or section dividers.
+   - Skimming (>750 WPM / <800ms) and Idling (<60 WPM) mathematical guards with EMA smoothing (alpha = 0.15).
+   - O(N) language-aware word counter with CJK ideogram weighting (~0.6 words/character).
+3. **Backward-Compatible Unified Facade (`src/renderer/src/services/adaptiveScrollService.ts`)**:
+   - `AdaptiveScrollEngine` orchestrates both engines, delegating countdown or adaptive pacing transparently.
+   - Multi-reason isolated suspension management (`blur`, `hidden`, `drawer`, `modal`, `footnote`, `selection`, `layout`, `manualScroll`).
+   - Added `nudgeDwellSec(delta)` for instant hotkey adjustments.
+4. **Reader View Synchronization (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Bound `rendition.on('relocated')` directly to `armPageRef.current()`, guaranteeing clean per-page countdown resets.
+   - Format-aware page advancement: Smooth vertical scrolling (`container.scrollBy({ top: container.clientHeight * 0.85, behavior: 'smooth' })`) when vertical scroll headroom exists; paginated spread turns via `rendition.next()` otherwise.
+   - Gated `atEnd` detection strictly to `loc.atEnd && endIdx >= spineLength - 1`.
+   - Added async navigation mutex (`isNavigatingRef`) to eliminate rapid-click queue deadlock.
+   - Rewind trap eliminated: `handlePrev()` and `navigateStep('prev')` immediately invoke `adaptiveScrollEngine.stop()`.
+   - On-the-fly hotkey speed nudging: While Auto-Flip is active, `]` or `+`/`=` adds +2s, `[` or `-` subtracts -2s without interrupting timer.
+   - Spacebar parity: Spacebar toggles Play/Pause across both PDF and EPUB whenever Auto-Flip is running; advances page only when inactive.
+5. **Subtle Un-Pilled Side Navigation Chevrons (`SideNavigation.tsx`)**:
+   - Removed bulky pill container background (`rounded-full`, opaque surface, borders, shadows).
+   - Rendered clean, subtle chevrons (`strokeWidth={2.5}`, `opacity-35 hover:opacity-100 hover:scale-110`).
+   - Constrained hover zone to `56px` enter with `72px` exit hysteresis, eliminating perimeter flicker and text occlusion.
+6. **User-Facing Terminology Rebrand (`AdaptiveScrollOverlay.tsx`, `SettingsDrawer.tsx`, `FullSettingsModal.tsx`)**:
+   - Standardized user-facing labels to "Auto-Flip" ("Fixed Auto-Flip", "Smart Auto-Flip", "Resume Auto-Flip", "Pause Auto-Flip").
+   - Displayed bracketed countdown badge (`{15s}`) on trigger button.
+   - Added standard cadence presets (`10s, 15s, 20s, 30s, 45s, 60s`) and instant `+5s` / `-5s` step buttons.
+   - Added Adaptive status banner displaying "Frontmatter Safe Mode (Page < 20)" vs "Calibrated Dynamic Pace (Batch 7p)".
+
+### Touched Files
+- `src/renderer/src/services/countdownScrollEngine.ts`
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/SideNavigation.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 errors across main, preload, and renderer TypeScript sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 9.33s.
+- `npx tsx scratch/test_autoflip_engines.ts`: 40/40 assertions passed verifying countdown ticks, pause/resume, nudges, sleep guard, frontmatter learning gate, page >= 20 calibration, batch intervals, 10s minimum floor, +3s chapter grace buffer, and skimming/idling guards.
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, always preserve `rendition.on('relocated')` -> `armPageRef.current()` binding so every page turn cleanly restarts the countdown timer for the new page.
+- Do not modify Dexie schema keys (`autoscrollMode`, `autoscrollCountdownSec`, etc.); only user-facing UI labels are rebranded to "Auto-Flip".
+
+
+---
+
+## Increment 39: App-Wide CPU Optimization, DOM Reflow Elimination & Render Decoupling
+> **Agent**: @Agent-PerformanceCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Single-Pass EPUB Location Metrics & DOM Reflow Elimination (`EpubReaderView.tsx`)**:
+   - Eliminated duplicate DOM Range cloning (`cloneContents()`), `querySelectorAll()` element removals, and character word count loops between `applyLocationState()` and `armPage()`/`analyzeVisiblePage()`.
+   - Wired `cachedPageMetricsRef` inside `analyzeVisiblePage()`: computes metrics once per CFI and returns cached `{ visibleWords, hasBreak, atEnd }` in 0.001ms for `armPage()`.
+   - Avoided synchronous layout reflow by only querying `iframeDoc.body.innerText` in Tier 2 fallback when range extraction yields 0 words.
+2. **Cooperative Abortable Search Pipeline (`SearchDrawer.tsx`, `EpubReaderView.tsx`)**:
+   - Introduced `AbortController` in `SearchDrawer.tsx` that instantly aborts in-flight full-book searches whenever query characters change, drawer closes, or books switch.
+   - Wired `signal?: AbortSignal` into `handleSearchBook()`, breaking the multi-chapter spine loop immediately when aborted (`if (signal?.aborted) break`). Guaranteed uncompressed chapters are cleanly unloaded in `finally`.
+   - Increased live search debounce to 400ms to eliminate intermediate search storms during active typing.
+3. **Scrubber & Side Navigation Layout Thrashing Elimination (`FluidClimaxProgressBar.tsx`, `SideNavigation.tsx`)**:
+   - In `FluidClimaxProgressBar.tsx`, cached `trackRef.current.getBoundingClientRect()` at `mousedown`/`mouseenter` and on window resize in `cachedTrackRectRef` instead of querying geometry on every raw mousemove.
+   - Wrapped scrubber drag updates in `requestAnimationFrame` with `rafDragRef` and `rafHoverRef`, capping Gaussian curve re-evaluations and HSL interpolations to the display refresh rate (60Hz).
+   - In `SideNavigation.tsx`, throttled window `mousemove` and `semply:reader-pointer` listeners with a 60ms delay (`THROTTLE_MS = 60`) to eliminate continuous pointer math and hover flicker, maintaining `latestClientX` across throttle intervals so trailing timeouts evaluate the latest cursor position upon exiting hotzones.
+4. **Decoupled Reader Re-renders, Fine-Grained Selectors & Card Memoization (`App.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`, `AdaptiveScrollOverlay.tsx`, `BookCard.tsx`, `LibraryView.tsx`)**:
+   - In `App.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`, and `AdaptiveScrollOverlay.tsx`: migrated from root store destructuring to fine-grained selectors with `useShallow` from `zustand/react/shallow` for reactive state, and separate static action selections to prevent unwanted subscriber invalidations.
+   - Wrapped `EpubReaderView` and `PdfReaderView` in `React.memo` with custom prop comparator (`(prev, next) => prev.book.id === next.book.id && prev.book.filePath === next.book.filePath && prev.book.format === next.book.format`), completely isolating the 3,000+ line reader views from re-rendering when `syncActiveBookProgress` updates `activeBook` in `useAppStore`.
+   - Stabilized `handleBackToLibrary` and `handleActivatePdfReflow` in `App.tsx` with `useCallback`.
+   - Wrapped `BookCard` in `React.memo` with custom comparator `areBookCardPropsEqual` checking book attributes, visual/selection states (`isSelected`, `isSelectionMode`, `viewMode`, `selectedCount`), category list length, and assigned category attributes (`prevAssigned?.name !== nextAssigned?.name || prevAssigned?.color !== nextAssigned?.color`) to ensure prompt re-rendering on category rename or recolor while ignoring recreated inline arrow function callbacks.
+   - In `LibraryView.tsx`, introduced local search state debounced by 150ms before calling `setSearchQuery` to decouple instant typing feedback from catalog grid re-filtering.
+5. **Zero-Allocation Binary Base64 Conversion & Batch Import Macrotask Yields (`coverService.ts`, `App.tsx`, `LibraryView.tsx`)**:
+   - Replaced `Array.from(slice)` in `arrayBufferToBase64()` with direct chunk indexing (`slice as unknown as number[]`) with chunk size `0x8000`, eliminating tens of thousands of intermediate heap arrays during cover extraction and reducing GC scavenge pressure.
+   - Added cooperative yields (`await new Promise((resolve) => setTimeout(resolve, 16))`) inside batch file import loops in `App.tsx` and `LibraryView.tsx` (`handleImportFiles`, `handleImportFolder`, `handleDrop`) to allow UI frame painting and prevent OS "Application Not Responding" freezes.
+
+### Problem Statement
+Unnecessary CPU consumption, main thread freezing, DOM re-cloning, and React re-renders across desktop reader views, library rendering, search operations, and batch file imports.
+
+### Touched Files
+- `src/renderer/src/App.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/drawers/SearchDrawer.tsx`
+- `src/renderer/src/components/reader/FluidClimaxProgressBar.tsx`
+- `src/renderer/src/components/reader/SideNavigation.tsx`
+- `src/renderer/src/components/library/BookCard.tsx`
+- `src/renderer/src/components/library/LibraryView.tsx`
+- `src/renderer/src/services/coverService.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: Passed with 0 errors across main, preload, and renderer TypeScript sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 10.11s (out/main: 133.26 kB, out/preload: 5.36 kB, out/renderer: 3,474.84 kB JS, 122.95 kB CSS).
+- Verified zero layout reflows during cursor drag/hover on progress scrubber and side navigation chevrons.
+- Verified instant search abortability upon new keystrokes and drawer close without unclosed zip decompression leaks.
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, `analyzeVisiblePage()` checks `cachedPageMetricsRef.current` against `currentStartCfi`. When introducing new layout modes or re-flowing, clear `cachedPageMetricsRef.current = null` to ensure metrics recalculate accurately.
+- In `BookCard.tsx`, any new custom prop passed from `LibraryView` that is an object or callback must be considered in `areBookCardPropsEqual` so memoization bailout remains effective. Assigned category attributes (`name`, `color`) and categories length are explicitly compared.
+- In `SideNavigation.tsx`, `latestClientX` is captured on every pointer event and evaluated in trailing throttle timeouts (as well as cleared on mouseleave/unmount) to guarantee chevron dismissal when cursors exit edge zones.
+
+---
+
+## Increment 40: Auto-Flip Decoupled Engine Hardening, Font Size Hotkey Restoration & PDF Parity
+> **Agent**: @Agent-AutoFlipRefiner | **Status**: [COMPLETED]
+
+### What Was Done
+Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibration, and settings persistence bugs in the decoupled Auto-Flip architecture:
+1. Restored keyboard font zooming (`+`/`-`, `=`) in `EpubReaderView.tsx` when Auto-Flip is inactive by integrating font size and speed nudging into unified conditional branches, eliminating dead key handler shadowing.
+2. Resolved dual-page page-number vs. spread-number threshold desync in `AdaptivePacingEngine` and `AdaptiveScrollEngine`. Dual-page mode now accurately measures 2-page spreads (`spread = Math.ceil(page / 2)`), engaging passive learning at spread 3 (page 5) and calibrated dynamic pacing at spread 11 (page 22).
+3. Connected bidirectional synchronization between `adaptiveBaseSec` and calibrated WPM (`syncBaseSeconds`). Hotkey nudges (`+`/`-`, `[`/`]`) and settings adjustments update both countdown seconds and the dynamic pacing WPM baseline so nudged speeds persist across subsequent page turns.
+4. Eliminated the timer-restart bug on hotkey nudge in `PdfReaderView.tsx` by decoupling store settings dependencies from the countdown lifecycle effect and registering `onSyncSettings` for persistence to `pdfCountdownSecSingle` and `pdfCountdownSecDual`.
+5. Added `A`/`Shift+A` hotkey toggle in `PdfReaderView.tsx` for full shortcut parity with EPUB reader mode.
+6. Enforced strict 10s minimum floor across `FullSettingsModal.tsx` and `SettingsDrawer.tsx`, synchronized presets to `[10, 15, 20, 30, 45, 60]`, and updated copy to "+3s at section breaks & chapter ends".
+7. Added toast feedback (`showToast`) on dwell nudges and fortified `CountdownScrollEngine` with defensive `NaN` guards.
+
+### Problem Statement
+1. In `EpubReaderView.tsx`, lines 2201-2210 intercepted `+`, `=`, and `-` with `if (useAppStore.getState().isAutoscrollActive) ...` with no `else` branch. When Auto-Flip was inactive, the block completed without action, shadowing lines 2244-2251 and completely breaking keyboard font zooming.
+2. In `AdaptivePacingEngine.ts`, `DUAL_CALIBRATED_SPREAD_START` is 11 spreads, but `EpubReaderView.tsx` passed `currentPageRef.current` (page number). Comparing page 11 against spread 11 caused premature calibration at page 11 (spread 6) rather than page 22 (spread 11).
+3. In `computeDwellSeconds`, dynamic pacing calculated `(words / effectiveWpm) * 60` from a static `lastBatchWpm`, completely ignoring user base seconds and hotkey nudges on subsequent pages.
+4. In `PdfReaderView.tsx`, `settings.pdfCountdownSecSingle` was in the effect dependency array, causing on-the-fly nudges to re-trigger `armPage()` and restart the countdown from scratch.
+
+### Technical Fix
+1. **Unified Hotkey Dispatch (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Integrated font zooming and Auto-Flip speed nudges into single `else if (e.key === '+' || e.key === '=')` and `else if (e.key === '-')` branches that check `isAutoscrollActive`: nudging dwell if active, adjusting font size (or zoom in PDF) if inactive.
+   - Wired `A` / `Shift+A` in `PdfReaderView.tsx` to toggle `isAutoscrollActive`.
+   - Wired instant toast feedback (`showToast('Auto-Flip: ${updated}s', 'info')`) on hotkey dwell nudges.
+2. **Dual-Page Spread Normalization (`adaptiveScrollService.ts`, `adaptivePacingEngine.ts`)**:
+   - Implemented `getCurrentUnit()` in `AdaptiveScrollEngine`: returning `Math.ceil(this.currentPage / 2)` in dual spread mode and `this.currentPage` in single page mode.
+   - Guaranteed learning threshold activates at spread 3 (page 5) and calibrated pacing formally engages at spread 11 (page 22).
+3. **Bidirectional Cadence Synchronization (`adaptivePacingEngine.ts`, `adaptiveScrollService.ts`)**:
+   - Added `syncBaseSeconds(baseSec)` in `AdaptivePacingEngine` updating `currentWpm`, `targetWpm`, and `lastBatchWpm` to `(REFERENCE_PAGE_WORDS / baseSec) * 60`.
+   - In `AdaptiveScrollEngine`, wired `syncBaseSeconds` on `nudgeDwellSec` and `configure({ adaptiveBaseSec })`.
+   - In `recordManualReading`, updated `this.adaptiveBaseSec` from learned WPM and triggered `triggerSettingsSync()`.
+4. **PDF Countdown Decoupling & Reverse Sync (`PdfReaderView.tsx`)**:
+   - Removed `settings.pdfCountdownSecSingle` and `settings.pdfCountdownSecDual` from the autoscroll effect dependency array, eliminating interval teardowns and restarts during on-the-fly nudges.
+   - Registered `adaptiveScrollEngine.onSyncSettings` to persist nudged durations to the store and Dexie database.
+5. **Strict 10s Minimum Floor & UI Preset Harmonization (`FullSettingsModal.tsx`, `SettingsDrawer.tsx`)**:
+   - Clamped `handleAdaptiveSecChange` to `Math.max(10, ...)`.
+   - Updated `min` attributes from `3` to `10` and label ranges to `(10–600s)`.
+   - Harmonized presets in `SettingsDrawer.tsx` to `[10, 15, 20, 30, 45, 60]`.
+
+### Touched Files
+- `src/renderer/src/services/countdownScrollEngine.ts`
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: Passed all 48 test assertions covering pure integer countdown, sleep auto-pause guard, dual-mode spread/page normalization, hotkey nudges with subsequent page persistence, and defensive NaN handling.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer sources.
+- `npm run build`: Production bundle (`electron-vite build`) compiled successfully in 10.59s with zero warnings or errors.
+
+### Handoff Notes
+- In `PdfReaderView.tsx`, never include `settings.pdfCountdownSecSingle` or `settings.pdfCountdownSecDual` in the autoscroll countdown effect dependency array. Modifying countdown settings during active reading must adjust the existing timer monotonically via `adjustSeconds` rather than restarting it.
+
+
+---
+
+## Increment 41: Floating Reading Settings Modal, Zero-Reflow EPUB Stability & Auto-Flip Suspension
+> **Agent**: @Agent-ReaderFix | **Status**: [COMPLETED]
+
+### Problem Statement
+1. **EPUB Page Flip-Back on Drawer Toggle**: Opening and closing Reading Settings in `EpubReaderView.tsx` shifted `#reader-wrapper` with `mr-[380px]` and triggered an unanchored `rendition.resize()` after 220ms. In `epubjs@0.3.93`, `manager.resize()` clears all active DOM views and attempts to redisplay using `this.location.start.cfi`. Because `rendition.location` is computed asynchronously on a delayed frame queue, it often held a stale CFI from a prior page turn or became undefined mid-transition, causing the reader to roll backward by a page or snap to chapter start.
+2. **Auto-Flip Interruption**: When opening settings to adjust reading preferences (font size, theme, margins), the active auto-advance / auto-flip timer needed to pause seamlessly and resume its exact remaining countdown upon closing without restarting or double-flipping.
+3. **Drawer Occlusion of Navigation Controls**: Hover arrows from `SideNavigation` remained interactive while side drawers were open, overlapping with drawer inputs and settings buttons.
+
+### Technical Fix
+1. **Zero-Reflow Floating Overlay Architecture (`EpubReaderView.tsx`)**:
+   - Converted Reading Settings and all reading tools into non-contracting floating overlay panels that sit cleanly above the reading canvas.
+   - Removed `transition-[margin]` and `isRightDrawerOpen && !isImmersiveFullscreen ? 'mr-[380px]' : ''` from `#reader-wrapper`. The book canvas maintains fixed, stable geometry throughout drawer lifecycles.
+   - Removed the `useEffect` that triggered `rendition.resize()` on drawer open/close. `epub.js` views are never cleared, completely eliminating the page flip-back defect.
+2. **Deterministic Auto-Flip Pause and Resume (`EpubReaderView.tsx`, `SettingsDrawer.tsx`)**:
+   - Verified that `adaptiveScrollEngine.setSuspension('drawer', true)` engages on drawer mount, which invokes `countdownEngine.pause()` to freeze the countdown clock in place.
+   - On drawer close/unmount, `adaptiveScrollEngine.setSuspension('drawer', false)` invokes `countdownEngine.resume()`, continuing the countdown smoothly from its exact remaining seconds without jitter or timer restarts.
+3. **CFI-Anchored Resizing & Location Synchronicity Hardening**:
+   - In `applyLocationState`, explicitly assigned `currentCfiRef.current = cfi` and `renditionInstance.location = location` synchronously, preventing React render batching and unawaited `requestAnimationFrame` location reporting from leaving epub.js with stale position pointers.
+   - In `navigateStep`, immediately queried `safeGetRenditionLocation(rendition)` following `await rendition.next()` and `await rendition.prev()` to synchronize `currentCfiRef.current` and `rendition.location` in lockstep with DOM views.
+   - Wrapped `renditionInstance.onResized` with an instance-level interceptor ensuring that any window or layout resize events fallback directly to `currentCfiRef.current` instead of stale `this.location.start.cfi`.
+   - Introduced `safeResizeRendition` to encapsulate CFI validation and defensive error handling across fullscreen and layout shifts.
+4. **Drawer-Aware Navigation Guard**:
+   - Replaced `isRightDrawerOpen` with `isAnyDrawerOpen = isSettingsDrawerOpen || isNotesDrawerOpen || isBookmarksDrawerOpen || isSearchDrawerOpen || isTOCDrawerOpen`.
+   - Passed `hidden={isImmersiveFullscreen || isAnyDrawerOpen}` to `SideNavigation` to suppress hover navigation buttons whenever any drawer or modal is active.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: Passed with 0 errors across the workspace.
+- Static analysis verified zero layout shift on `#reader-wrapper` during drawer state toggles.
+
+### Handoff Notes
+- All reader drawers (Settings, TOC, Bookmarks, Notes, Search) must remain floating overlay modals with backdrops. Never re-introduce margin contraction (`mr-[...]` or `ml-[...]`) to `#reader-wrapper` as doing so forces `epub.js` reflows that disrupt paginated reading positions.
+
+---
+
+## Increment 42: Auto-Flip Forensic Bug Fixes, Final Page Dwell Parity & Hotkey Hardening
+> **Agent**: @Agent-AutoFlipAuditor | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Resolved PDF Auto-Flip End-of-Document Dwell Bug (`PdfReaderView.tsx`)**: Replaced premature `if (currentPage >= totalPages)` halt in `armPage()` with `if (currentPage > totalPages)`. Enforced `isLastSpread = isDual ? cur + 1 >= tot : cur >= tot` inside `onExpire`, allowing users to read the final page/spread for the full configured dwell time before stopping cleanly without single-page re-render.
+2. **Fixed Side Navigation Dual-Spread Chevron Bounds (`PdfReaderView.tsx`)**: Bound `isRightDisabled` to `isDual ? currentPage + 1 >= totalPages : currentPage >= totalPages`, preventing the right navigation chevron from enabling an invalid jump on the final dual spread.
+3. **Hardened Hotkeys Against Modifier Collisions (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**: Cleanly decoupled `A` / `Shift+A` toggles by checking `!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a'`, preventing collisions with system/browser shortcuts (e.g., `Ctrl+Shift+A` or `Alt+A`).
+4. **Added PDF Chapter Step Hotkey Parity (`PdfReaderView.tsx`)**: Implemented `handleChapterStep` in `PdfReaderView.tsx` using native PDF outline TOC (`toc`) or 10-page fallbacks, providing full EPUB navigation parity for `[` and `]` when Auto-Flip is inactive.
+5. **Harmonized 10s Minimum Dwell Floor Across Settings (`SettingsDrawer.tsx`, `AdaptiveScrollOverlay.tsx`)**: Replaced loose `Math.max(3, ...)` with `Math.max(10, Math.min(600, Math.round(sec)))` in `handleAdaptiveSecChange` across both components.
+6. **Eliminated EPUB Continuous Vertical Scroll Double-Advance Risk (`EpubReaderView.tsx`)**: Captured `scrollTopBeforeTurn` and verified `!didScrollVertically` in the 1200ms recovery watchdog, preventing duplicate scroll advancements when chapter start CFIs remain unchanged during vertical scroll.
+7. **Resolved Micro-Pause Race with User Pause (`adaptiveScrollService.ts`)**: Tracked `pendingAdvanceCb` during 300ms section-break micro-pauses and suppressed page turns when `isPausedState()` is true. Queued pending page advances to cleanly trigger upon unpausing.
+8. **Connected Dynamic Live Timer Adjustments on Mode Switch & Reset (`adaptiveScrollService.ts`)**: Wired dynamic `setSeconds()` updates into `configure()` when switching modes (`countdown` <-> `adaptive`) or updating `adaptiveBaseSec`, and into `reset()` so running countdowns instantly update without timer restarts or jitter.
+
+### Problem Statement
+1. In `PdfReaderView.tsx`, `armPage` immediately stopped auto-flip if `currentPage >= totalPages`, denying users the countdown dwell time to read the final page. In dual mode, `handleNext` on the last spread pushed to single page re-render.
+2. In `PdfReaderView.tsx`, `isRightDisabled` was checked with `currentPage >= totalPages`, allowing the right arrow on the last dual spread to re-render the final page solo.
+3. In `PdfReaderView.tsx`, `[` and `]` were handled only when auto-flip was active, leaving chapter navigation unhandled when auto-flip was inactive.
+4. In both `EpubReaderView.tsx` and `PdfReaderView.tsx`, `(e.shiftKey && e.key.toLowerCase() === 'a')` lacked checks for `!e.ctrlKey && !e.metaKey && !e.altKey`, causing shortcuts like `Ctrl+Shift+A` to inadvertently toggle auto-flip.
+5. In `SettingsDrawer.tsx` and `AdaptiveScrollOverlay.tsx`, `handleAdaptiveSecChange` clamped to `Math.max(3, ...)`, diverging from the 10s floor enforced in `FullSettingsModal.tsx` and the core engine.
+6. In `EpubReaderView.tsx`, the 1200ms recovery watchdog did not verify vertical scroll delta, risking duplicate scrolls when CFI remains constant.
+7. In `adaptiveScrollService.ts`, pausing during a 300ms section-break micro-pause still allowed the expire callback to advance the page.
+
+### Touched Files
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: All 61 engine, facade, micro-pause, and spread boundary test assertions passed cleanly.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 19.27s (out/main: 133.26 kB, out/preload: 5.36 kB, out/renderer: 3,479.09 kB JS, 122.95 kB CSS).
+
+### Handoff Notes
+- In `PdfReaderView.tsx`, `isLastSpread` calculation (`isDual ? cur + 1 >= tot : cur >= tot`) must always govern both navigation button disabling and countdown termination to prevent re-rendering the final page solo in dual-spread layout.
+

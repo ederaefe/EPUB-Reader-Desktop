@@ -9,7 +9,7 @@ export interface SearchMatch {
 }
 
 interface SearchDrawerProps {
-  onSearch: (query: string) => Promise<SearchMatch[]>
+  onSearch: (query: string, signal?: AbortSignal) => Promise<SearchMatch[]>
   onSelectMatch: (cfi: string) => void
   onClearHighlight: () => void
   focusNonce?: number
@@ -41,7 +41,10 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
   onClearHighlight,
   focusNonce = 0
 }) => {
-  const { isSearchDrawerOpen, toggleSearchDrawer, isImmersiveFullscreen, activeBook } = useAppStore()
+  const isSearchDrawerOpen = useAppStore((s) => s.isSearchDrawerOpen)
+  const toggleSearchDrawer = useAppStore((s) => s.toggleSearchDrawer)
+  const isImmersiveFullscreen = useAppStore((s) => s.isImmersiveFullscreen)
+  const activeBookId = useAppStore((s) => s.activeBook?.id)
   const [query, setQuery] = useState('')
   const [searchedQuery, setSearchedQuery] = useState('')
   const [results, setResults] = useState<SearchMatch[]>([])
@@ -51,17 +54,22 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const runIdRef = useRef(0)
   const activeItemRef = useRef<HTMLButtonElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Reset search state when switching books
+  // Reset search state and abort active requests when switching books
   useEffect(() => {
     runIdRef.current++
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
     setQuery('')
     setSearchedQuery('')
     setResults([])
     setActiveIndex(-1)
     setIsSearching(false)
     onClearHighlight()
-  }, [activeBook?.id, onClearHighlight])
+  }, [activeBookId, onClearHighlight])
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => {
@@ -70,12 +78,23 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
     })
   }, [])
 
-  // Auto-focus when opened or when Ctrl+F is pressed while already open
+  // Auto-focus when opened or when Ctrl+F is pressed while already open; abort on close
   useEffect(() => {
     if (isSearchDrawerOpen) {
       focusInput()
     } else {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+      setIsSearching(false)
       onClearHighlight()
+    }
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
     }
   }, [isSearchDrawerOpen, focusNonce, focusInput, onClearHighlight])
 
@@ -83,6 +102,12 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
     async (rawQuery: string, autoJump = false) => {
       const trimmed = rawQuery.trim()
       const currentRun = ++runIdRef.current
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      const controller = new AbortController()
+      abortControllerRef.current = controller
 
       if (!trimmed) {
         setResults([])
@@ -95,8 +120,8 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
 
       setIsSearching(true)
       try {
-        const matches = await onSearch(trimmed)
-        if (currentRun !== runIdRef.current) return
+        const matches = await onSearch(trimmed, controller.signal)
+        if (currentRun !== runIdRef.current || controller.signal.aborted) return
         setResults(matches)
         setSearchedQuery(trimmed)
         if (matches.length > 0 && autoJump) {
@@ -105,8 +130,8 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
         } else {
           setActiveIndex(-1)
         }
-      } catch {
-        if (currentRun !== runIdRef.current) return
+      } catch (err: any) {
+        if (controller.signal.aborted || currentRun !== runIdRef.current) return
         setResults([])
         setSearchedQuery(trimmed)
         setActiveIndex(-1)
@@ -119,12 +144,16 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
     [onSearch, onSelectMatch, onClearHighlight]
   )
 
-  // Debounced live search when typing >= 2 characters
+  // Debounced live search when typing >= 2 characters (350ms avoids typing thrash)
   useEffect(() => {
     if (!isSearchDrawerOpen) return
     const trimmed = query.trim()
     if (!trimmed) {
       runIdRef.current++
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
       setResults([])
       setSearchedQuery('')
       setActiveIndex(-1)
@@ -134,9 +163,10 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
     }
     if (trimmed.length < 2) return
 
+    // Debounced live search when typing >= 2 characters (400ms avoids typing thrash)
     const timer = setTimeout(() => {
       executeSearch(trimmed, false)
-    }, 250)
+    }, 400)
     return () => clearTimeout(timer)
   }, [query, isSearchDrawerOpen, executeSearch, onClearHighlight])
 

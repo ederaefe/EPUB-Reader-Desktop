@@ -167,3 +167,11 @@
   - **Continuous Intra-Chapter Page Progression**: Readers advance cleanly across all pages within every chapter without unexpected chapter skips, ensuring chapters unfold 2 pages at a time with full text visibility.
   - **Zero-Blank Spreads**: Eliminated blank beige screens caused by layout clipping, ensuring all chapter text and illustrations render smoothly from cover to colophon.
 
+- **Auto-Flip Forensic Bug Fixes & Final-Page Dwell Completion Parity**:
+  - **Full Final-Page Dwell Time**: In PDF reading mode, Auto-Flip now allows readers to enjoy the full configured dwell time on the book's final page or spread. The hands-free timer concludes and halts smoothly when the final page is finished, preventing premature shutdowns or duplicate single-page re-renders.
+  - **Accurate Dual-Spread Edge Navigation**: In two-page spread PDF viewing, edge navigation chevrons accurately disable on the final spread, preventing accidental clicks from disrupting the dual-page layout.
+  - **Outline-Aware PDF Chapter Stepping**: Pressing `[` and `]` when Auto-Flip is inactive now jumps to previous and next chapters based on the document's outline table of contents (or steps by 10 pages if no outline is present), giving PDF documents identical chapter navigation ergonomics to EPUBs.
+  - **Modifier-Safe Hotkey Shortcuts**: The `A` and `Shift+A` Auto-Flip toggle shortcuts now strictly ignore system modifier combinations (such as `Ctrl+Shift+A` or `Alt+A`), ensuring that common browser and window management shortcuts never accidentally toggle hands-free reading.
+  - **Real-Time Dynamic Cadence Tuning**: Changing cadence modes between Fixed and Smart Auto-Flip, stepping base seconds in settings, or clicking Reset now dynamically scales the running countdown clock in real time without restarting the timer.
+  - **Pause-Safe Micro-Pauses**: If you pause Auto-Flip during the brief 300ms pause at chapter ends or section breaks, the page will never advance while paused. Unpausing naturally completes the page turn and arms the next countdown.
+

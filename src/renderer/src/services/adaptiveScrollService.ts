@@ -1,13 +1,17 @@
-// Minimalist Dual-Mode Auto-Scroll Countdown Engine
-// Supports:
-// 1. Countdown Only ('countdown'): Deterministic fixed-second page turn timer (default 20s)
-// 2. Adaptive Countdown ('adaptive'): Dynamic duration computed from visible on-screen words
-//    and rolling Exponential Moving Average (EMA, alpha = 0.15) reading speed profiling
-// 3. Monotonic clock (performance.now) with pause-preserving remainingMs
-// 4. Isolated multi-reason auto-suspension (blur, hidden, drawer, modal, footnote, selection)
-// 5. 5-minute inactivity auto-pause watchdog for abandoned reading sessions
+// Unified Auto-Scroll Coordinator Facade
+// Coordinates CountdownScrollEngine and AdaptivePacingEngine while maintaining
+// 100% backwards-compatible APIs for reader views, store, and overlays.
 
 import type { AutoscrollMode } from '../db'
+import { CountdownScrollEngine, type CountdownState } from './countdownScrollEngine'
+import {
+  AdaptivePacingEngine,
+  computeEffectiveWordCount,
+  DEFAULT_WPM,
+  MIN_DWELL_FLOOR_SEC
+} from './adaptivePacingEngine'
+
+export { computeEffectiveWordCount }
 
 export type SuspensionReason =
   | 'blur'
@@ -18,6 +22,7 @@ export type SuspensionReason =
   | 'modal'
   | 'layout'
   | 'manualScroll'
+
 export type PauseReason = 'user' | 'inactivity' | null
 
 export type SettingsSyncCallback = (settings: {
@@ -47,6 +52,8 @@ export interface PacingMetrics {
   targetWpm: number
   observedWpm: number
   currentVelocity: number
+  isLearning?: boolean
+  isCalibrated?: boolean
 }
 
 export type PacingListener = (metrics: PacingMetrics) => void
@@ -60,117 +67,40 @@ export interface AdaptiveScrollOptions {
   nowFn?: () => number
 }
 
-const REFERENCE_PAGE_WORDS = 180
-const DEFAULT_WPM = 250
-const MIN_WPM = 18
-const MAX_WPM = 3600
 const DEFAULT_COUNTDOWN_SEC = 20
 const DEFAULT_ADAPTIVE_SEC = 25
 const MIN_COUNTDOWN_SEC = 3
 const MAX_COUNTDOWN_SEC = 600
-const MIN_ADAPTIVE_RATIO = 0.35
-const MIN_ADAPTIVE_MS = 2500 // Allow snappy 2.5s for genuine sparse pages (foreword, chapter title)
-const MAX_ADAPTIVE_MS = 600_000
-const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes away from app
-const TICK_INTERVAL_MS = 1000 // 1 Hz energy-efficient tick interval for integer second countdowns
-
-// Physiological reading boundaries for the Skimming Protector:
-export const MIN_RECOGNITION_DWELL_MS = 800 // Below 800ms is pure accidental flip or key repeat
-export const MAX_PLAUSIBLE_READING_WPM = 750 // Above 750 WPM is scanning/skimming
-export const MIN_PLAUSIBLE_READING_WPM = 60  // Below 60 WPM is distraction/idling
-
-/**
- * Ultra-fast O(N) language-aware word & character counter.
- * Correctly accounts for non-space-delimited CJK ideograms (~0.6 words each)
- * without triggering heavy regex thrashing or memory allocations.
- */
-export function computeEffectiveWordCount(
-  rawText: string,
-  hasIllustration = false
-): { words: number; chars: number; isImageOrSparse: boolean } {
-  const text = rawText.trim()
-  if (!text) {
-    return {
-      words: hasIllustration ? 60 : 0,
-      chars: 0,
-      isImageOrSparse: true
-    }
-  }
-
-  let cjkCount = 0
-  const len = text.length
-  for (let i = 0; i < len; i++) {
-    const code = text.charCodeAt(i)
-    if (
-      (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
-      (code >= 0x3400 && code <= 0x4dbf) || // CJK Extension A
-      (code >= 0x3040 && code <= 0x30ff) || // Hiragana & Katakana
-      (code >= 0xac00 && code <= 0xd7af)    // Hangul Syllables
-    ) {
-      cjkCount++
-    }
-  }
-
-  // Non-CJK text word splitting
-  let latinWords = 0
-  if (cjkCount < len) {
-    const nonCjk = text.replace(/[\u4e00-\u9fff\u3400-\u4dbf\u3040-\u30ff\uac00-\ud7af]/g, ' ')
-    latinWords = nonCjk.split(/\s+/).filter(Boolean).length
-  }
-
-  // Combine Latin words + CJK morphemes (~0.6 words per ideogram)
-  let effectiveWords = latinWords + Math.round(cjkCount * 0.6)
-
-  // If page is an illustration/figure with minimal text, allocate visual viewing dwell
-  if (hasIllustration && effectiveWords < 15) {
-    effectiveWords = 60
-  }
-
-  return {
-    words: Math.max(1, effectiveWords),
-    chars: len,
-    isImageOrSparse: effectiveWords < 20
-  }
-}
+const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes inactivity auto-pause
 
 export class AdaptiveScrollEngine {
-  private readonly alpha = 0.15
   private readonly nowFn: () => number
   private readonly inactivityTimeoutMs: number
 
-  private mode: AutoscrollMode
-  private fixedCountdownSec: number
-  private adaptiveBaseSec: number
+  private readonly countdownEngine: CountdownScrollEngine
+  private readonly pacingEngine: AdaptivePacingEngine
+
+  private mode: AutoscrollMode = 'adaptive'
+  private fixedCountdownSec = DEFAULT_COUNTDOWN_SEC
+  private adaptiveBaseSec = DEFAULT_ADAPTIVE_SEC
   private microPauseEnabled = true
 
-  private currentWpm: number
-  private targetWpm: number
-  private observedWpm: number
-  private currentVelocity = 40
-
-  private isActive = false
   private isUserPaused = false
   private pauseReason: PauseReason = null
   private suspensionReasons: Set<SuspensionReason> = new Set()
   private isMicroPausing = false
-  private isSkimming = false
   private isDoubleSpread = false
+  private currentPage = 1
 
-  private totalDurationMs: number
-  private remainingMs: number
-  private lastNotifiedSec = -1
   private lastPageWordCount = 180
   private hasBreakOnPage = false
-
-  private lastTickAt = 0
   private lastUserActivityAt = 0
   private awayStartedAt: number | null = null
 
   private listeners: Set<PacingListener> = new Set()
   private syncCallbacks: Set<SettingsSyncCallback> = new Set()
-  private onExpireCallback: (() => void) | null = null
-  private tickIntervalId: ReturnType<typeof setInterval> | null = null
   private microPauseTimerId: ReturnType<typeof setTimeout> | null = null
+  private pendingAdvanceCb: (() => void) | null = null
 
   constructor(options: AdaptiveScrollOptions = {}) {
     this.nowFn =
@@ -178,30 +108,30 @@ export class AdaptiveScrollEngine {
       (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()))
     this.inactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_MS
 
-    const initWpm = this.clampWpm(options.initialWpm ?? DEFAULT_WPM)
-    this.currentWpm = initWpm
-    this.targetWpm = initWpm
-    this.observedWpm = initWpm
-
     this.mode = options.initialMode ?? 'adaptive'
-    this.fixedCountdownSec = this.clampCountdownSec(
-      options.initialCountdownSec ?? DEFAULT_COUNTDOWN_SEC
+    this.fixedCountdownSec = Math.max(
+      MIN_COUNTDOWN_SEC,
+      Math.min(MAX_COUNTDOWN_SEC, options.initialCountdownSec ?? DEFAULT_COUNTDOWN_SEC)
     )
-    this.adaptiveBaseSec = this.clampCountdownSec(
-      options.initialAdaptiveSec ?? DEFAULT_ADAPTIVE_SEC
+    this.adaptiveBaseSec = Math.max(
+      MIN_DWELL_FLOOR_SEC,
+      Math.min(MAX_COUNTDOWN_SEC, options.initialAdaptiveSec ?? DEFAULT_ADAPTIVE_SEC)
     )
-    this.totalDurationMs =
-      (this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec) * 1000
-    this.remainingMs = this.totalDurationMs
+
+    this.countdownEngine = new CountdownScrollEngine({
+      nowFn: this.nowFn,
+      inactivityTimeoutMs: 60 * 60 * 1000 // 60 min hardware safety
+    })
+
+    this.pacingEngine = new AdaptivePacingEngine(options.initialWpm ?? DEFAULT_WPM)
+
     this.lastUserActivityAt = this.nowFn()
-  }
 
-  private clampWpm(wpm: number): number {
-    return Math.max(MIN_WPM, Math.min(MAX_WPM, Math.round(wpm)))
-  }
-
-  private clampCountdownSec(sec: number): number {
-    return Math.max(MIN_COUNTDOWN_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(sec)))
+    // Relay countdown ticks directly to pacing listeners
+    this.countdownEngine.subscribe((_state: CountdownState) => {
+      this.checkInactivityWatchdog()
+      this.notify()
+    })
   }
 
   public subscribe(listener: PacingListener): () => void {
@@ -215,12 +145,17 @@ export class AdaptiveScrollEngine {
     return () => this.syncCallbacks.delete(cb)
   }
 
+  private getCurrentUnit(): number {
+    return this.isDoubleSpread ? Math.ceil(this.currentPage / 2) : this.currentPage
+  }
+
   private triggerSettingsSync(): void {
+    const pacingState = this.pacingEngine.getState(this.getCurrentUnit(), this.isDoubleSpread)
     const data = {
       fixedCountdownSec: this.fixedCountdownSec,
       adaptiveBaseSec: this.adaptiveBaseSec,
-      targetWpm: Math.round(this.targetWpm),
-      observedWpm: Math.round(this.observedWpm)
+      targetWpm: pacingState.targetWpm,
+      observedWpm: pacingState.observedWpm
     }
     this.syncCallbacks.forEach((cb) => {
       try {
@@ -231,7 +166,6 @@ export class AdaptiveScrollEngine {
 
   private notify(): void {
     const metrics = this.getMetrics()
-    this.lastNotifiedSec = metrics.remainingSec
     this.listeners.forEach((l) => {
       try {
         l(metrics)
@@ -243,7 +177,19 @@ export class AdaptiveScrollEngine {
     return this.isUserPaused || this.suspensionReasons.size > 0
   }
 
-  // Configure engine parameters from Settings store
+  private checkInactivityWatchdog(): void {
+    const now = this.nowFn()
+    if (
+      this.countdownEngine.getState().isActive &&
+      !this.isUserPaused &&
+      now - this.lastUserActivityAt >= this.inactivityTimeoutMs
+    ) {
+      this.isUserPaused = true
+      this.pauseReason = 'inactivity'
+      this.countdownEngine.pause()
+    }
+  }
+
   public configure(params: {
     mode?: AutoscrollMode
     fixedCountdownSec?: number
@@ -251,275 +197,156 @@ export class AdaptiveScrollEngine {
     targetWpm?: number
     microPauseEnabled?: boolean
   }): void {
-    let shouldRecalibrate = false
-
     if (params.mode !== undefined && params.mode !== this.mode) {
       this.mode = params.mode
-      const newTotalMs =
-        params.mode === 'countdown'
-          ? this.fixedCountdownSec * 1000
-          : this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-      this.totalDurationMs = newTotalMs
-      this.remainingMs = newTotalMs
-      this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
-      this.notify()
-      shouldRecalibrate = false
+      if (this.countdownEngine.getState().isActive) {
+        const spreadFactor = this.isDoubleSpread ? 2 : 1
+        const targetSec = this.mode === 'countdown' ? this.fixedCountdownSec : (this.adaptiveBaseSec * spreadFactor)
+        const minFloor = this.mode === 'countdown' ? MIN_COUNTDOWN_SEC : MIN_DWELL_FLOOR_SEC
+        this.countdownEngine.setSeconds(targetSec, minFloor, MAX_COUNTDOWN_SEC)
+      }
     }
 
     if (params.fixedCountdownSec !== undefined) {
-      const clamped = this.clampCountdownSec(params.fixedCountdownSec)
-      this.fixedCountdownSec = clamped
-      if (this.mode === 'countdown') {
-        const newTotalMs = clamped * 1000
-        this.totalDurationMs = newTotalMs
-        this.remainingMs = newTotalMs
-        this.lastNotifiedSec = clamped
-        shouldRecalibrate = false
-        this.notify()
+      this.fixedCountdownSec = Math.max(MIN_COUNTDOWN_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.fixedCountdownSec)))
+      if (this.mode === 'countdown' && this.countdownEngine.getState().isActive) {
+        this.countdownEngine.setSeconds(this.fixedCountdownSec, MIN_COUNTDOWN_SEC, MAX_COUNTDOWN_SEC)
       }
     }
 
     if (params.adaptiveBaseSec !== undefined) {
-      const clamped = this.clampCountdownSec(params.adaptiveBaseSec)
-      this.adaptiveBaseSec = clamped
-      const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / clamped) * 60)
-      this.targetWpm = derivedWpm
-      this.currentWpm = derivedWpm
-      if (this.mode === 'adaptive') {
-        const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-        this.totalDurationMs = newTotalMs
-        this.remainingMs = newTotalMs
-        this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
-        shouldRecalibrate = false
-        this.notify()
-      }
-    } else if (params.targetWpm !== undefined) {
-      const clamped = this.clampWpm(params.targetWpm)
-      if (clamped !== Math.round(this.targetWpm)) {
-        this.targetWpm = clamped
-        this.currentWpm = clamped
-        this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / clamped) * 60)
-        if (this.mode === 'adaptive') shouldRecalibrate = true
+      this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.adaptiveBaseSec)))
+      this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
+      if (this.mode === 'adaptive' && this.countdownEngine.getState().isActive) {
+        const spreadFactor = this.isDoubleSpread ? 2 : 1
+        const targetSec = this.adaptiveBaseSec * spreadFactor
+        this.countdownEngine.setSeconds(targetSec, MIN_DWELL_FLOOR_SEC, MAX_COUNTDOWN_SEC)
       }
     }
 
-    if (
-      params.microPauseEnabled !== undefined &&
-      params.microPauseEnabled !== this.microPauseEnabled
-    ) {
+    if (params.targetWpm !== undefined) {
+      this.pacingEngine.setTargetWpm(params.targetWpm)
+      this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / params.targetWpm) * 60))
+    }
+
+    if (params.microPauseEnabled !== undefined) {
       this.microPauseEnabled = params.microPauseEnabled
     }
 
-    if (this.isActive && shouldRecalibrate) {
-      this.recalibrateActiveDuration()
-    } else {
-      this.notify()
-    }
-  }
-
-  public computePageDurationMs(visibleWords: number, isDoubleSpread = false): number {
-    if (this.mode === 'countdown') {
-      return this.fixedCountdownSec * 1000
-    }
-    return this.calculateBlockDurationMs(visibleWords, isDoubleSpread)
-  }
-
-  // Calculate dynamic duration for visible on-screen words in Smart/Adaptive mode
-  // Scales proportionally around the user's manual adaptiveBaseSec for a reference page
-  public calculateBlockDurationMs(wordsOnScreen: number, isDoubleSpread = false): number {
-    const effectiveWords = Math.max(5, wordsOnScreen)
-    // Sparse threshold: Normal reading pages (>= 40 words) execute at 100% of user-configured base seconds.
-    // Extremely brief pages (forewords, titles, chapter headings < 40 words) gracefully scale down (0.35x - 1.0x).
-    const sparseThreshold = isDoubleSpread ? 80 : 40
-    const densityRatio =
-      effectiveWords >= sparseThreshold
-        ? 1.0
-        : Math.max(MIN_ADAPTIVE_RATIO, effectiveWords / sparseThreshold)
-    const rawMs = Math.round(this.adaptiveBaseSec * 1000 * densityRatio)
-    return Math.max(MIN_ADAPTIVE_MS, Math.min(MAX_ADAPTIVE_MS, rawMs))
-  }
-
-  private recalibrateActiveDuration(): void {
-    const newTotalMs = this.computePageDurationMs(this.lastPageWordCount, this.isDoubleSpread)
-    this.totalDurationMs = newTotalMs
-    this.remainingMs = newTotalMs
-    this.lastNotifiedSec = Math.ceil(newTotalMs / 1000)
     this.notify()
   }
 
-  // Start or restart countdown for the currently visible page
+  /**
+   * Start or reset page countdown with layout & chapter-end awareness
+   */
   public startPageCountdown(
     visibleWords: number,
     hasBreak: boolean,
     onExpire: () => void,
-    isDoubleSpread = false
+    isDoubleSpread = false,
+    pageIndex = 1
   ): void {
     this.clearMicroPauseTimer()
+    this.pendingAdvanceCb = null
     this.isMicroPausing = false
     this.isDoubleSpread = isDoubleSpread
-
-    const now = this.nowFn()
-    if (!this.isActive) {
-      this.isUserPaused = false
-      this.pauseReason = null
-      this.lastUserActivityAt = now
-      this.awayStartedAt = null
-    }
-
-    this.isActive = true
+    this.currentPage = Math.max(1, pageIndex)
     this.lastPageWordCount = Math.max(5, visibleWords)
     this.hasBreakOnPage = hasBreak
-    this.onExpireCallback = onExpire
-
-    const durationMs = this.computePageDurationMs(this.lastPageWordCount, isDoubleSpread)
-    this.totalDurationMs = durationMs
-    this.remainingMs = durationMs
-    this.lastTickAt = now
-
-    this.ensureTickLoop()
-    this.notify()
-  }
-
-  private ensureTickLoop(): void {
-    if (this.tickIntervalId !== null || this.isPausedState()) return
-    this.tickIntervalId = setInterval(() => {
-      this.tick()
-    }, TICK_INTERVAL_MS)
-  }
-
-  private clearTickLoop(): void {
-    if (this.tickIntervalId !== null) {
-      clearInterval(this.tickIntervalId)
-      this.tickIntervalId = null
-    }
-  }
-
-  private clearMicroPauseTimer(): void {
-    if (this.microPauseTimerId !== null) {
-      clearTimeout(this.microPauseTimerId)
-      this.microPauseTimerId = null
-    }
-  }
-
-  // Exposed for deterministic testing and internal interval execution
-  public tick(): void {
-    if (!this.isActive) return
 
     const now = this.nowFn()
-    const rawDeltaMs = Math.max(0, now - this.lastTickAt)
-    this.lastTickAt = now
+    this.lastUserActivityAt = now
 
-    // 1. Sleep / Hibernate / Extreme Thread Freeze Guard:
-    // If elapsed wall clock time jumped by > 3000ms, the OS or window was suspended.
-    // Safely auto-pause with reason 'inactivity' instead of burning remaining time and jumping pages!
-    if (rawDeltaMs > 3000) {
-      this.isUserPaused = true
-      this.pauseReason = 'inactivity'
-      this.clearTickLoop()
-      this.notify()
-      return
+    let dwellSec = 20
+    let minFloor = MIN_COUNTDOWN_SEC
+
+    if (this.mode === 'countdown') {
+      dwellSec = this.fixedCountdownSec
+      minFloor = MIN_COUNTDOWN_SEC
+    } else {
+      dwellSec = this.pacingEngine.computeDwellSeconds(
+        this.getCurrentUnit(),
+        this.lastPageWordCount,
+        this.isDoubleSpread,
+        this.hasBreakOnPage,
+        this.adaptiveBaseSec
+      )
+      minFloor = MIN_DWELL_FLOOR_SEC
     }
 
-    // 2. Active Inactivity Watchdog:
-    // If the user leaves the computer focused without interacting for >= 5 minutes (300,000ms),
-    // automatically pause to avoid reading through the entire book unattended.
-    if (!this.isUserPaused && now - this.lastUserActivityAt >= this.inactivityTimeoutMs) {
-      this.isUserPaused = true
-      this.pauseReason = 'inactivity'
-      this.clearTickLoop()
-      this.notify()
-      return
-    }
-
-    // Freeze countdown while paused, suspended, or micro-pausing
-    if (this.isPausedState() || this.isMicroPausing) {
-      if (this.isPausedState()) {
-        this.clearTickLoop()
-      }
-      return
-    }
-
-    const deltaMs = Math.min(rawDeltaMs, 1000)
-    this.remainingMs = Math.max(0, this.remainingMs - deltaMs)
-    const nextSec = Math.ceil(this.remainingMs / 1000)
-
-    if (this.remainingMs <= 0) {
-      const cb = this.onExpireCallback
-      this.onExpireCallback = null
-      this.lastUserActivityAt = now
-      this.notify()
-
+    const wrappedOnExpire = () => {
       if (this.mode === 'adaptive' && this.microPauseEnabled && this.hasBreakOnPage) {
         this.triggerMicroPause(() => {
-          if (this.isActive) cb?.()
+          if (this.countdownEngine.getState().isActive && !this.isPausedState()) onExpire()
         }, 300)
       } else {
-        cb?.()
+        onExpire()
       }
-      return
     }
 
-    // Always emit on active tick so UI progress rings animate fluidly at 10 Hz (100ms)
+    this.countdownEngine.start(dwellSec, wrappedOnExpire, minFloor, MAX_COUNTDOWN_SEC)
+
+    // Synchronize pause state if currently suspended
+    if (this.isPausedState()) {
+      this.countdownEngine.pause()
+    }
+
     this.notify()
   }
 
-  // Stop the countdown engine completely and release all timers
   public stop(): void {
-    this.clearTickLoop()
     this.clearMicroPauseTimer()
-    this.isActive = false
+    this.pendingAdvanceCb = null
+    this.countdownEngine.stop()
     this.isUserPaused = false
     this.pauseReason = null
     this.isMicroPausing = false
-    this.onExpireCallback = null
     this.awayStartedAt = null
-    this.remainingMs = this.totalDurationMs
     this.notify()
   }
 
-  // Record explicit user interaction to keep the 5-minute inactivity watchdog fresh
   public recordUserActivity(): void {
     this.lastUserActivityAt = this.nowFn()
   }
 
-  // Explicit user pause/resume (never overridden by transient focus/drawer events)
   public setUserPaused(paused: boolean): void {
     const now = this.nowFn()
     this.isUserPaused = paused
     this.pauseReason = paused ? 'user' : null
-    this.lastTickAt = now
+    this.lastUserActivityAt = now
+
     if (paused) {
-      this.clearTickLoop()
+      this.countdownEngine.pause()
     } else {
-      this.lastUserActivityAt = now
-      // Clear any stale transient hover/blur locks when user explicitly resumes
       this.suspensionReasons.delete('blur')
       this.suspensionReasons.delete('footnote')
-      if (this.isActive && !this.isPausedState()) {
-        this.ensureTickLoop()
+      if (!this.isPausedState()) {
+        this.countdownEngine.resume()
+        // If there was a pending advance queued from an interrupted micro-pause, execute it on unpause
+        if (this.pendingAdvanceCb && !this.isMicroPausing) {
+          const cb = this.pendingAdvanceCb
+          this.pendingAdvanceCb = null
+          cb()
+        }
       }
     }
     this.notify()
   }
 
-  // Clear stale transient suspensions when explicitly starting Auto-Scroll
-  public clearTransientSuspensions(): void {
-    this.suspensionReasons.delete('blur')
-    this.suspensionReasons.delete('hidden')
-    this.suspensionReasons.delete('footnote')
-    this.lastTickAt = this.nowFn()
-    if (this.isActive && !this.isPausedState()) {
-      this.ensureTickLoop()
-    }
-    this.notify()
-  }
-
-  // Backward-compatible alias for user pause toggle
   public setPaused(paused: boolean): void {
     this.setUserPaused(paused)
   }
 
-  // Isolated transient auto-suspension (blur, hidden, drawer, modal, footnote, selection)
+  public clearTransientSuspensions(): void {
+    this.suspensionReasons.delete('blur')
+    this.suspensionReasons.delete('hidden')
+    this.suspensionReasons.delete('footnote')
+    if (!this.isPausedState()) {
+      this.countdownEngine.resume()
+    }
+    this.notify()
+  }
+
   public setSuspension(reason: SuspensionReason, suspended: boolean): void {
     const now = this.nowFn()
     const wasAway = this.suspensionReasons.has('blur') || this.suspensionReasons.has('hidden')
@@ -529,182 +356,198 @@ export class AdaptiveScrollEngine {
       if ((reason === 'blur' || reason === 'hidden') && this.awayStartedAt === null) {
         this.awayStartedAt = now
       }
-      this.clearTickLoop()
+      this.countdownEngine.pause()
     } else {
       this.suspensionReasons.delete(reason)
     }
 
     const isStillAway = this.suspensionReasons.has('blur') || this.suspensionReasons.has('hidden')
-    // If the user left the app for >= inactivityTimeoutMs and returns, keep safely paused
     if (wasAway && !isStillAway && this.awayStartedAt !== null) {
       const awayDuration = now - this.awayStartedAt
       this.awayStartedAt = null
-      if (this.isActive && awayDuration >= this.inactivityTimeoutMs) {
+      if (this.countdownEngine.getState().isActive && awayDuration >= this.inactivityTimeoutMs) {
         this.isUserPaused = true
         this.pauseReason = 'inactivity'
-        this.clearTickLoop()
+        this.countdownEngine.pause()
       } else {
         this.lastUserActivityAt = now
       }
     }
 
-    if (this.isActive && !this.isPausedState()) {
-      this.ensureTickLoop()
+    if (!this.isPausedState() && this.countdownEngine.getState().isActive) {
+      this.countdownEngine.resume()
     }
 
-    this.lastTickAt = now
     this.notify()
   }
 
-  // Record observed manual reading speed between page turns (EMA alpha = 0.15)
-  // Protected by the Mathematical Skimming & Idling Guard:
-  public recordManualReading(wordCount: number, elapsedMs: number): void {
-    // 1. Physical fixation minimum: Dwells under 800ms are accidental clicks or rapid key-repeats
-    if (elapsedMs < MIN_RECOGNITION_DWELL_MS || wordCount <= 0) return
+  /**
+   * On-the-fly hotkey speed nudging (+/- 2 seconds)
+   * Does not restart or interrupt running countdown timer!
+   */
+  public nudgeDwellSec(deltaSec: number): number {
+    this.recordUserActivity()
+    const isAdaptive = this.mode === 'adaptive'
+    const minFloor = isAdaptive ? MIN_DWELL_FLOOR_SEC : MIN_COUNTDOWN_SEC
 
-    // Require sufficient words (>= 40) before modifying learned cadence, so title pages and brief section openers don't skew WPM
-    if (wordCount < 40) return
-
-    const elapsedMinutes = elapsedMs / 60000
-    const rawObserved = wordCount / elapsedMinutes
-
-    // 2. Skimming Protector: If observed speed exceeds plausible reading ceiling (e.g. skimming through pages)
-    if (rawObserved > MAX_PLAUSIBLE_READING_WPM) {
-      this.isSkimming = true
-      this.observedWpm = this.clampWpm(rawObserved)
-      this.notify()
-      return
+    if (isAdaptive) {
+      this.adaptiveBaseSec = Math.max(minFloor, Math.min(MAX_COUNTDOWN_SEC, this.adaptiveBaseSec + deltaSec))
+      this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
+    } else {
+      this.fixedCountdownSec = Math.max(minFloor, Math.min(MAX_COUNTDOWN_SEC, this.fixedCountdownSec + deltaSec))
     }
 
-    // 3. Idling / Inattention Protector: If observed speed is lower than 60 WPM (e.g. reader paused or stepped away)
-    if (rawObserved < MIN_PLAUSIBLE_READING_WPM) {
-      return
-    }
-
-    // 4. Normal Reading Cadence: User is reading within physiological bounds
-    this.isSkimming = false
-    this.observedWpm = this.clampWpm(rawObserved)
-    this.currentWpm = this.alpha * this.observedWpm + (1 - this.alpha) * this.currentWpm
-    this.targetWpm = this.clampWpm(this.currentWpm)
-    this.notify()
+    const updatedTotal = this.countdownEngine.adjustSeconds(deltaSec, minFloor, MAX_COUNTDOWN_SEC)
     this.triggerSettingsSync()
+    this.notify()
+    return updatedTotal
   }
 
-  // When a backward scroll occurs (re-reading), provide extra dwell time for the current page without mutating user's base settings
-  public extendCurrentPageDwell(factor = 1.25): void {
-    this.remainingMs = Math.min(MAX_ADAPTIVE_MS, Math.round(this.totalDurationMs * factor))
-    this.totalDurationMs = this.remainingMs
-    this.lastNotifiedSec = Math.ceil(this.remainingMs / 1000)
+  public adjustCountdownSec(deltaSec: number): number {
+    return this.nudgeDwellSec(deltaSec)
+  }
+
+  public recordManualReading(wordCount: number, elapsedMs: number, pageIndex?: number, isDoubleSpread?: boolean): void {
+    const page = pageIndex ?? this.currentPage
+    const isDual = isDoubleSpread ?? this.isDoubleSpread
+    const unit = isDual ? Math.ceil(page / 2) : page
+    const updated = this.pacingEngine.recordManualReading(unit, wordCount, elapsedMs, isDual)
+    if (updated) {
+      const pacing = this.pacingEngine.getState(unit, isDual)
+      this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / pacing.currentWpm) * 60))
+      this.triggerSettingsSync()
+    }
     this.notify()
   }
 
-  // Behavioral Heuristic 1: Back-Scroll Detection
+  public extendCurrentPageDwell(factor = 1.25): void {
+    const cur = this.countdownEngine.getState().remainingSec
+    const delta = Math.round(cur * (factor - 1))
+    this.countdownEngine.adjustSeconds(delta)
+    this.notify()
+  }
+
   public onBackScrollDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
     this.extendCurrentPageDwell(1.25)
   }
 
-  // Behavioral Heuristic 2: Forward Nudge Detection
   public onForwardNudgeDetected(): void {
     if (this.mode !== 'adaptive') return
     this.recordUserActivity()
-    this.remainingMs = Math.max(1000, Math.round(this.remainingMs * 0.75))
-    this.lastNotifiedSec = Math.ceil(this.remainingMs / 1000)
+    const cur = this.countdownEngine.getState().remainingSec
+    const delta = -Math.round(cur * 0.25)
+    this.countdownEngine.adjustSeconds(delta)
     this.notify()
   }
 
-  // Adjust countdown seconds in Countdown Only mode (+5s slower / -5s faster)
-  public adjustCountdownSec(deltaSec: number): number {
-    this.recordUserActivity()
-    this.fixedCountdownSec = this.clampCountdownSec(this.fixedCountdownSec + deltaSec)
-    if (this.isActive && this.mode === 'countdown') {
-      this.recalibrateActiveDuration()
-    } else {
-      this.notify()
-    }
-    this.triggerSettingsSync()
-    return this.fixedCountdownSec
-  }
-
-  // Subtle 300ms cognitive micro-pause at section dividers, chapter ends, blockquotes
   public triggerMicroPause(callback?: () => void, durationMs = 300): void {
     this.clearMicroPauseTimer()
     this.isMicroPausing = true
+    this.pendingAdvanceCb = callback ?? null
+    this.countdownEngine.pause()
     this.notify()
     this.microPauseTimerId = setTimeout(() => {
       this.microPauseTimerId = null
       this.isMicroPausing = false
-      this.notify()
-      callback?.()
+      if (!this.isPausedState()) {
+        this.countdownEngine.resume()
+        const cb = this.pendingAdvanceCb
+        this.pendingAdvanceCb = null
+        this.notify()
+        cb?.()
+      } else {
+        this.notify()
+      }
     }, durationMs)
   }
 
   public reset(baseSec = DEFAULT_ADAPTIVE_SEC): void {
-    this.adaptiveBaseSec = this.clampCountdownSec(baseSec)
+    this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, baseSec)
     this.fixedCountdownSec = DEFAULT_COUNTDOWN_SEC
-    const derivedWpm = this.clampWpm((REFERENCE_PAGE_WORDS / this.adaptiveBaseSec) * 60)
-    this.currentWpm = derivedWpm
-    this.targetWpm = derivedWpm
-    this.observedWpm = derivedWpm
+    this.pacingEngine.reset()
+    this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
     this.isMicroPausing = false
     this.clearMicroPauseTimer()
-    if (this.isActive) {
-      this.recalibrateActiveDuration()
-    } else {
-      this.totalDurationMs =
-        (this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec) * 1000
-      this.remainingMs = this.totalDurationMs
-      this.notify()
+    this.pendingAdvanceCb = null
+    if (this.countdownEngine.getState().isActive) {
+      const spreadFactor = this.isDoubleSpread ? 2 : 1
+      const targetSec = this.mode === 'countdown' ? this.fixedCountdownSec : (this.adaptiveBaseSec * spreadFactor)
+      const minFloor = this.mode === 'countdown' ? MIN_COUNTDOWN_SEC : MIN_DWELL_FLOOR_SEC
+      this.countdownEngine.setSeconds(targetSec, minFloor, MAX_COUNTDOWN_SEC)
     }
     this.triggerSettingsSync()
+    this.notify()
   }
 
   public setTargetWpm(wpm: number): void {
-    const clamped = this.clampWpm(wpm)
-    this.targetWpm = clamped
-    this.currentWpm = clamped
-    this.adaptiveBaseSec = this.clampCountdownSec((REFERENCE_PAGE_WORDS / clamped) * 60)
-    if (this.isActive && this.mode === 'adaptive') {
-      this.recalibrateActiveDuration()
-    } else {
-      this.notify()
-    }
+    this.pacingEngine.setTargetWpm(wpm)
+    this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / wpm) * 60))
     this.triggerSettingsSync()
+    this.notify()
+  }
+
+  public computePageDurationMs(visibleWords: number, isDoubleSpread = false): number {
+    if (this.mode === 'countdown') {
+      return this.fixedCountdownSec * 1000
+    }
+    const unit = isDoubleSpread ? Math.ceil(this.currentPage / 2) : this.currentPage
+    const sec = this.pacingEngine.computeDwellSeconds(
+      unit,
+      visibleWords,
+      isDoubleSpread,
+      this.hasBreakOnPage,
+      this.adaptiveBaseSec
+    )
+    return sec * 1000
+  }
+
+  public calculateBlockDurationMs(wordsOnScreen: number, isDoubleSpread = false): number {
+    return this.computePageDurationMs(wordsOnScreen, isDoubleSpread)
+  }
+
+  public tick(): void {
+    this.countdownEngine.tick()
   }
 
   public getMetrics(): PacingMetrics {
-    const remainingSec = Math.max(0, Math.ceil(this.remainingMs / 1000))
-    const progress =
-      this.totalDurationMs > 0
-        ? Math.max(0, Math.min(1, this.remainingMs / this.totalDurationMs))
-        : 0
-    
-    // Inverse mapping: Speed is proportional to 1 / seconds
+    const cd = this.countdownEngine.getState()
+    const pacing = this.pacingEngine.getState(this.getCurrentUnit(), this.isDoubleSpread)
+
     const scrollSeconds = this.mode === 'countdown' ? this.fixedCountdownSec : this.adaptiveBaseSec
-    const baseVelocity = 50 
+    const baseVelocity = 50
     const currentVelocity = Math.max(10, Math.round(baseVelocity * (20 / scrollSeconds)))
 
     return {
       mode: this.mode,
-      isActive: this.isActive,
-      isPaused: this.isPausedState(),
+      isActive: cd.isActive,
+      isPaused: this.isPausedState() || cd.isPaused,
       isUserPaused: this.isUserPaused,
       isAutoSuspended: this.suspensionReasons.size > 0,
-      isSkimming: this.isSkimming,
+      isSkimming: pacing.isSkimming,
       pauseReason: this.pauseReason,
       isMicroPausing: this.isMicroPausing,
       microPauseEnabled: this.microPauseEnabled,
-      totalDurationMs: this.totalDurationMs,
-      remainingMs: this.remainingMs,
-      remainingSec,
-      progress,
+      totalDurationMs: cd.totalSec * 1000,
+      remainingMs: cd.remainingSec * 1000,
+      remainingSec: cd.remainingSec,
+      progress: cd.progress,
       fixedCountdownSec: this.fixedCountdownSec,
       adaptiveBaseSec: this.adaptiveBaseSec,
-      currentWpm: Math.round(this.currentWpm),
-      targetWpm: Math.round(this.targetWpm),
-      observedWpm: Math.round(this.observedWpm),
-      currentVelocity: currentVelocity
+      currentWpm: pacing.currentWpm,
+      targetWpm: pacing.targetWpm,
+      observedWpm: pacing.observedWpm,
+      currentVelocity,
+      isLearning: pacing.isLearning,
+      isCalibrated: pacing.isCalibrated
+    }
+  }
+
+  private clearMicroPauseTimer(): void {
+    if (this.microPauseTimerId !== null) {
+      clearTimeout(this.microPauseTimerId)
+      this.microPauseTimerId = null
     }
   }
 }

@@ -12,6 +12,7 @@ import {
   Settings
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
+import { useShallow } from 'zustand/react/shallow'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
 import { db, type Annotation, type Book, type Bookmark as BookmarkItem, type NoteColor } from '../../db'
 import { ReaderTopBar } from './ReaderTopBar'
@@ -40,52 +41,82 @@ if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
   ).toString()
 }
 
+const isTargetInput = (target: EventTarget | null): boolean => {
+  if (!target) return false
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return true
+  const el = target as HTMLElement
+  if (el?.isContentEditable || el?.getAttribute?.('contenteditable') === 'true') return true
+  if (el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA') return true
+  return false
+}
+
 interface PdfReaderViewProps {
   book: Book
   onBack: () => void
   onActivateReflow: () => Promise<void>
 }
 
-export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
+const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
   book,
   onBack,
   onActivateReflow
 }) => {
   const {
     settings,
-    updateSettings,
     activeBookBuffer,
-    syncActiveBookProgress,
-    setCurrentChapterTitle,
     isImmersiveFullscreen,
-    setImmersiveFullscreen,
     isTOCDrawerOpen,
-    toggleTOCDrawer,
     isNotesDrawerOpen,
-    toggleNotesDrawer,
     isBookmarksDrawerOpen,
-    toggleBookmarksDrawer,
     isSearchDrawerOpen,
-    toggleSearchDrawer,
     isSettingsDrawerOpen,
-    toggleSettingsDrawer,
     isConvertingPdf,
     pdfConvertProgress,
     bookmarksVersion,
     annotationsVersion,
-    bumpAnnotationsVersion,
-    bumpBookmarksVersion,
-    pdfZoom: zoom,
-    setPdfZoom,
+    zoom,
     isTTSActive,
     isTTSMuted,
-    setTTSActive,
-    setTTSMuted,
-    toggleHelpModal,
     isAutoscrollActive,
-    setAutoscrollActive,
     isFullSettingsModalOpen
-  } = useAppStore()
+  } = useAppStore(
+    useShallow((s) => ({
+      settings: s.settings,
+      activeBookBuffer: s.activeBookBuffer,
+      isImmersiveFullscreen: s.isImmersiveFullscreen,
+      isTOCDrawerOpen: s.isTOCDrawerOpen,
+      isNotesDrawerOpen: s.isNotesDrawerOpen,
+      isBookmarksDrawerOpen: s.isBookmarksDrawerOpen,
+      isSearchDrawerOpen: s.isSearchDrawerOpen,
+      isSettingsDrawerOpen: s.isSettingsDrawerOpen,
+      isConvertingPdf: s.isConvertingPdf,
+      pdfConvertProgress: s.pdfConvertProgress,
+      bookmarksVersion: s.bookmarksVersion,
+      annotationsVersion: s.annotationsVersion,
+      zoom: s.pdfZoom,
+      isTTSActive: s.isTTSActive,
+      isTTSMuted: s.isTTSMuted,
+      isAutoscrollActive: s.isAutoscrollActive,
+      isFullSettingsModalOpen: s.isFullSettingsModalOpen
+    }))
+  )
+
+  const updateSettings = useAppStore((s) => s.updateSettings)
+  const syncActiveBookProgress = useAppStore((s) => s.syncActiveBookProgress)
+  const setCurrentChapterTitle = useAppStore((s) => s.setCurrentChapterTitle)
+  const setImmersiveFullscreen = useAppStore((s) => s.setImmersiveFullscreen)
+  const toggleTOCDrawer = useAppStore((s) => s.toggleTOCDrawer)
+  const toggleNotesDrawer = useAppStore((s) => s.toggleNotesDrawer)
+  const toggleBookmarksDrawer = useAppStore((s) => s.toggleBookmarksDrawer)
+  const toggleSearchDrawer = useAppStore((s) => s.toggleSearchDrawer)
+  const toggleSettingsDrawer = useAppStore((s) => s.toggleSettingsDrawer)
+  const bumpAnnotationsVersion = useAppStore((s) => s.bumpAnnotationsVersion)
+  const bumpBookmarksVersion = useAppStore((s) => s.bumpBookmarksVersion)
+  const setPdfZoom = useAppStore((s) => s.setPdfZoom)
+  const setTTSActive = useAppStore((s) => s.setTTSActive)
+  const setTTSMuted = useAppStore((s) => s.setTTSMuted)
+  const toggleHelpModal = useAppStore((s) => s.toggleHelpModal)
+  const setAutoscrollActive = useAppStore((s) => s.setAutoscrollActive)
 
   const setZoom = (updater: number | ((z: number) => number)) => {
     const next = typeof updater === 'function' ? updater(useAppStore.getState().pdfZoom) : updater
@@ -431,8 +462,57 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
   }, [totalPages, step])
 
   const handlePrev = useCallback(() => {
+    if (useAppStore.getState().isAutoscrollActive) {
+      adaptiveScrollEngine.stop()
+    }
     setCurrentPage((p) => Math.max(1, p - step))
   }, [step])
+
+  const handleChapterStep = useCallback(
+    (direction: 'next' | 'prev') => {
+      const flatPages: number[] = []
+      const traverse = (items: TocItem[]) => {
+        for (const it of items) {
+          if (typeof it.pageNumber === 'number' && it.pageNumber >= 1) {
+            flatPages.push(it.pageNumber)
+          }
+          if (it.subitems?.length) {
+            traverse(it.subitems)
+          }
+        }
+      }
+      traverse(toc)
+      const sorted = Array.from(new Set(flatPages)).sort((a, b) => a - b)
+
+      if (sorted.length > 0) {
+        if (direction === 'prev') {
+          const target = [...sorted].reverse().find((p) => p < currentPage)
+          if (target) {
+            setCurrentPage(target)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+            return
+          }
+        } else {
+          const maxVisible = isDual ? currentPage + 1 : currentPage
+          const target = sorted.find((p) => p > maxVisible)
+          if (target) {
+            setCurrentPage(target)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+            return
+          }
+        }
+      }
+
+      // Fallback: jump 10 pages when document has no outline TOC
+      if (direction === 'prev') {
+        setCurrentPage((p) => Math.max(1, p - 10))
+      } else {
+        setCurrentPage((p) => Math.min(totalPages, p + 10))
+      }
+      viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+    },
+    [toc, currentPage, isDual, totalPages]
+  )
 
   // Keep stable refs for timer loop to avoid stale closure
   const currentPageRef = useRef(currentPage)
@@ -475,6 +555,20 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     adaptiveScrollEngine.setSuspension('selection', Boolean(selectedPdfText))
   }, [selectedPdfText])
 
+  // Reverse sync: Persist dwell time changes (hotkeys/overlay) back to settings
+  useEffect(() => {
+    return adaptiveScrollEngine.onSyncSettings((s) => {
+      const st = useAppStore.getState()
+      const isDualSpread = (st.settings.pageLayout ?? (st.settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+      st.updateSettings({
+        autoscrollCountdownSec: s.fixedCountdownSec,
+        ...(isDualSpread
+          ? { pdfCountdownSecDual: s.fixedCountdownSec }
+          : { pdfCountdownSecSingle: s.fixedCountdownSec })
+      })
+    })
+  }, [])
+
   // Shared Autoscroll Engine Lifecycle for PDF (Dwell time only, no WPM)
   // Single page default: 25s, Dual spread default: 45s.
   useEffect(() => {
@@ -492,7 +586,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
 
     const armPage = () => {
       if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-      if (currentPage >= totalPages) {
+      if (currentPage > totalPages) {
         adaptiveScrollEngine.stop()
         setAutoscrollActive(false)
         return
@@ -505,8 +599,8 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           if (cancelled || !useAppStore.getState().isAutoscrollActive) return
           const cur = currentPageRef.current
           const tot = totalPagesRef.current
-          if (cur + step > tot) {
-            handleNext()
+          const isLastSpread = isDual ? cur + 1 >= tot : cur >= tot
+          if (isLastSpread) {
             adaptiveScrollEngine.stop()
             useAppStore.getState().setAutoscrollActive(false)
           } else {
@@ -530,14 +624,13 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     isDual,
     step,
     handleNext,
-    setAutoscrollActive,
-    settings.pdfCountdownSecDual,
-    settings.pdfCountdownSecSingle
+    setAutoscrollActive
   ])
 
   // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      adaptiveScrollEngine.recordUserActivity()
       const isBackKey =
         (e.altKey && !e.ctrlKey && !e.metaKey && (
           e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
@@ -570,7 +663,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         return
       }
 
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (isTargetInput(e.target)) {
         if (e.key === 'Escape') {
           ;(e.target as HTMLElement)?.blur?.()
         }
@@ -638,7 +731,18 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
           handlePrev()
           viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
         }
-      } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+      } else if (e.key === ' ') {
+        e.preventDefault()
+        if (useAppStore.getState().isAutoscrollActive) {
+          adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
+        } else {
+          handleNext()
+          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
         e.preventDefault()
         handleNext()
         viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -664,10 +768,36 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         toggleHelpModal()
       } else if (e.key === '+' || e.key === '=') {
         e.preventDefault()
-        setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))
+        if (useAppStore.getState().isAutoscrollActive) {
+          const updated = adaptiveScrollEngine.nudgeDwellSec(2)
+          useAppStore.getState().showToast(`Auto-Flip: ${updated}s`, 'info')
+        } else {
+          setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))))
+        }
       } else if (e.key === '-') {
         e.preventDefault()
-        setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))
+        if (useAppStore.getState().isAutoscrollActive) {
+          const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
+          useAppStore.getState().showToast(`Auto-Flip: ${updated}s`, 'info')
+        } else {
+          setZoom((z) => Math.max(0.5, Number((z - 0.15).toFixed(2))))
+        }
+      } else if (e.key === '[') {
+        e.preventDefault()
+        if (useAppStore.getState().isAutoscrollActive) {
+          const updated = adaptiveScrollEngine.nudgeDwellSec(-2)
+          useAppStore.getState().showToast(`Auto-Flip: ${updated}s`, 'info')
+        } else {
+          handleChapterStep('prev')
+        }
+      } else if (e.key === ']') {
+        e.preventDefault()
+        if (useAppStore.getState().isAutoscrollActive) {
+          const updated = adaptiveScrollEngine.nudgeDwellSec(2)
+          useAppStore.getState().showToast(`Auto-Flip: ${updated}s`, 'info')
+        } else {
+          handleChapterStep('next')
+        }
       } else if (e.key === '0') {
         e.preventDefault()
         setPdfZoom(1.0)
@@ -962,7 +1092,7 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
         onPrev={handlePrev}
         onNext={handleNext}
         isLeftDisabled={currentPage <= 1}
-        isRightDisabled={currentPage >= totalPages}
+        isRightDisabled={isDual ? currentPage + 1 >= totalPages : currentPage >= totalPages}
         hidden={
           isImmersiveFullscreen ||
           isSettingsDrawerOpen ||
@@ -1202,3 +1332,11 @@ export const PdfReaderView: React.FC<PdfReaderViewProps> = ({
     </div>
   )
 }
+
+export const PdfReaderView = React.memo<PdfReaderViewProps>(
+  PdfReaderViewBase,
+  (prev, next) =>
+    prev.book.id === next.book.id &&
+    prev.book.filePath === next.book.filePath &&
+    prev.book.format === next.book.format
+)

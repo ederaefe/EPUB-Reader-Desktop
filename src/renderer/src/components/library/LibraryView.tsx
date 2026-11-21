@@ -65,6 +65,22 @@ export const LibraryView: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const catalogScrollRef = useRef<HTMLDivElement>(null)
 
+  // Decoupled search input with 150ms debounce to prevent typing lag across large book grids
+  const [localSearch, setLocalSearch] = useState(searchQuery)
+
+  useEffect(() => {
+    setLocalSearch(searchQuery)
+  }, [searchQuery])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        setSearchQuery(localSearch)
+      }
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [localSearch, searchQuery, setSearchQuery])
+
   // Subtle top-bar Select Mode & multi-select state
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedBookIds, setSelectedBookIds] = useState<Set<number>>(new Set())
@@ -642,6 +658,7 @@ export const LibraryView: React.FC = () => {
         let importedCount = 0
         for (const p of paths) {
           if (await processAndAddFile(p, targetCatId)) importedCount++
+          await new Promise((resolve) => setTimeout(resolve, 16))
         }
         await loadData()
       }
@@ -667,6 +684,7 @@ export const LibraryView: React.FC = () => {
         for (const f of files) {
           const filePath = typeof f === 'string' ? f : (f as any)?.path || (f as any)?.filePath || ''
           if (filePath && (await processAndAddFile(filePath, targetCatId))) importedCount++
+          await new Promise((resolve) => setTimeout(resolve, 16))
         }
         await loadData()
       }
@@ -849,6 +867,7 @@ export const LibraryView: React.FC = () => {
           metadataHydrated: true
         })
         importedCount++
+        await new Promise((resolve) => setTimeout(resolve, 16))
       }
       await loadData()
       setIsLoading(false)
@@ -1032,11 +1051,12 @@ export const LibraryView: React.FC = () => {
               <input
                 type="text"
                 data-library-search="true"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
-                    if (searchQuery) {
+                    if (localSearch || searchQuery) {
+                      setLocalSearch('')
                       setSearchQuery('')
                     } else {
                       e.currentTarget.blur()

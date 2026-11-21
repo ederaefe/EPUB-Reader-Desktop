@@ -787,7 +787,7 @@ export const FullSettingsModal: React.FC = () => {
                 }
 
                 const handleAdaptiveSecChange = (sec: number) => {
-                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+                  const clamped = Math.max(10, Math.min(600, Math.round(sec)))
                   updateSettings({ autoscrollAdaptiveSec: clamped })
                   adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
                 }
@@ -810,15 +810,15 @@ export const FullSettingsModal: React.FC = () => {
                             <Zap className="w-4 h-4 text-amber-500" />
                           )}
                           <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
-                            Auto-Scroll
+                            Auto-Flip
                           </span>
                         </div>
                         <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
                           {isPdf
-                            ? 'Auto-Scroll is disabled for PDF documents'
+                            ? 'Fixed dwell timer per page for PDF documents'
                             : effectiveMode === 'countdown'
                               ? 'Turns page automatically on a fixed timer'
-                              : 'Scales your base seconds dynamically to each page word count'}
+                              : 'Scales your base seconds dynamically to each page word count (min 10s floor)'}
                         </p>
                       </div>
 
@@ -844,8 +844,8 @@ export const FullSettingsModal: React.FC = () => {
                         className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center shrink-0 cursor-pointer"
                         title={
                           isAutoscrollActive
-                            ? 'Turn off Auto-Scroll'
-                            : 'Turn on Auto-Scroll'
+                            ? 'Turn off Auto-Flip'
+                            : 'Turn on Auto-Flip'
                         }
                       >
                         <span
@@ -867,7 +867,7 @@ export const FullSettingsModal: React.FC = () => {
                         className="glass-pill-btn !h-7 gap-1.5 !text-[12px] font-semibold"
                       >
                         <Timer className="w-3.5 h-3.5" />
-                        <span>Fixed Timer</span>
+                        <span>Fixed Auto-Flip</span>
                       </button>
 
                       <button
@@ -877,7 +877,7 @@ export const FullSettingsModal: React.FC = () => {
                         className="glass-pill-btn !h-7 gap-1.5 !text-[12px] font-semibold"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>Smart Pace</span>
+                        <span>Smart Auto-Flip</span>
                       </button>
                     </div>
 
@@ -919,7 +919,7 @@ export const FullSettingsModal: React.FC = () => {
                               Base seconds per page
                             </span>
                             <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                              (3–600s)
+                              (10–600s)
                             </span>
                             {adaptiveSec !== 25 && (
                               <button
@@ -937,7 +937,7 @@ export const FullSettingsModal: React.FC = () => {
                           </div>
                           <SecondsNumberInput
                             value={adaptiveSec}
-                            min={3}
+                            min={10}
                             max={600}
                             step={5}
                             onChange={handleAdaptiveSecChange}
@@ -947,7 +947,7 @@ export const FullSettingsModal: React.FC = () => {
 
                         <div className="flex items-center justify-between pt-2 border-t border-[var(--app-border)]">
                           <span className="text-[12.5px] font-bold text-[var(--app-text)]">
-                            Pause at section breaks
+                            Pause at breaks & chapter ends
                           </span>
                           <button
                             type="button"

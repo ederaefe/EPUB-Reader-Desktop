@@ -78,6 +78,18 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
   const [dragPercent, setDragPercent] = useState<number | null>(null)
   const dragPercentRef = useRef<number | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  const cachedTrackRectRef = useRef<DOMRect | null>(null)
+  const rafDragRef = useRef<number | null>(null)
+  const rafHoverRef = useRef<number | null>(null)
+
+  // Clear cached bounding rect on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      cachedTrackRectRef.current = null
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Seed palette calculation (cached per book)
   const { startHue, endHue } = useMemo(() => {
@@ -151,42 +163,66 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
     }
   }, [activeFluidPct, startHue, endHue, climaxTarget])
 
-  // Track scrubber calculation with 0.1% precision so large books seek accurately
-  const calculatePercentFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
-    if (!trackRef.current) return 0
-    const rect = trackRef.current.getBoundingClientRect()
-    if (rect.width <= 0) return 0
-    const x = e.clientX - rect.left
-    const rawPct = (x / rect.width) * 100
-    return Math.max(0, Math.min(100, Math.round(rawPct * 10) / 10))
+  // Track scrubber calculation with 0.1% precision and cached bounding box to prevent layout thrashing
+  const getTrackRect = useCallback((): DOMRect | null => {
+    if (!trackRef.current) return null
+    if (!cachedTrackRectRef.current) {
+      cachedTrackRectRef.current = trackRef.current.getBoundingClientRect()
+    }
+    return cachedTrackRectRef.current
   }, [])
+
+  const calculatePercentFromClientX = useCallback(
+    (clientX: number) => {
+      const rect = getTrackRect()
+      if (!rect || rect.width <= 0) return 0
+      const x = clientX - rect.left
+      const rawPct = (x / rect.width) * 100
+      return Math.max(0, Math.min(100, Math.round(rawPct * 10) / 10))
+    },
+    [getTrackRect]
+  )
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (e.button !== 0) return
       e.preventDefault()
-      const targetPct = calculatePercentFromEvent(e)
+      // Refresh cached track rect at drag start
+      cachedTrackRectRef.current = trackRef.current?.getBoundingClientRect() || null
+      const targetPct = calculatePercentFromClientX(e.clientX)
       dragPercentRef.current = targetPct
       setIsDragging(true)
       setDragPercent(targetPct)
       setHoverPercent(targetPct)
     },
-    [calculatePercentFromEvent]
+    [calculatePercentFromClientX]
   )
 
   useEffect(() => {
     if (!isDragging) return
 
     const handleMouseMove = (e: MouseEvent) => {
-      const targetPct = calculatePercentFromEvent(e)
+      const targetPct = calculatePercentFromClientX(e.clientX)
       dragPercentRef.current = targetPct
-      setDragPercent(targetPct)
-      setHoverPercent(targetPct)
+      if (rafDragRef.current === null) {
+        rafDragRef.current = requestAnimationFrame(() => {
+          rafDragRef.current = null
+          if (dragPercentRef.current !== null) {
+            setDragPercent(dragPercentRef.current)
+            setHoverPercent(dragPercentRef.current)
+          }
+        })
+      }
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      const finalPct = dragPercentRef.current ?? calculatePercentFromEvent(e)
+      if (rafDragRef.current !== null) {
+        cancelAnimationFrame(rafDragRef.current)
+        rafDragRef.current = null
+      }
+      const finalPct = dragPercentRef.current ?? calculatePercentFromClientX(e.clientX)
       dragPercentRef.current = null
+      cachedTrackRectRef.current = null
       setIsDragging(false)
       setDragPercent(null)
       setHoverPercent(null)
@@ -197,14 +233,23 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
     window.addEventListener('mouseup', handleMouseUp)
 
     return () => {
+      if (rafDragRef.current !== null) {
+        cancelAnimationFrame(rafDragRef.current)
+        rafDragRef.current = null
+      }
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isDragging, calculatePercentFromEvent, onSeek])
+  }, [isDragging, calculatePercentFromClientX, onSeek])
 
   const handleTrackMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) {
-      setHoverPercent(calculatePercentFromEvent(e))
+    if (isDragging) return
+    const clientX = e.clientX
+    if (rafHoverRef.current === null) {
+      rafHoverRef.current = requestAnimationFrame(() => {
+        rafHoverRef.current = null
+        setHoverPercent(calculatePercentFromClientX(clientX))
+      })
     }
   }
 
@@ -216,11 +261,19 @@ export const FluidClimaxProgressBar: React.FC<FluidClimaxProgressBarProps> = ({
 
   return (
     <footer
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true)
+        cachedTrackRectRef.current = trackRef.current?.getBoundingClientRect() || null
+      }}
       onMouseLeave={() => {
+        if (rafHoverRef.current !== null) {
+          cancelAnimationFrame(rafHoverRef.current)
+          rafHoverRef.current = null
+        }
         if (!isDragging) {
           setIsHovered(false)
           setHoverPercent(null)
+          cachedTrackRectRef.current = null
         }
       }}
       className={`w-full relative select-none transition-all duration-200 z-30 flex items-center gap-3.5 shrink-0 ${
