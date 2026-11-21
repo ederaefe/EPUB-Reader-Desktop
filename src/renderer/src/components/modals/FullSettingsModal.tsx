@@ -187,9 +187,7 @@ export const FullSettingsModal: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       const isBack =
         e.key === 'Escape' ||
-        (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        ))
+        (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft')
       if (isBack) {
         e.preventDefault()
         e.stopPropagation()

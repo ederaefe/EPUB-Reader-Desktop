@@ -299,6 +299,24 @@ function pickUniqueVaultDestination(vaultDir: string, stem: string, ext: string)
   return candidate
 }
 
+async function renameWithWindowsRetry(tempPath: string, targetPath: string): Promise<void> {
+  const retryableCodes = new Set(['EPERM', 'EBUSY', 'EACCES'])
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await rename(tempPath, targetPath)
+      return
+    } catch (err: any) {
+      lastErr = err
+      if (process.platform !== 'win32' || !retryableCodes.has(err?.code) || attempt === 4) {
+        throw err
+      }
+      await new Promise((res) => setTimeout(res, 25 * (attempt + 1)))
+    }
+  }
+  throw lastErr
+}
+
 /**
  * Copies an OS-approved local book file into the configured Obsidian-style Vault folder.
  * If the file is already inside the Vault, returns its canonical path without duplicating.
@@ -331,7 +349,7 @@ export async function copyFileIntoVaultIfConfigured(canonicalSource: string): Pr
   const tempDest = `${dest}.${randomBytes(6).toString('hex')}.tmp`
   try {
     await copyFile(canonicalSource, tempDest)
-    await rename(tempDest, dest)
+    await renameWithWindowsRetry(tempDest, dest)
     return normalize(resolve(dest))
   } catch (err) {
     await unlink(tempDest).catch(() => {})
@@ -372,7 +390,7 @@ export async function importBufferIntoVault(
   const tempDest = `${dest}.${randomBytes(6).toString('hex')}.tmp`
   try {
     await writeFile(tempDest, nodeBuf, { flag: 'wx' })
-    await rename(tempDest, dest)
+    await renameWithWindowsRetry(tempDest, dest)
     return normalize(resolve(dest))
   } catch (err) {
     await unlink(tempDest).catch(() => {})

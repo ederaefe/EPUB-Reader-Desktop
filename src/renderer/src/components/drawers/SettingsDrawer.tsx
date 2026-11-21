@@ -159,9 +159,7 @@ export const SettingsDrawer: React.FC = () => {
     const onKey = (e: KeyboardEvent) => {
       const isClose =
         e.key === 'Escape' ||
-        (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === 'ArrowLeft' || e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        ))
+        (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft')
       if (isClose) {
         e.preventDefault()
         e.stopPropagation()
@@ -560,44 +558,72 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PDF Zoom Stepper: - [ size ] + in the exact same row structure with subtle neo styling */}
-                {isOriginalPdf && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-semibold text-[var(--app-text)]">Zoom</span>
-                    <div className="inline-flex items-center h-7 w-[156px] rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-sm overflow-hidden shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setPdfZoom(Math.max(0.5, Number((pdfZoom - 0.15).toFixed(2))))}
-                        disabled={pdfZoom <= 0.5}
-                        className="w-7 h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
-                        title="Zoom out (Ctrl -)"
-                      >
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
+                {/* Zoom Stepper: - [ size ] + placed directly below Page layout with subtle neo styling */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold text-[var(--app-text)]">Zoom</span>
+                  <div className="inline-flex items-center h-7 w-[156px] rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-sm overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isOriginalPdf) {
+                          setPdfZoom(Math.max(0.5, Number((pdfZoom - 0.15).toFixed(2))))
+                        } else {
+                          updateSettings({ fontSize: Math.max(12, settings.fontSize - 2) })
+                        }
+                      }}
+                      disabled={isOriginalPdf ? pdfZoom <= 0.5 : settings.fontSize <= 12}
+                      className="w-7 h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                      title="Zoom out (Ctrl -)"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isOriginalPdf) {
                           if (Math.abs(pdfZoom - 0.85) < 0.08) setPdfZoom(1.2)
                           else if (Math.abs(pdfZoom - 1.2) < 0.08) setPdfZoom(1.6)
                           else setPdfZoom(0.85)
-                        }}
-                        className="flex-1 h-full flex items-center justify-center px-1 text-[10.5px] font-semibold tracking-tight text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] active:scale-[0.98] transition-all cursor-pointer select-none"
-                        title={`Zoom: ${Math.round(pdfZoom * 100)}% (Click to cycle Fit (85%) → Default (120%) → Full (160%))`}
-                      >
-                        {getPdfZoomPresetLabel(pdfZoom)}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPdfZoom(Math.min(3.0, Number((pdfZoom + 0.15).toFixed(2))))}
-                        disabled={pdfZoom >= 3.0}
-                        className="w-7 h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
-                        title="Zoom in (Ctrl +)"
-                      >
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
+                        } else {
+                          if (Math.abs(settings.fontSize - 16) <= 1) updateSettings({ fontSize: 21 })
+                          else if (Math.abs(settings.fontSize - 21) <= 1) updateSettings({ fontSize: 28 })
+                          else updateSettings({ fontSize: 16 })
+                        }
+                      }}
+                      className="flex-1 h-full flex items-center justify-center px-1 text-[10.5px] font-semibold tracking-tight text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] active:scale-[0.98] transition-all cursor-pointer select-none"
+                      title={
+                        isOriginalPdf
+                          ? `Zoom: ${Math.round(pdfZoom * 100)}% (Click to cycle Fit (85%) → Default (120%) → Full (160%))`
+                          : `Zoom: ${Math.round((settings.fontSize / 21) * 120)}% (Click to cycle Fit → Default → Full)`
+                      }
+                    >
+                      {isOriginalPdf
+                        ? getPdfZoomPresetLabel(pdfZoom)
+                        : Math.abs(settings.fontSize - 16) <= 1
+                          ? 'Fit (85%)'
+                          : Math.abs(settings.fontSize - 21) <= 1
+                            ? 'Default (120%)'
+                            : Math.abs(settings.fontSize - 28) <= 1
+                              ? 'Full (160%)'
+                              : `${Math.round((settings.fontSize / 21) * 120)}%`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isOriginalPdf) {
+                          setPdfZoom(Math.min(3.0, Number((pdfZoom + 0.15).toFixed(2))))
+                        } else {
+                          updateSettings({ fontSize: Math.min(42, settings.fontSize + 2) })
+                        }
+                      }}
+                      disabled={isOriginalPdf ? pdfZoom >= 3.0 : settings.fontSize >= 42}
+                      className="w-7 h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                      title="Zoom in (Ctrl +)"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Flat Lighting Rows: Custom Dimness Slider */}

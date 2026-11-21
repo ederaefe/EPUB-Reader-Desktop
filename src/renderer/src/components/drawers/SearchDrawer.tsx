@@ -193,9 +193,7 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const isClose =
       e.key === 'Escape' ||
-      (e.altKey && !e.ctrlKey && !e.metaKey && (
-        e.key === 'ArrowLeft' || e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-      ))
+      (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft')
     if (isClose) {
       e.preventDefault()
       e.stopPropagation()

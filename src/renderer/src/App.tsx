@@ -248,13 +248,11 @@ export const App: React.FC = () => {
     }
   }, [setImmersiveFullscreen, setPdfConversionState, openLocalBookPath, setPdfZoom, updateSettings, showToast])
 
-  // Global hotkeys & desktop ergonomics (block middle-click browser scroll circle + add Ctrl+O Open Book + Alt+< Back to Library)
+  // Global hotkeys & desktop ergonomics (block middle-click browser scroll circle + add Ctrl+O Open Book + Alt+ArrowLeft Back to Library)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isBackToHome =
-        e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        )
+        e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft'
       if (isBackToHome) {
         const state = useAppStore.getState()
         if (state.isFullSettingsModalOpen) {

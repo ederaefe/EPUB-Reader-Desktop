@@ -227,6 +227,8 @@ interface AppState {
   setIsOnline: (online: boolean) => void
 }
 
+let toastDismissTimer: ReturnType<typeof setTimeout> | null = null
+
 export const useAppStore = create<AppState>((set) => ({
   currentView: 'library',
   selectedCategory: 'all',
@@ -413,8 +415,24 @@ export const useAppStore = create<AppState>((set) => ({
       persistSettings(merged)
       return { scrollMode: mode, settings: merged }
     }),
-  showToast: () => {},
-  clearToast: () => {},
+  showToast: (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
+    if (toastDismissTimer) {
+      clearTimeout(toastDismissTimer)
+      toastDismissTimer = null
+    }
+    set({ toast: { message, variant } })
+    toastDismissTimer = setTimeout(() => {
+      set({ toast: null })
+      toastDismissTimer = null
+    }, 3800)
+  },
+  clearToast: () => {
+    if (toastDismissTimer) {
+      clearTimeout(toastDismissTimer)
+      toastDismissTimer = null
+    }
+    set({ toast: null })
+  },
   openConfirmDialog: (dialog) => set({ confirmDialog: dialog }),
   closeConfirmDialog: () => set({ confirmDialog: null }),
   setLastNoteColor: (color) =>

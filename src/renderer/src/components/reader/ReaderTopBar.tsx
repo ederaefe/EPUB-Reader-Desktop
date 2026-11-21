@@ -52,7 +52,7 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
         <button
           onClick={onBack}
           className="h-7 px-2 rounded-md flex items-center gap-1 text-[#888888] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
-          title="Back to Library (Alt+< or Alt+X)"
+          title="Back to Library (Alt+Left)"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           <span>Library</span>

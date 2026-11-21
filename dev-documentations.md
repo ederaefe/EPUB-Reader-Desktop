@@ -2900,3 +2900,37 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 
 ### Handoff Notes
 - In `SettingsDrawer.tsx`, the PDF zoom control strictly adheres to the standard single-row layout without secondary rows or nested wrappers. All zoom changes propagate to `PdfReaderView.tsx` via `pdfZoom` store state in real time.
+
+---
+
+## Increment 47: Native Browser Alt+Arrow Navigation & Platform Resilience (Toasts, Windows Vault Retry & PDF Memory Cleanup)
+> **Agent**: @Agent-ResilienceAndErgonomics | **Status**: [IN PROGRESS]
+
+### What I Am Doing
+1. Standardizing keyboard navigation across the entire desktop reader to native browser conventions: `Alt + ArrowLeft` for backwards (back to library, close open drawer/modal, or page back) and `Alt + ArrowRight` for forward (page forward), eliminating legacy `<` and `>` aliases.
+2. Wiring the Zustand toast notification subsystem (`useAppStore.ts`) with automatic 3800ms dismissal timers and timer cancellation to restore 40+ user-facing alerts.
+3. Hardening Obsidian-style vault imports (`securityBoundaryService.ts`) with `renameWithWindowsRetry` to absorb transient locks from Windows Defender and Search Indexer.
+4. Eliminating PDF worker and canvas memory leaks (`coverService.ts`) by enforcing `page.cleanup()` in a `try/finally` block and removing the hardcoded `100` page fallback.
+
+### Problem Statement
+1. Non-standard navigation hotkeys: `Alt + <` and `Alt + >` (along with `,`, `.`, and `x` aliases) conflicted with keyboard typing habits instead of behaving like native web browser `Alt + ArrowLeft` (back) and `Alt + ArrowRight` (forward).
+2. Global toast stubbed as no-op: `showToast` in `useAppStore.ts` was an empty function, silencing import failures, vault rejections, and auto-flip speed updates despite `NativeFeedbackHost` readiness.
+3. Vault import race condition on Windows: Raw `rename` triggered `EPERM` or `EBUSY` when Windows Defender or Search Indexer locked newly written `.tmp` files.
+4. PDF worker memory leak & falsified page counts: `coverService.ts` never invoked `page.cleanup()`, and thumbnail failures fell back to an arbitrary `totalPages: 100`.
+
+### Active Files / Lock
+- `src/renderer/src/App.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/ReaderTopBar.tsx`
+- `src/renderer/src/components/drawers/SearchDrawer.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `src/renderer/src/components/modals/BookMetadataModal.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `src/renderer/src/components/ui/HelpModal.tsx`
+- `src/renderer/src/stores/useAppStore.ts`
+- `src/main/securityBoundaryService.ts`
+- `src/renderer/src/services/coverService.ts`
+- `dev-documentations.md`
+- `documentation.md`
+

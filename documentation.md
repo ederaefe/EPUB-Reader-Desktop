@@ -209,7 +209,7 @@
   - **Isolated Library Backup Import**: When restoring an additive library archive, annotations and bookmarks are strictly mapped only to valid, matching books within the library, preventing unmapped notes from associating with unrelated books.
 
 - **Unified PDF Zoom Stepper & Pacing Refinement**:
-  - **Neo-Styled Inline Zoom Control**: Added a segmented, tactile pill stepper (`-[size]+`) for PDF documents directly inside the Display settings panel. Fits seamlessly alongside existing layout controls with subtle borders, background tinting, and smooth hover feedback.
+  - **Neo-Styled Inline Zoom Control**: Added a segmented, tactile pill stepper (`-[size]+`) positioned directly below Page Layout inside the Display settings panel across both EPUB and PDF reading modes. Fits seamlessly alongside existing layout controls with subtle borders, background tinting, and smooth hover feedback.
   - **Adaptive Preset Cycling**: The center display indicates active preset dimensions (**Fit 85%**, **Default 120%**, and **Full 160%**). Clicking the badge cycles through preset dimensions, while minus and plus steppers allow continuous scaling from 50% to 300%.
   - **Immediate Shortcut Synchronization**: Resetting zoom via `0` or `Ctrl + 0` restores the calibrated 120% Default reading scale across all viewports.
   - **Uninterrupted Timer Adjustments**: Adjusting countdown timers or switching modes in Auto-Flip re-arms the timer cleanly to the full duration without cutting off active reading sessions.

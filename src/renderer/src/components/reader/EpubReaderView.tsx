@@ -611,9 +611,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       if (isTargetInput(e.target)) return
 
       const isBackKey =
-        (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        )) ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft') ||
         (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace')
       if (isBackKey) {
         e.preventDefault()
@@ -631,9 +629,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
       const isForwardKey =
-        e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
-        )
+        e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowRight'
       if (isForwardKey) {
         e.preventDefault()
         e.stopPropagation()
@@ -2141,9 +2137,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       }
 
       const isBackKey =
-        (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        )) ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft') ||
         (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace')
       if (isBackKey) {
         e.preventDefault()
@@ -2161,9 +2155,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         return
       }
       const isForwardKey =
-        e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
-        )
+        e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowRight'
       if (isForwardKey) {
         e.preventDefault()
         e.stopPropagation()

@@ -647,9 +647,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     const onKeyDown = (e: KeyboardEvent) => {
       adaptiveScrollEngine.recordUserActivity()
       const isBackKey =
-        (e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === '<' || e.key === ',' || e.code === 'Comma' || e.code === 'IntlBackslash' || e.key === 'ArrowLeft' || e.key.toLowerCase() === 'x' || e.code === 'KeyX'
-        )) ||
+        (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowLeft') ||
         (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === 'Backspace' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement))
       if (isBackKey) {
         e.preventDefault()
@@ -668,9 +666,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       }
 
       const isForwardKey =
-        e.altKey && !e.ctrlKey && !e.metaKey && (
-          e.key === 'ArrowRight' || e.key === '>' || e.key === '.' || e.code === 'Period'
-        )
+        e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'ArrowRight'
       if (isForwardKey) {
         e.preventDefault()
         e.stopPropagation()
