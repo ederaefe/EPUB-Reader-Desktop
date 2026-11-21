@@ -2992,3 +2992,41 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - ZIP export and import remain completely backward-compatible with legacy archives containing Base64 strings directly in `library_metadata.json`.
 
 
+
+
+---
+
+## Increment 49: Settings Streamlining — Vault & Security UI Purge and Read Aloud Relocation
+> **Agent**: @Agent-SettingsArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Purged Vault & Security Settings Interface** (`src/renderer/src/components/modals/FullSettingsModal.tsx`):
+   - Completely purged the user-facing **Vault & Security** tab and configuration cards from `FullSettingsModal.tsx`.
+   - Removed unused icons (`Shield`, `FolderLock`, `FolderPlus`, `FolderOpen`, `WifiOff`, `RefreshCw`, `Unlink`), unused imports (`extractBookMetadata`, `SecurityBoundariesStatus`), and `vault` from `FullSettingsTab` / `SETTINGS_TABS`.
+   - Removed obsolete local state hooks (`securityStatus`, `isVaultBusy`) and background fetch effect (`getSecurityStatus`).
+   - Removed unused handlers: `importBookPathsIntoLibrary`, `handleChooseVault`, `handleScanVault`, `handleClearVault`, `handleToggleStrictVault`, `handleToggleCopyImports`, `handleAddAuthorizedFolder`, `handleRemoveAuthorizedFolder`, and `handleToggleStrictOffline`.
+   - Retained the default backend security enforcement architecture (air-gap, egress firewall, and authorized directory filtering) silently in the application without cluttering the preferences dialog.
+2. **Relocated Read Aloud to the 'More' Tab** (`src/renderer/src/components/drawers/SettingsDrawer.tsx`):
+   - Transferred the entire `{/* Read Aloud (Flat, Open Spacing) */}` section (mute toggle, play/stop action pill, and speed presets grid) from the Auto-Flip tab (`scroll`) into the More tab (`more`) directly between the View Mode format switcher and utility navigation rows.
+   - Preserved all state hooks (`isTTSActive`, `isTTSMuted`, `settings.ttsSpeed`) and active tab dot indicators (`more` tab highlights when TTS is active; `scroll` tab highlights strictly when Auto-Flip is active).
+3. **Streamlined Library Access Boundary Dialog** (`src/renderer/src/components/library/LibraryView.tsx`):
+   - Modernized the `[OUTSIDE_VAULT_BOUNDARY]` rejection handler to display a concise, user-facing notice advising the reader to re-import or authorize the book directory, avoiding references to the retired settings tab.
+
+### Problem Statement
+1. Redundant and Confusing Security Configuration Tab (`FullSettingsModal.tsx`): Exposing advanced network egress seals, obsidian-style single folder vault locks, and authorized path revokes in the user preferences cluttered the settings dialog. Security protections should remain silently enforced by default by the runtime.
+2. Congested Auto-Flip Panel (`SettingsDrawer.tsx`): Grouping speech synthesis / voice narration (Read Aloud) together with visual page-turn countdowns and pacing controls in the Auto-Flip drawer tab overcrowded the interface and confused users looking for format switches and extended utilities.
+
+### Touched Files
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `src/renderer/src/components/library/LibraryView.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npm run typecheck`: Passed with 0 TypeScript compilation errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 10.43s (out/main: 134.20 kB, out/preload: 5.36 kB, out/renderer: 3,473.26 kB JS, 128.74 kB CSS).
+
+### Handoff Notes
+- Desktop security boundaries (IPC channel whitelists, local file system sandboxing, and network egress seals) continue operating at full strength in `src/main/security/securityManager.ts` by default.
+- Read Aloud can be controlled directly via `F7` (play/pause) and `F8` (stop) hotkeys or via the `More` tab in `SettingsDrawer`.

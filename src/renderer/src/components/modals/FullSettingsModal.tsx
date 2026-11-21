@@ -13,29 +13,20 @@ import {
   ExternalLink,
   Globe,
   FileText,
-  Shield,
-  FolderLock,
-  FolderPlus,
-  FolderOpen,
-  WifiOff,
-  RefreshCw,
-  Unlink,
   Mail,
   AlertCircle
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { backupService } from '../../services/backupService'
 import { adaptiveScrollEngine } from '../../services/adaptiveScrollService'
-import { extractBookMetadata } from '../../services/coverService'
 import { db, type AutoscrollMode } from '../../db'
-import type { SecurityBoundariesStatus } from '../../../../shared/securityTypes'
 import { ThemePickerGrid } from '../ui/ThemePickerGrid'
 import { SecondsNumberInput } from '../ui/SecondsNumberInput'
 import { ValueStepper } from '../ui/ValueStepper'
 import { FontPicker } from '../ui/FontPicker'
 import { DimnessSlider } from '../ui/DimnessSlider'
 
-type FullSettingsTab = 'system' | 'reading' | 'vault' | 'hotkeys' | 'backup' | 'about'
+type FullSettingsTab = 'system' | 'reading' | 'hotkeys' | 'backup' | 'about'
 
 const TEXT_SIZE_PRESETS = [
   { id: 'small', value: 15, label: 'Small', sizeClass: 'text-[11px]' },
@@ -110,7 +101,6 @@ const isFontWeightActive = (cur: number | undefined, val: number) => {
 const SETTINGS_TABS: Array<{ id: FullSettingsTab; label: string }> = [
   { id: 'system', label: 'System' },
   { id: 'reading', label: 'Reading settings' },
-  { id: 'vault', label: 'Vault & Security' },
   { id: 'hotkeys', label: 'Hotkeys' },
   { id: 'backup', label: 'Backup & Sync' },
   { id: 'about', label: 'About' }
@@ -151,8 +141,7 @@ export const FullSettingsModal: React.FC = () => {
     updateSettings,
     openConfirmDialog,
     showToast,
-    bumpLibraryVersion,
-    setIsOnline
+    bumpLibraryVersion
   } = useAppStore()
 
   const isPdf = activeBook?.format === 'pdf'
@@ -160,18 +149,6 @@ export const FullSettingsModal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<FullSettingsTab>('system')
   const [backupStatus, setBackupStatus] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [securityStatus, setSecurityStatus] = useState<SecurityBoundariesStatus | null>(null)
-  const [isVaultBusy, setIsVaultBusy] = useState(false)
-
-  useEffect(() => {
-    if (!isFullSettingsModalOpen) return
-    if (window.desktopAPI?.getSecurityStatus) {
-      window.desktopAPI
-        .getSecurityStatus()
-        .then((st) => setSecurityStatus(st))
-        .catch(() => {})
-    }
-  }, [isFullSettingsModalOpen])
 
   useEffect(() => {
     if (!isFullSettingsModalOpen) return
@@ -199,144 +176,6 @@ export const FullSettingsModal: React.FC = () => {
   }, [isFullSettingsModalOpen, toggleFullSettingsModal])
 
   if (!isFullSettingsModalOpen) return null
-
-  const importBookPathsIntoLibrary = async (filePaths: string[]): Promise<number> => {
-    if (!window.desktopAPI?.readFileBuffer || filePaths.length === 0) return 0
-    let added = 0
-    for (const filePath of filePaths) {
-      const existing = await db.books.where('filePath').equals(filePath).first()
-      if (existing) continue
-      try {
-        const ext = filePath.split('.').pop()?.toLowerCase() || 'epub'
-        const format: 'epub' | 'pdf' | 'mobi' | 'txt' =
-          ext === 'pdf' ? 'pdf' : ext === 'mobi' ? 'mobi' : ext === 'txt' ? 'txt' : 'epub'
-        const buffer = await window.desktopAPI.readFileBuffer(filePath)
-        const rawName = filePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') || 'Untitled'
-        const meta = await extractBookMetadata(buffer, ext, rawName)
-        await db.books.add({
-          filePath,
-          title: meta.title,
-          author: meta.author,
-          coverDataUrl: meta.coverDataUrl,
-          format,
-          fileSize: buffer.byteLength,
-          addedAt: Date.now(),
-          lastOpenedAt: null,
-          progressCfi: null,
-          progressPercent: 0,
-          currentPage: 1,
-          totalPages: meta.totalPages || 100,
-          categoryId: null,
-          isFavorite: false,
-          isRead: false,
-          isPinned: false,
-          pinnedAt: null,
-          tags: meta.embedded.tags || [],
-          description: meta.embedded.description,
-          publisher: meta.embedded.publisher,
-          publishedDate: meta.embedded.publishedDate,
-          language: meta.embedded.language,
-          identifier: meta.embedded.identifier,
-          series: meta.embedded.series,
-          seriesIndex: meta.embedded.seriesIndex,
-          rights: meta.embedded.rights,
-          subject: meta.embedded.subject,
-          creatorTool: meta.embedded.creatorTool,
-          producer: meta.embedded.producer,
-          formatVersion: meta.embedded.formatVersion,
-          metadataHydrated: true
-        })
-        added++
-      } catch {
-        // Skip unreadable entries during vault sync
-      }
-    }
-    if (added > 0) bumpLibraryVersion()
-    return added
-  }
-
-  const handleChooseVault = async () => {
-    if (!window.desktopAPI?.chooseVaultFolder) return
-    setIsVaultBusy(true)
-    try {
-      const res = await window.desktopAPI.chooseVaultFolder()
-      if (res.error) {
-        showToast(res.error, 'error')
-        return
-      }
-      if (res.canceled) return
-      setSecurityStatus(res.status)
-      await importBookPathsIntoLibrary(res.scannedFiles || [])
-    } finally {
-      setIsVaultBusy(false)
-    }
-  }
-
-  const handleScanVault = async () => {
-    if (!window.desktopAPI?.scanVault) return
-    setIsVaultBusy(true)
-    try {
-      const files = await window.desktopAPI.scanVault()
-      await importBookPathsIntoLibrary(files)
-    } finally {
-      setIsVaultBusy(false)
-    }
-  }
-
-  const handleClearVault = () => {
-    if (!window.desktopAPI?.clearVaultFolder) return
-    openConfirmDialog({
-      title: 'Unlink Library Vault?',
-      message:
-        'Your files on disk will not be deleted. Strict Vault Lock will turn off and Semply will fall back to your Authorized Folders.',
-      confirmLabel: 'Unlink Vault',
-      onConfirm: async () => {
-        const next = await window.desktopAPI.clearVaultFolder()
-        setSecurityStatus(next)
-      }
-    })
-  }
-
-  const handleToggleStrictVault = async () => {
-    if (!window.desktopAPI?.setStrictVaultOnly || !securityStatus?.vaultPath) return
-    try {
-      const next = await window.desktopAPI.setStrictVaultOnly(!securityStatus.strictVaultOnly)
-      setSecurityStatus(next)
-    } catch (err: any) {
-      showToast(err?.message || 'Could not update Strict Vault Lock', 'error')
-    }
-  }
-
-  const handleToggleCopyImports = async () => {
-    if (!window.desktopAPI?.setCopyImportsIntoVault || !securityStatus) return
-    const next = await window.desktopAPI.setCopyImportsIntoVault(!securityStatus.copyImportsIntoVault)
-    setSecurityStatus(next)
-  }
-
-  const handleAddAuthorizedFolder = async () => {
-    if (!window.desktopAPI?.addAuthorizedFolder) return
-    const res = await window.desktopAPI.addAuthorizedFolder()
-    if (res.error) {
-      showToast(res.error, 'error')
-      return
-    }
-    if (!res.canceled) {
-      setSecurityStatus(res.status)
-    }
-  }
-
-  const handleRemoveAuthorizedFolder = async (folder: string) => {
-    if (!window.desktopAPI?.removeAuthorizedFolder) return
-    const next = await window.desktopAPI.removeAuthorizedFolder(folder)
-    setSecurityStatus(next)
-  }
-
-  const handleToggleStrictOffline = async () => {
-    if (!window.desktopAPI?.setStrictOfflineMode || !securityStatus) return
-    const next = await window.desktopAPI.setStrictOfflineMode(!securityStatus.strictOfflineMode)
-    setSecurityStatus(next)
-    setIsOnline(!next.strictOfflineMode && navigator.onLine)
-  }
 
   const handleExportJson = async () => {
     setIsProcessing(true)
@@ -1022,292 +861,7 @@ export const FullSettingsModal: React.FC = () => {
             </div>
           )}
 
-          {/* 3. VAULT & SECURITY TAB (Obsidian-Style Vault + Hard Egress Seal) */}
-          {activeTab === 'vault' && (
-            <div className="space-y-4 max-w-[660px] animate-fadeIn">
-              {/* Obsidian-Style Single-Folder Library Vault */}
-              <div className="settings-card p-4 rounded-lg space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <FolderLock className="w-4 h-4 text-[var(--app-accent)]" />
-                      <span className="text-[14px] font-bold text-[var(--app-text-strong)]">
-                        Library Vault
-                      </span>
-                      {securityStatus?.strictVaultOnly && (
-                        <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                          Locked
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] leading-relaxed">
-                      Designate a single local folder as your portable book vault (Obsidian-style).
-                      Locking the vault prevents the app from reading, scanning, or modifying files anywhere else on disk.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Active Vault Path Display */}
-                <div className="px-3 py-2 rounded-md bg-[var(--app-bg)] border border-[var(--app-border)] flex items-center justify-between gap-2">
-                  <span className="font-mono text-[11px] text-[var(--app-text)] truncate">
-                    {securityStatus?.vaultPath || 'No Vault configured — using Authorized Folders'}
-                  </span>
-                  {securityStatus?.vaultPath && (
-                    <button
-                      type="button"
-                      onClick={() => window.desktopAPI?.openVaultInExplorer?.()}
-                      className="text-[11px] font-semibold text-[var(--app-accent-text)] hover:underline shrink-0 inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <FolderOpen className="w-3.5 h-3.5" />
-                      <span>Open</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Vault Actions */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={isVaultBusy}
-                    onClick={handleChooseVault}
-                    className="settings-btn-primary h-8 px-3.5 rounded-md inline-flex items-center gap-1.5 text-[12px] font-bold cursor-pointer disabled:opacity-50"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5" />
-                    <span>{securityStatus?.vaultPath ? 'Switch Vault' : 'Choose or Create Vault'}</span>
-                  </button>
-
-                  {securityStatus?.vaultPath && (
-                    <>
-                      <button
-                        type="button"
-                        disabled={isVaultBusy}
-                        onClick={handleScanVault}
-                        className="settings-btn-secondary h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer disabled:opacity-50"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isVaultBusy ? 'animate-spin' : ''}`} />
-                        <span>Scan Vault</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isVaultBusy}
-                        onClick={handleClearVault}
-                        className="settings-btn-danger h-8 px-3 rounded-md inline-flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer disabled:opacity-50"
-                      >
-                        <Unlink className="w-3.5 h-3.5" />
-                        <span>Unlink</span>
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* Vault Toggles */}
-                {securityStatus?.vaultPath && (
-                  <div className="pt-2.5 border-t border-[var(--app-border)] space-y-2.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[12.5px] font-bold text-[var(--app-text-strong)] block">
-                          Strict Vault Lock
-                        </span>
-                        <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                          Deny reading or scanning any book outside this Vault folder
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={Boolean(securityStatus.strictVaultOnly)}
-                        data-preserve-theme="true"
-                        onClick={handleToggleStrictVault}
-                        style={{
-                          backgroundColor: securityStatus.strictVaultOnly
-                            ? 'var(--app-accent)'
-                            : 'var(--app-border-strong)'
-                        }}
-                        className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
-                      >
-                        <span
-                          className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
-                            securityStatus.strictVaultOnly ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[12.5px] font-bold text-[var(--app-text-strong)] block">
-                          Copy imported &amp; dropped books into Vault
-                        </span>
-                        <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                          Keep every book you open or drop stored safely inside the Vault
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={Boolean(securityStatus.copyImportsIntoVault)}
-                        data-preserve-theme="true"
-                        onClick={handleToggleCopyImports}
-                        style={{
-                          backgroundColor: securityStatus.copyImportsIntoVault
-                            ? 'var(--app-accent)'
-                            : 'var(--app-border-strong)'
-                        }}
-                        className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
-                      >
-                        <span
-                          className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
-                            securityStatus.copyImportsIntoVault ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Authorized Folder Boundaries */}
-              <div className="settings-card p-4 rounded-lg space-y-2.5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
-                        Authorized Folders
-                      </span>
-                      {securityStatus?.strictVaultOnly && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--app-surface-2)] text-[var(--app-text-muted)] border border-[var(--app-border)]">
-                          Paused by Strict Vault Lock
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] font-normal text-[var(--app-text-muted)] mt-0.5">
-                      Semply can only read inside these OS-approved folders ({securityStatus?.authorizedFileCount ?? 0} individual files granted).
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddAuthorizedFolder}
-                    className="settings-btn-secondary h-7 px-2.5 rounded-md inline-flex items-center gap-1.5 text-[11.5px] font-semibold cursor-pointer shrink-0"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5" />
-                    <span>Add Folder</span>
-                  </button>
-                </div>
-
-                {securityStatus && securityStatus.authorizedFolders.length > 0 ? (
-                  <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                    {securityStatus.authorizedFolders.map((folder) => {
-                      const isVault = securityStatus.vaultPath === folder
-                      return (
-                        <div
-                          key={folder}
-                          className="px-2.5 py-1.5 rounded bg-[var(--app-bg)] border border-[var(--app-border)] flex items-center justify-between gap-2"
-                        >
-                          <span className="font-mono text-[11px] text-[var(--app-text)] truncate">
-                            {folder}
-                          </span>
-                          {isVault ? (
-                            <span className="text-[10px] font-mono text-[var(--app-accent-text)] shrink-0">
-                              Vault
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAuthorizedFolder(folder)}
-                              className="text-[11px] font-semibold text-[#e5484d] hover:underline shrink-0 cursor-pointer"
-                            >
-                              Revoke
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-[var(--app-text-muted)] italic">
-                    No folders authorized yet. Use Import Folder or Add Folder to grant access.
-                  </p>
-                )}
-              </div>
-
-              {/* Network Egress Seal */}
-              <div className="settings-card p-4 rounded-lg space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-emerald-500" />
-                      <span className="text-[13.5px] font-bold text-[var(--app-text-strong)]">
-                        Network Egress Seal
-                      </span>
-                      <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
-                        Renderer Air-Gapped
-                      </span>
-                    </div>
-                    <p className="text-[11.5px] font-normal text-[var(--app-text-muted)] mt-0.5">
-                      Book pages and the UI cannot connect to the internet directly. Only the verified services below may make HTTPS requests through the main process:
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {(securityStatus?.allowedNetworkHosts || [
-                    'fonts.googleapis.com',
-                    'fonts.gstatic.com',
-                    'api.dictionaryapi.dev',
-                    'en.wikipedia.org',
-                    'upload.wikimedia.org'
-                  ]).map((host) => (
-                    <span
-                      key={host}
-                      className={`px-2 py-0.5 rounded font-mono text-[10.5px] border ${
-                        securityStatus?.strictOfflineMode
-                          ? 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] border-[var(--app-border)] line-through opacity-60'
-                          : 'bg-[var(--app-bg)] text-[var(--app-text)] border-[var(--app-border)]'
-                      }`}
-                    >
-                      {host}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-2.5 border-t border-[var(--app-border)] flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <WifiOff className="w-4 h-4 text-[var(--app-text-muted)] shrink-0" />
-                    <div>
-                      <span className="text-[12.5px] font-bold text-[var(--app-text-strong)] block">
-                        Strict Offline Mode
-                      </span>
-                      <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                        Block even font downloads, dictionary, and Wikipedia lookups
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={Boolean(securityStatus?.strictOfflineMode)}
-                    data-preserve-theme="true"
-                    onClick={handleToggleStrictOffline}
-                    style={{
-                      backgroundColor: securityStatus?.strictOfflineMode
-                        ? '#e5484d'
-                        : 'var(--app-border-strong)'
-                    }}
-                    className="settings-switch w-10 h-5 rounded-full p-0.5 flex items-center cursor-pointer shrink-0"
-                  >
-                    <span
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm block transition-transform duration-150 ${
-                        securityStatus?.strictOfflineMode ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 4. HOTKEYS TAB */}
+          {/* 3. HOTKEYS TAB */}
           {activeTab === 'hotkeys' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5 text-[12.5px] animate-fadeIn">
               <div className="space-y-1">

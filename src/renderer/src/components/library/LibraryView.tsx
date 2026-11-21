@@ -751,13 +751,11 @@ export const LibraryView: React.FC = () => {
       const msg = String(e?.message || '')
       if (msg.includes('[OUTSIDE_VAULT_BOUNDARY]')) {
         openConfirmDialog({
-          title: 'Book Outside Locked Vault',
+          title: 'Book Access Restricted',
           message:
-            'Strict Vault Lock is enabled, and this book lives outside your Library Vault folder. Open Vault & Security settings to adjust your Vault or re-import it into the Vault.',
-          confirmLabel: 'Open Vault Settings',
-          onConfirm: () => {
-            toggleFullSettingsModal(true)
-          }
+            'This book lives outside your authorized folders. Re-import the file into Semply or choose its folder to grant access.',
+          confirmLabel: 'Dismiss',
+          onConfirm: () => {}
         })
       } else if (msg.includes('[OUTSIDE_AUTHORIZED_BOUNDARY]') && window.desktopAPI?.addAuthorizedFolder) {
         openConfirmDialog({

@@ -1008,72 +1008,6 @@ export const SettingsDrawer: React.FC = () => {
                   </>
                 )}
               </div>
-
-              {/* Read Aloud (Flat, Open Spacing) */}
-              <div className="space-y-3 pt-1">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <div className="text-[12px] font-semibold text-[var(--app-text-strong)]">
-                      Read Aloud
-                    </div>
-                    <div className="text-[10.5px] font-normal text-[var(--app-text-subtle)]">
-                      Voice narration
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleToggleMute}
-                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                        isTTSMuted
-                          ? 'bg-[#e5484d]/15 text-[#e5484d]'
-                          : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
-                      }`}
-                      title={isTTSMuted ? 'Resume voice' : 'Pause voice'}
-                      aria-label={isTTSMuted ? 'Resume voice' : 'Pause voice'}
-                    >
-                      {isTTSMuted ? (
-                        <VolumeX className="w-3.5 h-3.5" />
-                      ) : (
-                        <Volume2 className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleToggleTTS}
-                      className={`glass-action-pill ${
-                        isTTSActive
-                          ? '!bg-[var(--app-accent)] !border-[var(--app-accent)] !text-white'
-                          : ''
-                      }`}
-                    >
-                      {isTTSActive ? (
-                        <Pause className="w-3 h-3 fill-current" />
-                      ) : (
-                        <Play className="w-3 h-3 fill-current" />
-                      )}
-                      <span>{isTTSActive ? 'Stop' : 'Play'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-5 gap-1.5">
-                  {TTS_SPEEDS.map((sp) => {
-                    const active = Math.abs(settings.ttsSpeed - sp) < 0.05
-                    return (
-                      <button
-                        key={sp}
-                        type="button"
-                        data-active={active ? 'true' : 'false'}
-                        onClick={() => updateSettings({ ttsSpeed: sp })}
-                        className="glass-preset-btn text-[10px]"
-                      >
-                        {sp.toFixed(1)}×
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1141,6 +1075,71 @@ export const SettingsDrawer: React.FC = () => {
                 )}
               </div>
 
+              {/* Read Aloud (Flat, Open Spacing) */}
+              <div className="space-y-3 pt-1 border-t border-[var(--app-border)]/50">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[12px] font-semibold text-[var(--app-text-strong)]">
+                      Read Aloud
+                    </div>
+                    <div className="text-[10.5px] font-normal text-[var(--app-text-subtle)]">
+                      Voice narration
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleToggleMute}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
+                        isTTSMuted
+                          ? 'bg-[#e5484d]/15 text-[#e5484d]'
+                          : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)]'
+                      }`}
+                      title={isTTSMuted ? 'Resume voice' : 'Pause voice'}
+                      aria-label={isTTSMuted ? 'Resume voice' : 'Pause voice'}
+                    >
+                      {isTTSMuted ? (
+                        <VolumeX className="w-3.5 h-3.5" />
+                      ) : (
+                        <Volume2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleTTS}
+                      className={`glass-action-pill ${
+                        isTTSActive
+                          ? '!bg-[var(--app-accent)] !border-[var(--app-accent)] !text-white'
+                          : ''
+                      }`}
+                    >
+                      {isTTSActive ? (
+                        <Pause className="w-3 h-3 fill-current" />
+                      ) : (
+                        <Play className="w-3 h-3 fill-current" />
+                      )}
+                      <span>{isTTSActive ? 'Stop' : 'Play'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-5 gap-1.5">
+                  {TTS_SPEEDS.map((sp) => {
+                    const active = Math.abs(settings.ttsSpeed - sp) < 0.05
+                    return (
+                      <button
+                        key={sp}
+                        type="button"
+                        data-active={active ? 'true' : 'false'}
+                        onClick={() => updateSettings({ ttsSpeed: sp })}
+                        className="glass-preset-btn text-[10px]"
+                      >
+                        {sp.toFixed(1)}×
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
               {/* Quiet Borderless Utility Rows */}
               <div className="space-y-1 pt-2">

@@ -221,3 +221,12 @@
   - **Optimized PDF Worker Memory Management**: Decoded page data and rendering contexts from PDF thumbnail extraction are immediately recycled, eliminating memory retention across large library imports while preserving accurate document page counts.
   - **Smart Pacing Anchor Calibration & Typography Isolation**: Setting a custom timer in Smart mode anchors adaptive calibration to the user's chosen duration and resets the 7-page learning batch to calibrate smoothly from that new baseline. Quick 2-page retreats corrected within 1500ms are treated as accidental bounces to preserve batch progress, while HUD popovers enforce strict system typography and final odd pages in dual spread mode adapt to single-page dwell duration.
 
+- **Optimized Backup Storage & Visual Read Aloud Progression**:
+  - **Lightweight Library Archives**: Exporting a library backup as a ZIP archive stores book cover images cleanly as individual files in a dedicated covers directory while keeping metadata records compact. This reduces exported archive sizes by 50% to 70% and speeds up backup creation for large book collections.
+  - **Visual Read Aloud Progression**: Read Aloud now reads the exact text visible on your current page spread and automatically turns to the next page as speech completes. Hands-free listening flows continuously from page to page and seamlessly transitions into subsequent chapters without stopping at chapter ends.
+
+
+
+- **Simplified Preferences & Dedicated Audio Controls**:
+  - **Unobtrusive Background Security**: Security safeguards (such as strict local file access and local network seals) are now active by default behind the scenes without cluttering the Settings menu with technical configuration options.
+  - **Read Aloud in More Settings**: Voice narration controls (play/pause, mute, and speed selection) have moved to the **More** tab in the Reader Settings drawer, leaving the **Auto-Flip** tab focused purely on automated page turning and pacing.
