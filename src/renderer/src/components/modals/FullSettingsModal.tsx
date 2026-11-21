@@ -313,43 +313,6 @@ export const FullSettingsModal: React.FC = () => {
                     onChange={(val) => updateSettings({ dimming: val })}
                   />
                 </div>
-
-                {/* Interactive Checkbox Rows */}
-                <div className="settings-card p-2 rounded-lg space-y-0.5">
-                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(settings.copyExternal)}
-                      onChange={(e) => updateSettings({ copyExternal: e.target.checked })}
-                      className="ice-checkbox"
-                    />
-                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
-                      Copy eBooks from external devices
-                    </span>
-                  </label>
-                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoUpdate ?? true}
-                      onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
-                      className="ice-checkbox"
-                    />
-                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
-                      Check for updates automatically
-                    </span>
-                  </label>
-                  <label className="settings-row-interactive flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--app-text)] cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(settings.sendStats)}
-                      onChange={(e) => updateSettings({ sendStats: e.target.checked })}
-                      className="ice-checkbox"
-                    />
-                    <span className="group-hover:text-[var(--app-text-strong)] transition-colors">
-                      Send anonymous usage stats
-                    </span>
-                  </label>
-                </div>
               </div>
 
               {/* Right Column */}
@@ -989,6 +952,40 @@ export const FullSettingsModal: React.FC = () => {
                   performance, accessibility, and focus—providing a clean, distraction-free
                   environment for deep reading.
                 </p>
+
+                {/* Subtle Preferences & Telemetry Options */}
+                <div className="pt-3 border-t border-[var(--app-border)] space-y-1.5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--app-text-subtle)] block">
+                    System & Updates
+                  </span>
+                  <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings.copyExternal)}
+                      onChange={(e) => updateSettings({ copyExternal: e.target.checked })}
+                      className="ice-checkbox scale-90"
+                    />
+                    <span>Copy eBooks from external devices</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoUpdate ?? true}
+                      onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
+                      className="ice-checkbox scale-90"
+                    />
+                    <span>Check for updates automatically</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(settings.sendStats)}
+                      onChange={(e) => updateSettings({ sendStats: e.target.checked })}
+                      className="ice-checkbox scale-90"
+                    />
+                    <span>Send anonymous usage stats</span>
+                  </label>
+                </div>
 
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--app-border)] text-xs">
                   <a

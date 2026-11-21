@@ -3509,6 +3509,36 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - In `ContextMenu.tsx`, `SubmenuPopup` handles arbitrary nesting depths and auto-detects viewport boundaries on every mount.
 - In `pdfToEpubEngine.ts`, cooperative yielding guarantees that Electron stays responsive to UI events even during hundred-page scanned PDF conversions.
 
+---
+
+## Increment 62: Settings Declutter — Relocated System Preferences & Telemetry to About Tab
+> **Agent**: @Agent-SettingsUI | **Status**: [COMPLETED]
+
+### What Was Done
+1. **System Tab Declutter (`FullSettingsModal.tsx`)**:
+   - Removed the three interactive checkboxes ("Copy eBooks from external devices", "Check for updates automatically", and "Send anonymous usage stats") from the prominent system settings card.
+2. **Subtle Integration in About Tab (`FullSettingsModal.tsx`)**:
+   - Re-anchored the three preferences inside the "About" settings section right beneath the workstation description and above developer links.
+   - Restyled the rows with understated, compact typography (`text-[11px] text-[var(--app-text-muted)]`), scaled down checkboxes (`scale-90`), and subtle hover transitions to maintain an ultra-clean, unobtrusive profile.
+
+### Problem Statement
+1. The three external copy, auto-update, and usage stats checkboxes occupied visual prominence in the core System settings view, adding clutter to reading-related preferences.
+
+### Technical Fix
+- In `FullSettingsModal.tsx`, excised lines 317-353 from the left column of the System tab.
+- Added a dedicated "System & Updates" subtle options block in the About tab card with compact layout spacing.
+
+### Touched Files
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+
+### Handoff Notes
+- Preferences continue binding directly to `settings.copyExternal`, `settings.autoUpdate`, and `settings.sendStats` via `updateSettings` with full reactive persistence.
+
 
 
 
