@@ -262,3 +262,4 @@
   - **Decluttered Settings Hierarchy**: "Copy eBooks from external devices", "Check for updates automatically", and "Send anonymous usage stats" have been moved from the main system tab to the About section in a refined, compact layout.
 - **Efedera Publisher Attribution & Website Links**: App attribution has transitioned to "Efedera" with direct links to [efedera.me](https://efedera.me) integrated into the custom titlebar, About preferences modal, and website footer.
 - **Windows Packaging & Release Reliability**: Fixed a packaging configuration error with the Windows installer setup, ensuring seamless cross-platform builds and automated GitHub release publishing for version 1.0.8-beta.1.
+- **Evergreen Website Presentation**: Removed build and version numbers from the landing page buttons and footer, ensuring a clean evergreen download and documentation experience.

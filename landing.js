@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyReleaseData(tag, assets, publishedAt) {
     activeReleaseData = { tag, assets, publishedAt };
 
-    if (releaseTagEl) releaseTagEl.textContent = tag;
-    if (releaseBadgeEl) releaseBadgeEl.textContent = `${tag} Latest`;
+    if (releaseTagEl) releaseTagEl.textContent = 'Latest';
+    if (releaseBadgeEl) releaseBadgeEl.textContent = 'Latest';
 
     if (publishedAt && releaseDateEl) {
       try {
@@ -127,13 +127,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (primaryDownloadLabel) {
       if (activeOS === 'windows') {
-        primaryDownloadLabel.textContent = `Download for Windows (${tag})`;
+        primaryDownloadLabel.textContent = 'Download for Windows';
       } else if (activeOS === 'macos') {
-        primaryDownloadLabel.textContent = `Download for macOS (${tag})`;
+        primaryDownloadLabel.textContent = 'Download for macOS';
       } else if (activeOS === 'linux') {
-        primaryDownloadLabel.textContent = `Download for Linux (${tag})`;
+        primaryDownloadLabel.textContent = 'Download for Linux';
       } else {
-        primaryDownloadLabel.textContent = `Download Semply (${tag})`;
+        primaryDownloadLabel.textContent = 'Download Semply';
       }
     }
 

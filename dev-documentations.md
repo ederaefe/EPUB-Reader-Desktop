@@ -3658,6 +3658,41 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - All publisher metadata and external links across desktop and web landing assets now consistently reference `Efedera` (`https://efedera.me`).
 
+---
+
+## Increment 66: Remove Website Version Indicators & Evergreen CTA Refinement
+> **Agent**: @Agent-WebRefinement | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Evergreen Footer Navigation**:
+   - `index.html`: Replaced the explicit version tag link (`v1.0.8-beta.1`) with a clean `Releases` navigation link pointing to GitHub Releases, eliminating stale version indicators in the footer.
+2. **Download CTA Normalization**:
+   - `landing.js`: Excised dynamic `(${tag})` version suffix injection from `primaryDownloadLabel`, providing consistent evergreen download labels (`Download for Windows`, `Download for macOS`, `Download for Linux`) regardless of release asset tags fetched from the GitHub API.
+
+### Problem Statement
+1. **Evergreen Website Presentation**: Visible version tags (such as `v1.0.8-beta.1` in the footer and `(${tag})` in the primary download button) tie the website visually to specific builds. The site should present evergreen download actions and documentation links.
+
+### Technical Fix
+1. **Footer Markup Cleanup** (`index.html`):
+   - Removed `id="footer-version"` and static text `v1.0.8-beta.1`, replacing it with `Releases`.
+2. **Client Script Evergreen Labels** (`landing.js`):
+   - Standardized `primaryDownloadLabel.textContent` across Windows, macOS, and Linux targets to omit version interpolation while retaining target OS resolution.
+
+### Touched Files
+- `index.html`
+- `landing.js`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `git grep -i -E "v1\.|v0\.|beta|alpha" index.html documentations/`: 0 matches found.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `git status`: Working tree clean after commit.
+
+### Handoff Notes
+- The website now operates with clean evergreen download and documentation labels without hardcoded or dynamically injected version strings.
+
+
 
 
 
