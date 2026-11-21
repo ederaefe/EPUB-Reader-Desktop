@@ -57,6 +57,7 @@ const config = {
   win: {
     icon: 'build/icon.ico',
     requestedExecutionLevel: 'asInvoker',
+    publisherName: 'Dera Labs',
     signtoolOptions: {
       signingHashAlgorithms: ['sha256'],
       rfc3161TimeStampServer: 'http://timestamp.digicert.com',
@@ -94,7 +95,6 @@ const config = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Semply Ebook Reader',
-    publisher: 'Dera Labs',
     uninstallDisplayName: 'Semply Ebook Reader (by Dera Labs)'
   },
   portable: {

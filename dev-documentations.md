@@ -3577,6 +3577,45 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
 - `landing.js` & `api/download.js`: Fallback and release resolution verified.
 
+---
+
+## Increment 64: Fix electron-builder NSIS Schema Validation & Retrigger v1.0.8-beta.1 Release
+> **Agent**: @Agent-ReleaseDeployer | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Removed Invalid `nsis.publisher` Property**:
+   - In `electron-builder.config.cjs`, removed `publisher: 'Dera Labs'` from the `nsis` target block.
+   - Added `publisherName: 'Dera Labs'` directly to the `win` target block, ensuring Windows installers correctly inherit publisher identity without violating electron-builder's configuration schema.
+2. **Release Workflow Dispatch**:
+   - Added `workflow_dispatch:` to `.github/workflows/release.yml` so release builds can also be triggered or dispatched manually from GitHub Actions if needed.
+3. **Retrigger Release Workflow**:
+   - Re-tagged `v1.0.8-beta.1` and pushed to remote GitHub repository to retrigger the CI release matrix.
+
+### Problem Statement
+1. **Invalid NSIS Schema Property (`publisher`) in electron-builder**: In `electron-builder.config.cjs`, `publisher: 'Dera Labs'` was placed inside the `nsis` configuration block. Electron-builder's schema validator rejects this unknown property (`configuration.nsis has an unknown property 'publisher'`), crashing packaging across Windows, macOS, and Linux runners in CI job `44918162942`.
+
+### Technical Fix
+1. **electron-builder Schema Compliance** (`electron-builder.config.cjs`):
+   - Deleted `publisher: 'Dera Labs'` from `nsis: { ... }`.
+   - Set `win.publisherName = 'Dera Labs'`. Verified locally using `app-builder-lib/src/util/config/config`'s `validateConfiguration(config)` with zero schema validation errors.
+2. **Workflow Dispatch Support** (`.github/workflows/release.yml`):
+   - Extended `on:` triggers to include `workflow_dispatch:`.
+
+### Touched Files
+- `electron-builder.config.cjs`
+- `.github/workflows/release.yml`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `node validateConfiguration`: Clean resolution with `SCHEMA_VALIDATION_SUCCESS`.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `git status`: Working tree clean after commit.
+
+### Handoff Notes
+- In `electron-builder.config.cjs`, all NSIS properties are strictly validated against `@develar/schema-utils`. Keep publisher specifications under `win.publisherName` and `win.signtoolOptions.publisherName`.
+
+
 
 
 
