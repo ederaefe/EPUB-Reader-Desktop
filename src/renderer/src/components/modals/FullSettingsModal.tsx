@@ -622,13 +622,13 @@ export const FullSettingsModal: React.FC = () => {
                 }
 
                 const handleCountdownChange = (sec: number) => {
-                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+                  const clamped = Math.max(2, Math.min(600, Math.round(sec)))
                   updateSettings({ autoscrollCountdownSec: clamped })
                   adaptiveScrollEngine.configure({ fixedCountdownSec: clamped })
                 }
 
                 const handlePdfCountdownChange = (sec: number) => {
-                  const clamped = Math.max(3, Math.min(600, Math.round(sec)))
+                  const clamped = Math.max(2, Math.min(600, Math.round(sec)))
                   if (isPdfDual) {
                     updateSettings({ pdfCountdownSecDual: clamped, autoscrollCountdownSec: clamped })
                   } else {

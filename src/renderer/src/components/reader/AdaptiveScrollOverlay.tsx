@@ -64,7 +64,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const countdownSec = isPdf ? pdfDwellSec : (autoscrollCountdownSec ?? 20)
   const adaptiveSec = autoscrollAdaptiveSec ?? 25
   const currentDwellSec = effectiveMode === 'countdown' ? countdownSec : adaptiveSec
-  const minFloor = effectiveMode === 'countdown' ? 3 : 10
+  const minFloor = effectiveMode === 'countdown' ? 2 : 10
 
   const [inputValue, setInputValue] = useState<string>(() => String(currentDwellSec))
 
@@ -308,16 +308,13 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   WPM
                 </span>
               </div>
-              <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
-                reading pace
-              </span>
             </div>
 
             {/* Right: Reading Speed */}
             <div className="flex flex-col items-center justify-center pl-2">
               <div className="flex items-baseline gap-1">
                 <span className={`text-[18px] font-bold tracking-tight tabular-nums font-mono ${sppColorClass}`}>
-                  {Math.max(10, metrics.readingSpeedSpp || 10)}s
+                  {Math.max(minFloor, metrics.readingSpeedSpp || 10)}
                 </span>
                 <span
                   className="font-sans text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
@@ -326,9 +323,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   SPP
                 </span>
               </div>
-              <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
-                reading speed
-              </span>
             </div>
           </div>
 

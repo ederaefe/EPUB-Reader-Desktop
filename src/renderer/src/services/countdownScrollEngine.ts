@@ -75,7 +75,7 @@ export class CountdownScrollEngine {
   /**
    * Start or re-arm the countdown timer for a page
    */
-  public start(seconds: number, onExpire: () => void, minSec = 3, maxSec = 600): void {
+  public start(seconds: number, onExpire: () => void, minSec = 2, maxSec = 600): void {
     this.clearTimer()
     const validSec = Number.isFinite(seconds) ? Math.round(seconds) : 20
     const clampedSec = Math.max(minSec, Math.min(maxSec, validSec))
@@ -124,7 +124,7 @@ export class CountdownScrollEngine {
    * Adjust remaining and total seconds on the fly without restarting or jittering the timer.
    * e.g., delta = +2 or -2
    */
-  public adjustSeconds(delta: number, minSec = 3, maxSec = 600): number {
+  public adjustSeconds(delta: number, minSec = 2, maxSec = 600): number {
     const validDelta = Number.isFinite(delta) ? Math.round(delta) : 0
     const nextTotal = Math.max(minSec, Math.min(maxSec, this.totalSec + validDelta))
     const actualDelta = nextTotal - this.totalSec
@@ -134,7 +134,7 @@ export class CountdownScrollEngine {
     return this.totalSec
   }
 
-  public setSeconds(seconds: number, minSec = 3, maxSec = 600): number {
+  public setSeconds(seconds: number, minSec = 2, maxSec = 600): number {
     const clamped = Math.max(minSec, Math.min(maxSec, Math.round(seconds)))
     const diff = clamped - this.totalSec
     return this.adjustSeconds(diff, minSec, maxSec)
@@ -144,7 +144,7 @@ export class CountdownScrollEngine {
    * Cleanly re-arm the active countdown from the new full duration.
    * Resets remainingSec to totalSec and refreshes lastTickAt without losing onExpire callback.
    */
-  public rearm(seconds?: number, minSec = 3, maxSec = 600): number {
+  public rearm(seconds?: number, minSec = 2, maxSec = 600): number {
     if (seconds !== undefined) {
       const validSec = Number.isFinite(seconds) ? Math.round(seconds) : this.totalSec
       this.totalSec = Math.max(minSec, Math.min(maxSec, validSec))

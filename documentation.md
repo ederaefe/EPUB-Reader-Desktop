@@ -242,3 +242,6 @@
   - **Tactile Stepper with Blinking Cursor**: The central dwell pill features a distinct inner input box with an actively blinking cursor. Typing a custom duration updates the timer and starts Auto-Flip immediately.
   - **Uninterrupted Paginated Page Turning**: Page transitions in EPUB and PDF reading modes execute cleanly on countdown completion without getting trapped in vertical scroll headroom.
   - **Detailed Preferences in Settings**: The main Settings Drawer and Full Settings Modal now host full telemetry (real-time WPM, SPP, and batch progress), Timer vs. Smart pacing mode toggles, dwell presets, chapter end grace buffers, and keyboard shortcuts, while keeping the on-canvas floating HUD sleek and minimal.
+  - **Instant Initial Page Navigation**: Opening a book for the first time now supports immediate page turning via either the screen arrow buttons or keyboard navigation (`Right Arrow` / `Left Arrow`) without delay or stall.
+  - **Refined Speedometer Metrics**: The HUD Speedometer displays unified, clean numbers and units (`750 WPM` and `14 SPP`) with explanatory hover tooltips and minimal visual noise.
+  - **2-Second Fixed Mode Floor**: Fixed countdown mode can now be set as low as 2 seconds per page for rapid browsing or fast reading exercises.

@@ -55,10 +55,17 @@ interface EpubReaderViewProps {
 
 const safeGetRenditionLocation = (rendition: any): any => {
   try {
-    if (!rendition || !rendition.manager || typeof rendition.currentLocation !== 'function') {
-      return null
+    if (!rendition) return null
+    if (rendition.location?.start?.cfi) {
+      return rendition.location
     }
-    return rendition.currentLocation()
+    if (typeof rendition.currentLocation === 'function') {
+      const loc = rendition.currentLocation()
+      if (loc && typeof loc.then !== 'function' && loc.start?.cfi) {
+        return loc
+      }
+    }
+    return rendition.location || null
   } catch {
     return null
   }
@@ -578,7 +585,15 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       adaptiveScrollEngine.recordUserActivity()
     }
 
-    contents.window.addEventListener('pointermove', recordIframeActivity, { passive: true })
+    const handleIframePointerMove = (e: MouseEvent | PointerEvent) => {
+      recordIframeActivity()
+      const frameEl = contents.window?.frameElement as HTMLElement | null
+      const rect = frameEl?.getBoundingClientRect()
+      const clientX = (rect?.left || 0) + e.clientX
+      window.dispatchEvent(new CustomEvent('semply:reader-pointer', { detail: { clientX } }))
+    }
+
+    contents.window.addEventListener('pointermove', handleIframePointerMove, { passive: true })
     contents.window.addEventListener('mousedown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('keydown', recordIframeActivity, { passive: true })
     contents.window.addEventListener('touchstart', recordIframeActivity, { passive: true })
@@ -1363,6 +1378,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       }
       adaptiveScrollEngine.setSuspension('layout', false)
       adaptiveScrollEngine.recordUserActivity()
+      viewerRef.current?.focus()
 
       // Hydrate all saved annotations/highlights onto the rendition immediately
       if (bookIdRef.current && !isCancelled) {
@@ -1428,16 +1444,9 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           // Speed up background indexing (default 100ms pause per section stalls 10-60s on large books)
           locs.pause = 4
 
-          // Protect the currently displayed section from being unloaded mid-read during indexing
+          // Protect all sections from being unloaded during background indexing to prevent race conditions with navigation
           const origProcess = locs.process.bind(locs)
           locs.process = (section: any) => {
-            const activeHref = currentHrefRef.current?.split('#')[0]
-            const isActiveSection = Boolean(
-              activeHref && section?.href && (section.href === activeHref || activeHref.endsWith(section.href))
-            )
-            if (!isActiveSection) {
-              return origProcess(section)
-            }
             const origUnload = section.unload
             section.unload = () => {}
             return Promise.resolve(origProcess(section)).finally(() => {
@@ -1590,6 +1599,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       adaptiveScrollEngine.setSuspension('layout', true)
     }
 
+    const startCfi = currentCfiRef.current
     isNavigatingRef.current = true
     try {
       if (direction === 'next') {
@@ -1597,7 +1607,30 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       } else {
         await rendition.prev()
       }
-      const loc = safeGetRenditionLocation(rendition)
+      let loc = safeGetRenditionLocation(rendition)
+      // Fallback: If rendition.next() failed to advance on fresh open (e.g. section boundary stall, unindexed initial location, or pre-paginated cover)
+      if (direction === 'next' && (!loc?.start?.cfi || loc.start.cfi === startCfi)) {
+        const allSpine: any[] = (epubBookRef.current?.spine as any)?.spineItems || []
+        const linearSpine = allSpine.filter((item) => item && item.linear !== false && item.linear !== 'no')
+        const spineList = linearSpine.length > 0 ? linearSpine : allSpine
+        const activeHref = (currentHrefRef.current || loc?.start?.href || '')?.split('#')[0]
+        const activeIdx = spineList.findIndex(
+          (item) => item?.href && (item.href === activeHref || activeHref?.endsWith(item.href))
+        )
+        if (activeIdx >= 0 && activeIdx < spineList.length - 1) {
+          const nextItem = spineList[activeIdx + 1]
+          if (nextItem?.href) {
+            await rendition.display(nextItem.href)
+            loc = safeGetRenditionLocation(rendition)
+          }
+        } else if (activeIdx === -1 && spineList.length > 1) {
+          const fallbackItem = spineList[1] || spineList[0]
+          if (fallbackItem?.href) {
+            await rendition.display(fallbackItem.href)
+            loc = safeGetRenditionLocation(rendition)
+          }
+        }
+      }
       if (loc?.start?.cfi) {
         currentCfiRef.current = loc.start.cfi
         setCurrentCfi(loc.start.cfi)
@@ -3231,7 +3264,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         onPrev={handlePrev}
         onNext={handleNext}
         isLeftDisabled={currentPage <= 1 && progressPercent <= 0}
-        isRightDisabled={progressPercent >= 100 && currentPage >= totalPages}
+        isRightDisabled={progressPercent >= 100 && totalPages > 1 && currentPage >= totalPages}
         hidden={isImmersiveFullscreen || isAnyDrawerOpen}
       />
       <div
@@ -3270,7 +3303,8 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         {/* EPUB Mount Point (kept completely empty of React children so 3rd-party DOM cleanup never collides with React fiber reconciler) */}
         <div
           ref={viewerRef}
-          className="w-full h-full max-w-6xl mx-auto relative overflow-hidden"
+          tabIndex={-1}
+          className="w-full h-full max-w-6xl mx-auto relative overflow-hidden outline-none"
         />
 
         {/* Center Gutter Divider for Dual Page Mode (Horizontal Paginated mode) */}

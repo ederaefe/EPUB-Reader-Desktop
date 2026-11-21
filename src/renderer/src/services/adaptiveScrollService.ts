@@ -73,7 +73,7 @@ export interface AdaptiveScrollOptions {
 
 const DEFAULT_COUNTDOWN_SEC = 20
 const DEFAULT_ADAPTIVE_SEC = 25
-const MIN_COUNTDOWN_SEC = 3
+const MIN_COUNTDOWN_SEC = 2
 const MAX_COUNTDOWN_SEC = 600
 const DEFAULT_INACTIVITY_MS = 5 * 60 * 1000 // 5 minutes inactivity auto-pause
 
