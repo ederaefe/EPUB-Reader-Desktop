@@ -2685,3 +2685,128 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - In both reader engines, any programmatic vertical scrolling (`container.scrollBy` or `viewportRef.current.scrollBy`) must schedule `armPage()` with at least a 400–450ms settling timeout so browser smooth-scrolling animations complete before re-evaluating DOM visibility or CFI positions.
 
 
+
+---
+
+## Increment 44: Retreat Dwell Accumulator, Rapid Scrub Batch Reset & Ultra-Streamlined Glass HUD
+> **Agent**: @Agent-AutoFlipRefiner | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Implemented Retreat Dwell Accumulator (`adaptivePacingEngine.ts`, `adaptiveScrollService.ts`)**: Built a bounded `pageDwellLedger` that persists dwell intervals and visit counts per page. When Auto-Flip advances prematurely (e.g. at 11s) and the reader steps back to the immediate previous page to finish reading (e.g. for 5s), the engine re-opens the ledger entry, aggregates both dwells ($11\text{s} + 5\text{s} = 16\text{s}$), and evaluates the true combined reading velocity ($200 \times 60 / 16 = 750$ WPM). This permanently eliminates the premature flip feedback loop.
+2. **Robust Rapid Scrub & Discontinuous Jump Batch Reset (`adaptivePacingEngine.ts`)**: Integrated multi-page jump and rapid scrubbing heuristics ($|\Delta \text{Page}| \ge 2$ or rapid flips in under 8s). Completely excludes non-linear browsing from the learned velocity profile, resets `batchPagesRead = 0`, and cleanly restarts the 7-page calibration batch from the settled destination page.
+3. **Independent Dual-Metric Reading Speedometer (`adaptivePacingEngine.ts`, `adaptiveScrollService.ts`)**: Exposed both `readingPaceWpm` (WPM, labeled "reading pace") and `readingSpeedSpp` (SPP, labeled "reading speed") with subtle hover tooltips ("Words Per Minute" / "Seconds Per Page"). Enabled telemetry across both Fixed and Smart modes as an independent speedometer without emojis. In dual-spread mode, SPP is derived as exactly $2 \times$ single SPP, preventing rounding drift.
+4. **Ultra-Streamlined Curved-Edge Glass HUD Popover (`AdaptiveScrollOverlay.tsx`)**: Replaced the cluttered 7-row panel with a floating 3-zone curved-edge glass card (`rounded-2xl`, `backdrop-blur-2xl`):
+   - **Zone 1**: Dual Speedometer card with theme-adaptive cyan (`WPM`) and emerald (`SPP`) accents.
+   - **Zone 2**: Tactile glass segmented mode pill (`( Fixed | Smart )`) leveraging `.glass-pill-track` and `.glass-pill-btn`.
+   - **Zone 3**: Minimalist stepper with circular brighter buttons (`rounded-full`, stepping by $\pm 2\text{s}$) and a clean center pill housing an editable direct number input with a blinking cursor.
+   - **Clutter Elimination**: Purged the green telemetry banner, floor text labels, -5s/+5s buttons, preset chip row, and pause-at-breaks toggle.
+5. **Non-Destructive Navigation Transition Hardening (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**: Removed premature `adaptiveScrollEngine.stop()` invocations on `direction === 'prev'` and PDF `handlePrev`. Wrapped EPUB navigation in `setSuspension('layout', true/false)` so single-page retreats re-arm cleanly on the retreated page and trigger dwell accumulation.
+6. **Automated Verification Suite Expansion (`scratch/test_autoflip_engines.ts`)**: Added 17 unit tests verifying 11s + 5s retreat accumulation, 1090 WPM vs 750 WPM skimming recovery, $|\Delta| = 15$ discontinuous scrub exclusions, 7-page batch counter restarts, SPP dual-spread harmonic scaling, and direct text input clamping.
+
+### Problem Statement
+1. Premature flip feedback loop: When Auto-Flip turned a page prematurely before the reader finished, stepping back previously failed to track prior dwell (or halted Auto-Flip entirely), causing subsequent dwell samples to be discarded as skimming (>750 WPM) or miscalculating WPM.
+2. Scrubbing profile contamination: Rapidly skimming across multiple pages to check references or chapters contaminated calibration batches and skewed learned pace.
+3. Telemetry coupling & visual clutter: Previous HUD had 7 stacked rows with bulky preset chips and green banners, lacking SPP metrics and direct numerical editing.
+
+### Technical Fix
+1. In `adaptivePacingEngine.ts`:
+   - Added `pageDwellLedger: Map<number, PageDwellLedgerEntry>` with an LRU cap of 30 entries.
+   - In `recordPageDwell(unit, words, elapsedMs, isRetreat, isScrub, isDual)`:
+     ```ts
+     const prior = this.pageDwellLedger.get(unit)
+     const accumulatedMs = (isRetreat && prior ? prior.accumulatedMs : 0) + elapsedMs
+     this.pageDwellLedger.set(unit, { words, accumulatedMs, visitCount: (prior?.visitCount ?? 0) + 1, lastEnteredAt: Date.now() })
+     return this.processReadingSample(unit, words, accumulatedMs, isDual)
+     ```
+   - In `recordNavigation(fromUnit, toUnit, words, elapsedMs, isDual)`:
+     Classified $|\Delta| \ge 2$ or sequential flips $< 8\text{s}$ as scrubbing, invoking `resetBatch(toUnit)` to reset `batchPagesRead = 0`. Single-unit retreats ($\Delta = -1$) mark `toUnit` for dwell accumulation.
+   - Derived `getReadingPaceWpm()` and `getReadingSpeedSpp(isDual)` with harmonic $2 \times$ dual scaling.
+2. In `adaptiveScrollService.ts`:
+   - Updated `PacingMetrics` to expose `readingPaceWpm`, `readingSpeedSpp`, and `batchProgress`.
+   - Wired `startPageCountdown` to track `lastTrackedUnit` and dispatch `recordNavigation`.
+3. In `EpubReaderView.tsx` & `PdfReaderView.tsx`:
+   - Replaced `adaptiveScrollEngine.stop()` on rewind with layout suspension and reactive re-arming.
+4. In `AdaptiveScrollOverlay.tsx`:
+   - Engineered the 3-zone glass HUD with `rounded-2xl`, `backdrop-blur-2xl`, `.glass-pill-track`, circular `rounded-full` stepper buttons, and direct number editing.
+
+### Touched Files
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 95/95 test assertions passed cleanly (monotonic countdown, sleep/suspend guard, EMA learning, retreat accumulation 11s+5s=16s, skimming recovery, scrub batch reset, WPM/SPP dual metrics, stepper input parsing, modifier collision filtering, continuous vertical headroom, and PDF dwell parity).
+- `npx tsc --noEmit`: Passed with 0 TypeScript compilation errors across main, preload, and renderer.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 22.47s (out/main: 133.26 kB, out/preload: 5.36 kB, out/renderer: 3,485.39 kB JS, 124.43 kB CSS).
+
+### Handoff Notes
+- In `AdaptivePacingEngine`, `recordPageDwell` intentionally stores dwells in `pageDwellLedger` regardless of whether `processReadingSample` accepts or flags the sample as skimming. This guarantees that subsequent single-page retreats can successfully retrieve the prior dwell and calculate the combined reading duration.
+
+
+
+---
+
+## Increment 45: Hardening Retreat Accumulation, Adaptive Scrub Detection, PDF Page Tracking & Universal Theme HUD
+> **Agent**: @Agent-AutoFlipHardener | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Hardened Retreat Dwell Accumulator & Premature Flip Rollback (`adaptivePacingEngine.ts`)**:
+   - Replaced fragile `visitCount > 1` heuristic with explicit `isRetreatPending` state tracking in `PageDwellLedgerEntry`. When an immediate retreat step occurs ($\Delta \text{Unit} = -1$), `markRetreat` flags the retreat in the ledger.
+   - Added `rollbackPrematureSample`: when a single retreat occurs, any premature velocity mutation or batch increment committed on that unit is cleanly rolled back to its exact pre-flip state. When the reader subsequently leaves the page, the combined dwell ($11\text{s} + 5\text{s} = 16\text{s}$) updates the velocity profile once with the true combined pace ($200 \times 60 / 16 = 750$ WPM).
+2. **Adaptive Sequential Rapid Scrub Heuristics (`adaptivePacingEngine.ts`)**:
+   - Fixed sequential rapid flip detection by tracking `timeSinceLastNav` and `consecutiveRapidFlips` on every navigation event. When 2 or more consecutive flips occur in under 2500ms with inter-flip intervals under 4000ms (or on any $|\Delta| \ge 2$ discontinuous jump), the engine classifies the browsing as rapid scrubbing, excludes it from telemetry, and cleanly restarts the 7-page calibration batch from the settled page.
+3. **Cross-Format Dwell & Navigation Tracking Parity (`PdfReaderView.tsx`, `EpubReaderView.tsx`, `adaptiveScrollService.ts`)**:
+   - In `PdfReaderView.tsx`, passed `currentPage` into `adaptiveScrollEngine.startPageCountdown`, enabling PDF page turns to be tracked by `recordNavigation`.
+   - In `adaptiveScrollService.ts`, introduced `recordManualNavigation(fromPage, toPage, wordCount, elapsedMs, isDual)` and wired `EpubReaderView.tsx` `applyLocationState` to evaluate manual page flips and TOC jumps through the navigation pipeline.
+4. **Universal Theme-Adaptive Glass HUD Popover (`AdaptiveScrollOverlay.tsx`)**:
+   - Implemented dynamic palette tokens across Night, Dark Sepia, Light Sepia, and Day reading themes.
+   - Outer card adapts backdrop tint, border contrast, and inner drop shadow (`bg-white/95` on Day, `bg-[#f7efe0]/96` on Light Sepia, `bg-[#1b1611]/96` on Dark Sepia, `bg-[#12151b]/96` on Night).
+   - Speedometer numbers feature theme-sensitive contrast: Day uses sky/cyan `#0284c7` and emerald `#059669`; Light Sepia uses deep cyan-teal `#087ea4` and forest emerald `#15803d`; Dark Sepia uses `#38bdf8` and `#34d399`; Night uses vibrant neon `text-cyan-400` and `text-emerald-400`.
+   - Circular stepper buttons adapt backgrounds and borders per theme (`hover:bg-black/[0.12]` on Day, `hover:bg-[#5f4b32]/[0.18]` on Light Sepia, `hover:bg-white/[0.24]` on Night).
+   - Center editable number pill suppresses native browser spin buttons with `[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none` and supports Escape key edit cancellation.
+5. **Expanded Verification Suite (`scratch/test_autoflip_engines.ts`)**:
+   - Expanded unit tests to 101 assertions, adding automated verification for end-to-end `recordNavigation` retreat dwell accumulation ($11\text{s} + 5\text{s} = 16\text{s}$), premature sample rollback, sequential rapid scrub classification, and 7-page batch counter restarts.
+
+### Problem Statement
+1. In `adaptivePacingEngine.ts`, `recordNavigation` checked `prior.visitCount > 1` while `visitCount` remained 1, causing real retreat navigation ($10 \to 11 \to 10 \to 11$) to discard the prior dwell ($11\text{s} + 5\text{s} = 16\text{s}$ dropped to $5\text{s}$).
+2. Sequential rapid page scrubbing (e.g. $10 \to 11 \to 12 \to 13$ in 1s each) was undetectable because `lastJumpTimestamp` was only initialized inside `resetBatch`.
+3. In `PdfReaderView.tsx`, `startPageCountdown` was invoked without `currentPage`, leaving `pageIndex` permanently stuck at 1 and disabling PDF navigation tracking.
+4. In `AdaptiveScrollOverlay.tsx`, container background, border, speedometer accents, and circular stepper buttons were hardcoded dark with neon cyan/emerald, breaking visual contrast in Day and Light Sepia modes.
+5. Direct input box lacked CSS appearance reset, causing native browser stepper spin buttons to render in WebKit/Chromium.
+
+### Technical Fix
+1. In `adaptivePacingEngine.ts`:
+   - Updated `PageDwellLedgerEntry` with `isRetreatPending?: boolean`.
+   - Added `CommittedSampleSnapshot` to snapshot state before EMA updates in `processReadingSample`.
+   - Implemented `rollbackPrematureSample` to revert EMA mutations if the reader steps back.
+   - Evaluated rapid scrubs with `isFastDwell` and `timeSinceLastNav < 4000`, incrementing `consecutiveRapidFlips` and resetting batch when `consecutiveRapidFlips >= 2`.
+2. In `adaptiveScrollService.ts`:
+   - Added `recordManualNavigation` to pass `fromPage` and `toPage` into `pacingEngine.recordNavigation`.
+3. In `PdfReaderView.tsx`:
+   - Passed `currentPage` into `startPageCountdown`.
+4. In `AdaptiveScrollOverlay.tsx`:
+   - Styled container, header actions, speedometer card, stepper buttons, and center pill dynamically based on `settings.theme`.
+   - Added `-webkit-appearance: none` suppression on input.
+
+### Touched Files
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 101/101 test assertions passed cleanly (monotonic countdown, sleep/suspend guard, EMA learning, retreat accumulation 11s+5s=16s via `recordNavigation`, premature flip rollback, sequential rapid scrub detection, skimming recovery, scrub batch reset, WPM/SPP dual metrics, stepper input parsing, modifier collision filtering, continuous vertical headroom, and PDF dwell parity).
+- `npm run typecheck` (`tsc --noEmit`): Passed with 0 errors across main, preload, and renderer.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 11.26s (out/main: 133.26 kB, out/preload: 5.36 kB, out/renderer: 3,492.51 kB JS, 129.07 kB CSS).
+
+### Handoff Notes
+- In `AdaptivePacingEngine`, `rollbackPrematureSample` only reverts the immediate prior unit's committed sample upon a single-page retreat ($\Delta = -1$). If multi-page navigation occurs, `resetBatch` is called instead, leaving historical ledger dwells intact while cleanly restarting the 7-page calibration batch.
+

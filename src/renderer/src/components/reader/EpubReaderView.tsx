@@ -1249,7 +1249,13 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         const elapsedMs = now - pageEnteredAtRef.current
         const prevWords = lastWordsOnPageRef.current
         if (!useAppStore.getState().isAutoscrollActive && prevWords > 0) {
-          adaptiveScrollEngine.recordManualReading(prevWords, elapsedMs)
+          const prevPage = currentPageRef.current || page
+          const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+          if (prevPage !== page) {
+            adaptiveScrollEngine.recordManualNavigation(prevPage, page, prevWords, elapsedMs, isDual)
+          } else {
+            adaptiveScrollEngine.recordManualReading(prevWords, elapsedMs, page, isDual)
+          }
         }
         pageEnteredAtRef.current = now
 
@@ -1583,9 +1589,9 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
     const rendition = renditionRef.current as any
     if (!rendition || isNavigatingRef.current) return
 
-    // Disarm any active forward auto-advance timer immediately when rewinding
-    if (direction === 'prev' && useAppStore.getState().isAutoscrollActive) {
-      adaptiveScrollEngine.stop()
+    // Suspend countdown during page transition animation
+    if (useAppStore.getState().isAutoscrollActive) {
+      adaptiveScrollEngine.setSuspension('layout', true)
     }
 
     isNavigatingRef.current = true
@@ -1607,6 +1613,9 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       console.warn('Navigation step error:', err)
     } finally {
       isNavigatingRef.current = false
+      if (useAppStore.getState().isAutoscrollActive) {
+        adaptiveScrollEngine.setSuspension('layout', false)
+      }
     }
   }, [])
   navigateStepRef.current = navigateStep

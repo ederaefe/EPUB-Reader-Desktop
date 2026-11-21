@@ -183,3 +183,21 @@
   - **Comprehensive Full Settings Controls**: Readers accessing Full Settings while viewing a PDF can now directly inspect and adjust dwell seconds per spread with instant reset options for both single and dual page modes.
 
 
+- **Retreat Dwell Accumulation & Premature Flip Protection**:
+  - **Natural Reading Pace Correction**: If Auto-Flip advances before you finish reading a page (e.g. at 11 seconds) and you step back to finish reading (e.g. for another 5 seconds), Semply automatically combines both dwells ($11\text{s} + 5\text{s} = 16\text{s}$). Your true reading velocity is accurately measured, preventing the algorithm from locking into premature flips.
+  - **Multi-Retreat Resilience**: Supports repeated step-backs on dense or complex passages, seamlessly aggregating all visits into a single holistic velocity sample before progressing.
+
+- **Rapid Scrub & Discontinuous Jump Batch Reset**:
+  - **Exclusion of Non-Linear Browsing**: Quickly browsing across multiple pages to check a map, index, or chapter reference is excluded from your learned speed profile, eliminating artificially skewed readings.
+  - **Fresh 7-Page Calibration Batches**: Once you settle on a new page after scrubbing or jumping chapters, the 7-page calibration batch cleanly restarts from that page for fresh, predictable pacing.
+
+- **Independent Dual-Metric Reading Speedometer (WPM & SPP)**:
+  - **Pace & Speed Parity**: Displays both Words Per Minute (**WPM**, reading pace) and Seconds Per Page (**SPP**, reading speed) with informative hover tooltips ("Words Per Minute" / "Seconds Per Page").
+  - **Universal Format Availability**: Operates as an independent reading speedometer in both Fixed and Smart modes across both EPUB and PDF formats.
+  - **Theme-Sensitive Aesthetics**: Styled with subtle cyan and emerald dashboard accents that seamlessly adapt across Night, Dark Sepia, Light Sepia, and Day reading themes without emojis.
+
+- **Ultra-Streamlined Curved-Edge Glass HUD Popover**:
+  - **Floating 3-Zone Glass Card**: An uncluttered, curved-edge (`rounded-2xl`) glass popover with deep backdrop blur (`backdrop-blur-2xl`) that floats unobtrusively over the reader.
+  - **Tactile Segmented Mode Pill**: Features an in-place glass pill selector (`( Fixed | Smart )`) for instant mode toggling.
+  - **Minimalist Stepper with Direct Input**: Flanked by circular decrement and increment buttons (`-2s` / `+2s`), with an editable central number box and blinking cursor that allows direct numerical dwell entry.
+  - **Zero Visual Clutter**: Removed bulky telemetry banners, redundant preset chip rows, floor text labels, and clutter for an effortless hands-free reading experience.

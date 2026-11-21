@@ -9,6 +9,7 @@
 // 7. Physiological Skimming (<800ms / >750 WPM) and Idling (<60 WPM) guard with EMA (alpha = 0.15)
 
 export const REFERENCE_PAGE_WORDS = 180
+export const REFERENCE_SPP_WORDS = 100
 export const DEFAULT_WPM = 250
 export const MIN_WPM = 60
 export const MAX_WPM = 750
@@ -25,6 +26,24 @@ export const SINGLE_CALIBRATED_PAGE_START = 20
 export const DUAL_LEARNING_SPREAD_START = 3 // page ~5
 export const DUAL_CALIBRATED_SPREAD_START = 11 // page ~22
 
+export interface PageDwellLedgerEntry {
+  words: number
+  accumulatedMs: number
+  visitCount: number
+  lastEnteredAt: number
+  isRetreatPending?: boolean
+}
+
+export interface CommittedSampleSnapshot {
+  unit: number
+  priorCurrentWpm: number
+  priorTargetWpm: number
+  priorObservedWpm: number
+  priorBatchPagesRead: number
+  priorLastBatchWpm: number
+  priorLastRecalibratedIndex: number
+}
+
 export interface AdaptivePacingState {
   isLearning: boolean
   isCalibrated: boolean
@@ -33,6 +52,9 @@ export interface AdaptivePacingState {
   observedWpm: number
   lastRecalibratedPage: number
   isSkimming: boolean
+  readingPaceWpm: number
+  readingSpeedSpp: number
+  batchProgress: number
 }
 
 /**
@@ -94,6 +116,14 @@ export class AdaptivePacingEngine {
 
   private lastRecalibratedIndex = 0
   private lastBatchWpm = DEFAULT_WPM
+  private batchPagesRead = 0
+  private lastJumpTimestamp = 0
+  private lastNavTimestamp = 0
+  private consecutiveRapidFlips = 0
+  private lastUnit = 0
+  private lastCommittedSample: CommittedSampleSnapshot | null = null
+
+  private readonly pageDwellLedger = new Map<number, PageDwellLedgerEntry>()
 
   constructor(initialWpm = DEFAULT_WPM) {
     this.currentWpm = this.clampWpm(initialWpm)
@@ -118,11 +148,94 @@ export class AdaptivePacingEngine {
   }
 
   /**
-   * Record observed manual reading dwell between page turns.
-   * Discards accidental clicks (<800ms) and skimming (>750 WPM) or idling (<60 WPM).
-   * Active only once the book passes page 5 (spread 3) to protect against frontmatter skimming.
+   * Reading pace in Words Per Minute.
    */
-  public recordManualReading(
+  public getReadingPaceWpm(): number {
+    return Math.round(this.currentWpm)
+  }
+
+  /**
+   * Reading speed in Seconds Per Page (derived from reference page word count).
+   * In dual-spread mode, duration is exactly 2x single-page SPP without rounding drift.
+   */
+  public getReadingSpeedSpp(isDualSpread = false): number {
+    const referenceWords = REFERENCE_SPP_WORDS
+    const wpm = this.currentWpm > 0 ? this.currentWpm : DEFAULT_WPM
+    const singleSpp = Math.max(1, Math.round((referenceWords / wpm) * 60))
+    return isDualSpread ? singleSpp * 2 : singleSpp
+  }
+
+  /**
+   * Current 1..7 progress within the active calibration batch.
+   */
+  public getBatchProgress(): number {
+    return Math.min(BATCH_RECALIBRATION_INTERVAL, (this.batchPagesRead % BATCH_RECALIBRATION_INTERVAL) + 1)
+  }
+
+  public getBatchPagesRead(): number {
+    return this.batchPagesRead
+  }
+
+  public getPageDwellLedger(): ReadonlyMap<number, PageDwellLedgerEntry> {
+    return this.pageDwellLedger
+  }
+
+  /**
+   * Reset active 7-page calibration batch (triggered by rapid scrub or discontinuous jumps).
+   */
+  public resetBatch(newUnit?: number): void {
+    this.batchPagesRead = 0
+    this.consecutiveRapidFlips = 0
+    this.lastCommittedSample = null
+    if (newUnit !== undefined) {
+      this.lastRecalibratedIndex = newUnit
+      this.lastUnit = newUnit
+    }
+    this.lastJumpTimestamp = Date.now()
+  }
+
+  /**
+   * Roll back premature flip velocity mutation if the reader immediately retreats.
+   */
+  public rollbackPrematureSample(): void {
+    if (!this.lastCommittedSample) return
+    this.currentWpm = this.lastCommittedSample.priorCurrentWpm
+    this.targetWpm = this.lastCommittedSample.priorTargetWpm
+    this.observedWpm = this.lastCommittedSample.priorObservedWpm
+    this.batchPagesRead = this.lastCommittedSample.priorBatchPagesRead
+    this.lastBatchWpm = this.lastCommittedSample.priorLastBatchWpm
+    this.lastRecalibratedIndex = this.lastCommittedSample.priorLastRecalibratedIndex
+    this.isSkimming = false
+    this.lastCommittedSample = null
+  }
+
+  /**
+   * Mark a page unit as re-entered via retreat.
+   */
+  public markRetreat(unit: number): void {
+    // If a sample was prematurely committed on this unit, roll it back to prevent locking in premature pace
+    if (this.lastCommittedSample && this.lastCommittedSample.unit === unit) {
+      this.rollbackPrematureSample()
+    }
+    const prior = this.pageDwellLedger.get(unit)
+    if (prior) {
+      prior.isRetreatPending = true
+      prior.lastEnteredAt = Date.now()
+    } else {
+      this.pageDwellLedger.set(unit, {
+        words: 0,
+        accumulatedMs: 0,
+        visitCount: 1,
+        lastEnteredAt: Date.now(),
+        isRetreatPending: true
+      })
+    }
+  }
+
+  /**
+   * Process a valid physiological reading sample into the velocity model and batch recalibration.
+   */
+  public processReadingSample(
     pageIndexOrSpread: number,
     wordCount: number,
     elapsedMs: number,
@@ -154,12 +267,157 @@ export class AdaptivePacingEngine {
       return false
     }
 
+    // Snapshot state before mutation so immediate single retreats can cleanly rollback premature flip
+    this.lastCommittedSample = {
+      unit: pageIndexOrSpread,
+      priorCurrentWpm: this.currentWpm,
+      priorTargetWpm: this.targetWpm,
+      priorObservedWpm: this.observedWpm,
+      priorBatchPagesRead: this.batchPagesRead,
+      priorLastBatchWpm: this.lastBatchWpm,
+      priorLastRecalibratedIndex: this.lastRecalibratedIndex
+    }
+
     // 5. Valid physiological reading sample: Update rolling EMA
     this.isSkimming = false
     this.observedWpm = this.clampWpm(rawObserved)
     this.currentWpm = this.alpha * this.observedWpm + (1 - this.alpha) * this.currentWpm
     this.targetWpm = this.clampWpm(this.currentWpm)
+
+    // Increment batch progress and recalibrate at 7-page milestone
+    this.batchPagesRead++
+    const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
+    if (pageIndexOrSpread >= calibratedStart) {
+      if (this.batchPagesRead >= BATCH_RECALIBRATION_INTERVAL) {
+        this.lastRecalibratedIndex = pageIndexOrSpread
+        this.lastBatchWpm = this.currentWpm
+        this.batchPagesRead = 0
+      }
+    }
+
     return true
+  }
+
+  /**
+   * Record page visit dwell with retreat accumulation and rapid scrub batch reset.
+   *
+   * @param unit Page index or spread index being left
+   * @param words Word count of the page/spread
+   * @param elapsedMs Duration spent on this page/spread in ms
+   * @param isRetreat True if the navigation was an immediate step back (ΔUnit = -1) or accumulated retreat
+   * @param isScrub True if rapid multi-page browsing was detected (|ΔUnit| >= 2, or rapid scrubbing)
+   * @param isDualSpread Whether dual spread mode is active
+   */
+  public recordPageDwell(
+    unit: number,
+    words: number,
+    elapsedMs: number,
+    isRetreat: boolean,
+    isScrub: boolean,
+    isDualSpread = false
+  ): boolean {
+    if (isScrub) {
+      // Exclude scrubbing from speed profile and restart calibration batch
+      this.resetBatch(unit)
+      return false
+    }
+
+    const prior = this.pageDwellLedger.get(unit)
+    const accumulatedMs = (isRetreat && prior ? prior.accumulatedMs : 0) + elapsedMs
+    const visitCount = (prior?.visitCount ?? 0) + 1
+
+    this.pageDwellLedger.set(unit, {
+      words,
+      accumulatedMs,
+      visitCount,
+      lastEnteredAt: Date.now(),
+      isRetreatPending: false
+    })
+
+    // Prune ledger to latest 30 entries to strictly cap memory
+    if (this.pageDwellLedger.size > 30) {
+      const oldestKey = this.pageDwellLedger.keys().next().value
+      if (oldestKey !== undefined) {
+        this.pageDwellLedger.delete(oldestKey)
+      }
+    }
+
+    return this.processReadingSample(unit, words, accumulatedMs, isDualSpread)
+  }
+
+  /**
+   * Record observed manual reading dwell between page turns.
+   * Supports immediate retreat dwell accumulation (isRetreat = true).
+   */
+  public recordManualReading(
+    pageIndexOrSpread: number,
+    wordCount: number,
+    elapsedMs: number,
+    isDualSpread = false,
+    isRetreat = false
+  ): boolean {
+    if (isRetreat) {
+      this.markRetreat(pageIndexOrSpread)
+    }
+    return this.recordPageDwell(pageIndexOrSpread, wordCount, elapsedMs, isRetreat, false, isDualSpread)
+  }
+
+  /**
+   * Evaluate a page navigation transition between fromUnit and toUnit.
+   * Automatically classifies immediate single-page retreats vs multi-page rapid scrubbing.
+   */
+  public recordNavigation(
+    fromUnit: number,
+    toUnit: number,
+    words: number,
+    elapsedMs: number,
+    isDualSpread = false
+  ): { isRetreat: boolean; isScrub: boolean; updated: boolean } {
+    const delta = toUnit - fromUnit
+    const now = Date.now()
+    const isInitialNav = this.lastNavTimestamp === 0
+    const timeSinceLastNav = isInitialNav ? 0 : now - this.lastNavTimestamp
+    this.lastNavTimestamp = now
+
+    // 1. Detect rapid scrub / discontinuous jump:
+    // Discontinuous jump (|delta| >= 2) OR sequential rapid flips (2+ consecutive flips in < 2500ms with < 4000ms interval)
+    const isDiscontinuous = Math.abs(delta) >= 2
+    const isFastDwell = elapsedMs < 2500
+    const isRapidFlip = Math.abs(delta) === 1 && isFastDwell && timeSinceLastNav < 4000
+
+    if (isRapidFlip) {
+      this.consecutiveRapidFlips++
+    } else if (elapsedMs >= 2500 || timeSinceLastNav >= 4000) {
+      this.consecutiveRapidFlips = 0
+    }
+
+    const isRapidScrub = isDiscontinuous || this.consecutiveRapidFlips >= 2
+
+    if (isRapidScrub) {
+      this.consecutiveRapidFlips = 0
+      this.resetBatch(toUnit)
+      return { isRetreat: false, isScrub: true, updated: false }
+    }
+
+    // 2. Detect single-unit retreat (delta === -1)
+    if (delta === -1) {
+      this.markRetreat(toUnit)
+      return { isRetreat: true, isScrub: false, updated: false }
+    }
+
+    // 3. Normal forward progression: accumulate dwell if prior retreat exists
+    const prior = this.pageDwellLedger.get(fromUnit)
+    const isAccumulatedRetreat = Boolean(prior && (prior.isRetreatPending || prior.accumulatedMs > 0))
+    const updated = this.recordPageDwell(
+      fromUnit,
+      words,
+      elapsedMs,
+      isAccumulatedRetreat,
+      false,
+      isDualSpread
+    )
+    this.lastUnit = toUnit
+    return { isRetreat: false, isScrub: false, updated }
   }
 
   /**
@@ -201,7 +459,6 @@ export class AdaptivePacingEngine {
 
       // Calculate dwell from batch WPM and visible words relative to reference spread
       const effectiveWpm = this.lastBatchWpm > 0 ? this.lastBatchWpm : DEFAULT_WPM
-      const referenceWords = REFERENCE_PAGE_WORDS * spreadFactor
       const words = Math.max(20 * spreadFactor, visibleWords)
 
       // Time in seconds to read the visible words at the calibrated batch WPM
@@ -228,7 +485,10 @@ export class AdaptivePacingEngine {
       targetWpm: Math.round(this.targetWpm),
       observedWpm: Math.round(this.observedWpm),
       lastRecalibratedPage: this.lastRecalibratedIndex,
-      isSkimming: this.isSkimming
+      isSkimming: this.isSkimming,
+      readingPaceWpm: this.getReadingPaceWpm(),
+      readingSpeedSpp: this.getReadingSpeedSpp(isDualSpread),
+      batchProgress: this.getBatchProgress()
     }
   }
 
@@ -255,5 +515,12 @@ export class AdaptivePacingEngine {
     this.lastBatchWpm = clamped
     this.lastRecalibratedIndex = 0
     this.isSkimming = false
+    this.batchPagesRead = 0
+    this.lastJumpTimestamp = 0
+    this.lastNavTimestamp = 0
+    this.consecutiveRapidFlips = 0
+    this.lastUnit = 0
+    this.lastCommittedSample = null
+    this.pageDwellLedger.clear()
   }
 }

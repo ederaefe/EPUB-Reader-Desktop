@@ -462,9 +462,6 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
   }, [totalPages, step])
 
   const handlePrev = useCallback(() => {
-    if (useAppStore.getState().isAutoscrollActive) {
-      adaptiveScrollEngine.stop()
-    }
     setCurrentPage((p) => Math.max(1, p - step))
   }, [step])
 
@@ -621,7 +618,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
           }
         },
-        isDual
+        isDual,
+        currentPage
       )
     }
 

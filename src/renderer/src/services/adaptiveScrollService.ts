@@ -54,6 +54,9 @@ export interface PacingMetrics {
   currentVelocity: number
   isLearning?: boolean
   isCalibrated?: boolean
+  readingPaceWpm: number
+  readingSpeedSpp: number
+  batchProgress: number
 }
 
 export type PacingListener = (metrics: PacingMetrics) => void
@@ -91,6 +94,8 @@ export class AdaptiveScrollEngine {
   private isMicroPausing = false
   private isDoubleSpread = false
   private currentPage = 1
+  private lastTrackedUnit = 0
+  private pageEnteredAt = 0
 
   private lastPageWordCount = 180
   private hasBreakOnPage = false
@@ -251,10 +256,26 @@ export class AdaptiveScrollEngine {
     this.isMicroPausing = false
     this.isDoubleSpread = isDoubleSpread
     this.currentPage = Math.max(1, pageIndex)
-    this.lastPageWordCount = Math.max(5, visibleWords)
-    this.hasBreakOnPage = hasBreak
 
     const now = this.nowFn()
+    const newUnit = this.getCurrentUnit()
+
+    // Record dwell and transition from previous unit if moving to a new unit
+    if (this.lastTrackedUnit > 0 && newUnit !== this.lastTrackedUnit && this.pageEnteredAt > 0) {
+      const elapsedMs = now - this.pageEnteredAt
+      this.pacingEngine.recordNavigation(
+        this.lastTrackedUnit,
+        newUnit,
+        this.lastPageWordCount,
+        elapsedMs,
+        this.isDoubleSpread
+      )
+    }
+
+    this.lastTrackedUnit = newUnit
+    this.pageEnteredAt = now
+    this.lastPageWordCount = Math.max(5, visibleWords)
+    this.hasBreakOnPage = hasBreak
     this.lastUserActivityAt = now
 
     let dwellSec = 20
@@ -407,11 +428,36 @@ export class AdaptiveScrollEngine {
     return this.nudgeDwellSec(deltaSec)
   }
 
-  public recordManualReading(wordCount: number, elapsedMs: number, pageIndex?: number, isDoubleSpread?: boolean): void {
+  public recordManualNavigation(
+    fromPage: number,
+    toPage: number,
+    wordCount: number,
+    elapsedMs: number,
+    isDoubleSpread?: boolean
+  ): void {
+    const isDual = isDoubleSpread ?? this.isDoubleSpread
+    const fromUnit = isDual ? Math.ceil(fromPage / 2) : fromPage
+    const toUnit = isDual ? Math.ceil(toPage / 2) : toPage
+    const nav = this.pacingEngine.recordNavigation(fromUnit, toUnit, wordCount, elapsedMs, isDual)
+    if (nav.updated) {
+      const pacing = this.pacingEngine.getState(toUnit, isDual)
+      this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / pacing.currentWpm) * 60))
+      this.triggerSettingsSync()
+    }
+    this.notify()
+  }
+
+  public recordManualReading(
+    wordCount: number,
+    elapsedMs: number,
+    pageIndex?: number,
+    isDoubleSpread?: boolean,
+    isRetreat = false
+  ): void {
     const page = pageIndex ?? this.currentPage
     const isDual = isDoubleSpread ?? this.isDoubleSpread
     const unit = isDual ? Math.ceil(page / 2) : page
-    const updated = this.pacingEngine.recordManualReading(unit, wordCount, elapsedMs, isDual)
+    const updated = this.pacingEngine.recordManualReading(unit, wordCount, elapsedMs, isDual, isRetreat)
     if (updated) {
       const pacing = this.pacingEngine.getState(unit, isDual)
       this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / pacing.currentWpm) * 60))
@@ -471,6 +517,8 @@ export class AdaptiveScrollEngine {
     this.isMicroPausing = false
     this.clearMicroPauseTimer()
     this.pendingAdvanceCb = null
+    this.lastTrackedUnit = 0
+    this.pageEnteredAt = 0
     if (this.countdownEngine.getState().isActive) {
       const spreadFactor = this.isDoubleSpread ? 2 : 1
       const targetSec = this.mode === 'countdown' ? this.fixedCountdownSec : (this.adaptiveBaseSec * spreadFactor)
@@ -540,7 +588,10 @@ export class AdaptiveScrollEngine {
       observedWpm: pacing.observedWpm,
       currentVelocity,
       isLearning: pacing.isLearning,
-      isCalibrated: pacing.isCalibrated
+      isCalibrated: pacing.isCalibrated,
+      readingPaceWpm: pacing.readingPaceWpm,
+      readingSpeedSpp: pacing.readingSpeedSpp,
+      batchProgress: pacing.batchProgress
     }
   }
 
