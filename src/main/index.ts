@@ -37,6 +37,7 @@ import {
 
 const ALLOWED_EXTERNAL_BROWSER_HOSTS = [
   'github.com',
+  'githubusercontent.com',
   'efedera.me',
   'semply.app',
   'semply.vercel.app',
@@ -1209,6 +1210,104 @@ handleTrusted('book:writeMetadata', async (_, req: WriteBookMetadataRequest) => 
     },
     writeAtomic
   )
+})
+
+function compareSemver(current: string, latest: string): number {
+  const clean = (v: string) => v.replace(/^v/i, '').trim()
+  const c = clean(current)
+  const l = clean(latest)
+  if (c === l) return 0
+  const [cCore, cPre] = c.split('-')
+  const [lCore, lPre] = l.split('-')
+  const cParts = cCore.split('.').map((n) => parseInt(n, 10) || 0)
+  const lParts = lCore.split('.').map((n) => parseInt(n, 10) || 0)
+  for (let i = 0; i < Math.max(cParts.length, lParts.length); i++) {
+    const cp = cParts[i] || 0
+    const lp = lParts[i] || 0
+    if (cp > lp) return 1
+    if (cp < lp) return -1
+  }
+  if (cPre && !lPre) return -1
+  if (!cPre && lPre) return 1
+  if (cPre && lPre) return cPre.localeCompare(lPre, undefined, { numeric: true })
+  return 0
+}
+
+handleTrusted('app:checkForUpdates', async () => {
+  const currentVersion = app.getVersion()
+  try {
+    const res = await fetch('https://api.github.com/repos/ederaefe/EPUB-Reader-Desktop/releases?per_page=5', {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'Semply-Ebook-Reader'
+      }
+    })
+    if (!res.ok) {
+      throw new Error(`GitHub API returned status ${res.status}`)
+    }
+    const releases = await res.json()
+    if (!Array.isArray(releases) || releases.length === 0) {
+      return {
+        hasUpdate: false,
+        currentVersion,
+        latestVersion: currentVersion,
+        releaseName: `v${currentVersion}`,
+        releaseNotes: '',
+        releaseUrl: 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest',
+        downloadUrl: 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+      }
+    }
+    const latestRelease = releases.find((r: any) => !r.draft) || releases[0]
+    const latestVersion = latestRelease.tag_name ? latestRelease.tag_name.replace(/^v/i, '') : currentVersion
+    const hasUpdate = compareSemver(currentVersion, latestVersion) < 0
+
+    let downloadUrl = latestRelease.html_url || 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+    if (Array.isArray(latestRelease.assets)) {
+      if (process.platform === 'win32') {
+        const winAsset = latestRelease.assets.find(
+          (a: any) => typeof a.name === 'string' && a.name.endsWith('.exe') && !a.name.includes('portable')
+        )
+        if (winAsset?.browser_download_url) downloadUrl = winAsset.browser_download_url
+      } else if (process.platform === 'darwin') {
+        const macAsset = latestRelease.assets.find(
+          (a: any) => typeof a.name === 'string' && a.name.endsWith('.dmg')
+        )
+        if (macAsset?.browser_download_url) downloadUrl = macAsset.browser_download_url
+      } else {
+        const linuxAsset = latestRelease.assets.find(
+          (a: any) => typeof a.name === 'string' && (a.name.endsWith('.AppImage') || a.name.endsWith('.deb'))
+        )
+        if (linuxAsset?.browser_download_url) downloadUrl = linuxAsset.browser_download_url
+      }
+    }
+
+    if (hasUpdate && app.isPackaged) {
+      autoUpdater.checkForUpdates().catch((err) => {
+        console.warn('[AutoUpdater] manual check:', err)
+      })
+    }
+
+    return {
+      hasUpdate,
+      currentVersion,
+      latestVersion,
+      releaseName: latestRelease.name || `v${latestVersion}`,
+      releaseNotes: latestRelease.body || '',
+      releaseUrl: latestRelease.html_url || 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest',
+      downloadUrl
+    }
+  } catch (err: any) {
+    return {
+      hasUpdate: false,
+      currentVersion,
+      latestVersion: currentVersion,
+      releaseName: '',
+      releaseNotes: '',
+      releaseUrl: 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest',
+      downloadUrl: 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest',
+      error: err?.message || 'Failed to check for updates'
+    }
+  }
 })
 
 function configureSessionSecurity(): void {

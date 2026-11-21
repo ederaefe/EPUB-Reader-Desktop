@@ -14,7 +14,8 @@ import {
   Globe,
   FileText,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Check
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { backupService } from '../../services/backupService'
@@ -229,12 +230,85 @@ export const FullSettingsModal: React.FC = () => {
     })
   }
 
-  const handleOpenExternal = (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+  const handleOpenExternal = (e: React.MouseEvent, url: string) => {
     e.preventDefault()
     if (window.desktopAPI?.openExternal) {
       window.desktopAPI.openExternal(url)
     } else {
       window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const [updateStatus, setUpdateStatus] = useState<{
+    state: 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'error'
+    currentVersion?: string
+    latestVersion?: string
+    releaseName?: string
+    releaseNotes?: string
+    releaseUrl?: string
+    downloadUrl?: string
+    error?: string
+  }>({ state: 'idle' })
+
+  const handleCheckUpdatesNow = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (updateStatus.state === 'checking') return
+
+    setUpdateStatus({ state: 'checking' })
+
+    try {
+      let result
+      if (window.desktopAPI?.checkForUpdates) {
+        result = await window.desktopAPI.checkForUpdates()
+      } else {
+        const res = await fetch('https://api.github.com/repos/ederaefe/EPUB-Reader-Desktop/releases?per_page=5', {
+          headers: { Accept: 'application/vnd.github.v3+json' }
+        })
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`)
+        const releases = await res.json()
+        const latestRelease = releases.find((r: any) => !r.draft) || releases[0]
+        const currentVersion = '1.0.8'
+        const latestVersion = latestRelease?.tag_name ? latestRelease.tag_name.replace(/^v/i, '') : currentVersion
+        const hasUpdate = latestVersion !== currentVersion
+        result = {
+          hasUpdate,
+          currentVersion,
+          latestVersion,
+          releaseName: latestRelease?.name || `v${latestVersion}`,
+          releaseNotes: latestRelease?.body || '',
+          releaseUrl: latestRelease?.html_url || 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest',
+          downloadUrl: latestRelease?.html_url || 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+        }
+      }
+
+      if (result.error) {
+        setUpdateStatus({
+          state: 'error',
+          error: result.error
+        })
+      } else if (result.hasUpdate) {
+        setUpdateStatus({
+          state: 'update-available',
+          currentVersion: result.currentVersion,
+          latestVersion: result.latestVersion,
+          releaseName: result.releaseName,
+          releaseNotes: result.releaseNotes,
+          releaseUrl: result.releaseUrl,
+          downloadUrl: result.downloadUrl
+        })
+      } else {
+        setUpdateStatus({
+          state: 'up-to-date',
+          currentVersion: result.currentVersion,
+          latestVersion: result.latestVersion
+        })
+      }
+    } catch (err: any) {
+      setUpdateStatus({
+        state: 'error',
+        error: err?.message || 'Failed to check for updates'
+      })
     }
   }
 
@@ -990,15 +1064,110 @@ export const FullSettingsModal: React.FC = () => {
                     />
                     <span>Copy eBooks from external devices</span>
                   </label>
-                  <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoUpdate ?? true}
-                      onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
-                      className="ice-checkbox scale-90"
-                    />
-                    <span>Check for updates automatically</span>
-                  </label>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={settings.autoUpdate ?? true}
+                        onChange={(e) => updateSettings({ autoUpdate: e.target.checked })}
+                        className="ice-checkbox scale-90"
+                      />
+                      <span>Check for updates automatically</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleCheckUpdatesNow}
+                      disabled={updateStatus.state === 'checking'}
+                      className="text-[11px] text-[var(--app-accent)] underline hover:opacity-80 transition-opacity cursor-pointer font-medium disabled:opacity-50"
+                    >
+                      {updateStatus.state === 'checking' ? 'Checking...' : 'Check now'}
+                    </button>
+                  </div>
+
+                  {updateStatus.state === 'up-to-date' && (
+                    <div className="p-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] flex items-center justify-between animate-fadeIn">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 shrink-0" />
+                        <span>You are on the latest version (v{updateStatus.currentVersion || '1.0.8'}).</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setUpdateStatus({ state: 'idle' })}
+                        className="text-emerald-400/60 hover:text-emerald-300 text-[10px] ml-2 cursor-pointer"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+
+                  {updateStatus.state === 'update-available' && (
+                    <div className="p-3 rounded-lg bg-[var(--app-accent-soft)] border border-[var(--app-accent)]/30 space-y-2 animate-fadeIn">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-semibold uppercase tracking-wider">
+                              New Version
+                            </span>
+                            <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                              v{updateStatus.latestVersion}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--app-text-muted)] mt-1">
+                            An update is available. Would you like to download it now?
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUpdateStatus({ state: 'idle' })}
+                          className="text-[var(--app-text-subtle)] hover:text-[var(--app-text)] p-0.5 rounded transition-colors cursor-pointer"
+                          title="Dismiss"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const target = updateStatus.downloadUrl || updateStatus.releaseUrl || 'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+                            handleOpenExternal(e, target)
+                          }}
+                          className="settings-btn-primary h-7 px-3 rounded flex items-center gap-1.5 text-[11px] font-bold cursor-pointer"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Download Update</span>
+                        </button>
+
+                        {updateStatus.releaseUrl && (
+                          <a
+                            href={updateStatus.releaseUrl}
+                            onClick={(e) => handleOpenExternal(e, updateStatus.releaseUrl!)}
+                            className="text-[11px] text-[var(--app-accent)] underline hover:opacity-80 transition-opacity font-medium inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>See what's new</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {updateStatus.state === 'error' && (
+                    <div className="p-2.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-[11px] flex items-center justify-between animate-fadeIn">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{updateStatus.error || 'Failed to check for updates.'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCheckUpdatesNow}
+                        className="text-red-400 underline hover:text-red-300 text-[10px] ml-2 cursor-pointer font-medium"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
                   <label className="flex items-center gap-2 text-[11px] text-[var(--app-text-muted)] hover:text-[var(--app-text)] cursor-pointer select-none transition-colors">
                     <input
                       type="checkbox"

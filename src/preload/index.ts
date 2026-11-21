@@ -17,6 +17,17 @@ export interface ScannedBookItem {
   subfolder: string | null
 }
 
+export interface AppUpdateCheckResult {
+  hasUpdate: boolean
+  currentVersion: string
+  latestVersion: string
+  releaseName: string
+  releaseNotes: string
+  releaseUrl: string
+  downloadUrl?: string
+  error?: string
+}
+
 export interface DesktopAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -96,6 +107,7 @@ export interface DesktopAPI {
   scanVault: () => Promise<string[]>
   importBufferToVault: (fileName: string, buffer: ArrayBuffer) => Promise<VaultImportBufferResult>
   openVaultInExplorer: () => Promise<boolean>
+  checkForUpdates: () => Promise<AppUpdateCheckResult>
 }
 
 const api: DesktopAPI = {
@@ -185,7 +197,8 @@ const api: DesktopAPI = {
   scanVault: () => ipcRenderer.invoke('security:scanVault'),
   importBufferToVault: (fileName: string, buffer: ArrayBuffer) =>
     ipcRenderer.invoke('security:importBufferToVault', fileName, buffer),
-  openVaultInExplorer: () => ipcRenderer.invoke('security:openVaultInExplorer')
+  openVaultInExplorer: () => ipcRenderer.invoke('security:openVaultInExplorer'),
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates')
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

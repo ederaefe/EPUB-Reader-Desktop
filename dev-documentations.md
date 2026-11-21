@@ -3816,6 +3816,51 @@ Resolved silent external link failures in the About preferences modal and error 
 ### Handoff Notes
 - External URL navigation remains completely air-gapped from arbitrary WebContents navigation while allowing all verified product documentation, publisher, and support links.
 
+---
+
+## Increment 70: Interactive "Check Now" Update Engine, Download Card & Release Notes Integration
+> **Agent**: @Agent-UpdateEngine | **Status**: [COMPLETED]
+
+### What Was Done
+Implemented an on-demand manual update checker in the Settings > About panel. Users can click an underlined "Check now" button directly beside "Check for updates automatically". The system queries the GitHub Releases API via IPC, performs semver comparison, and displays immediate feedback: an up-to-date badge or an update-available card featuring a direct "Download Update" button and a "See what's new" changelog link.
+
+### Problem Statement
+1. **Lack of Manual On-Demand Update Checking**: Users could not manually trigger an update verification without restarting the application, leading to uncertainty when newer releases or patches were published.
+2. **Missing Update Action & "What's New" Link**: When an update was detected in the background, there was no in-app card displaying the new release version, asking the reader to download the update, or offering a direct link to view the release changelog.
+
+### Technical Fix
+1. **IPC & Preload Bridge (`src/preload/index.ts`)**:
+   - Declared `AppUpdateCheckResult` interface returning `hasUpdate`, `currentVersion`, `latestVersion`, `releaseName`, `releaseNotes`, `releaseUrl`, `downloadUrl`, and optional `error`.
+   - Exposed `checkForUpdates: () => Promise<AppUpdateCheckResult>` on `desktopAPI` via `ipcRenderer.invoke('app:checkForUpdates')`.
+2. **Main Process Update Query & Semver Evaluator (`src/main/index.ts`)**:
+   - Implemented `compareSemver(current, latest)` to correctly resolve numerical segments (`1.0.8`) and pre-release identifiers (`1.0.8-beta.1`).
+   - Implemented `handleTrusted('app:checkForUpdates', ...)` fetching the latest non-draft release from GitHub API with `Semply-Ebook-Reader` user-agent.
+   - Dynamically picked platform-specific release assets (Windows `.exe`, macOS `.dmg`, Linux `.AppImage`/`.deb`) for direct download.
+   - Added `githubusercontent.com` to `ALLOWED_EXTERNAL_BROWSER_HOSTS` for safe asset redirects.
+3. **Renderer Settings UI (`src/renderer/src/components/modals/FullSettingsModal.tsx`)**:
+   - Positioned the underlined "Check now" action button directly beside the "Check for updates automatically" checkbox.
+   - Added reactive states (`idle`, `checking`, `up-to-date`, `update-available`, `error`).
+   - Rendered contextual cards:
+     - Up-to-date confirmation with version badge and dismiss action.
+     - Update card prompting the user to download with direct "Download Update" button and "See what's new" link opening the GitHub release notes.
+     - Graceful error banner with retry option.
+
+### Touched Files
+- `src/preload/index.ts`
+- `src/main/index.ts`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification
+- `npx tsc --noEmit`: Clean pass (exit code 0, zero TypeScript errors across all processes).
+- Manual code inspection confirming semver comparisons and external link handling.
+
+### Handoff Notes
+- All external links continue through `window.desktopAPI.openExternal(url)`, gated by strict host whitelisting in `src/main/index.ts`.
+
+
+
 
 
 
