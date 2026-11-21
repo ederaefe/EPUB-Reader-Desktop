@@ -852,7 +852,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           }
           return
         }
-        return
+        onBackRef.current()
       } else if (e.key === 'F11') {
         e.preventDefault()
         const next = !useAppStore.getState().isImmersiveFullscreen
@@ -2480,7 +2480,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           }
           return
         }
-        return
+        onBack()
       }
     }
 

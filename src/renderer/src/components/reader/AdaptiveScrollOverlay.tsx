@@ -4,7 +4,8 @@ import {
   Pause,
   Clock,
   Minus,
-  Plus
+  Plus,
+  Check
 } from 'lucide-react'
 import { adaptiveScrollEngine, type PacingMetrics } from '../../services/adaptiveScrollService'
 import { useAppStore } from '../../stores/useAppStore'
@@ -67,6 +68,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const minFloor = effectiveMode === 'countdown' ? 2 : 10
 
   const [inputValue, setInputValue] = useState<string>(() => String(currentDwellSec))
+  const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
     return adaptiveScrollEngine.subscribe((m) => setMetrics(m))
@@ -75,6 +77,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   useEffect(() => {
     if (!isModalOpen) {
       setInputValue(String(currentDwellSec))
+      setIsEditing(false)
     }
   }, [currentDwellSec, isModalOpen])
 
@@ -151,6 +154,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     if (deltaSec < 0 && currentDwellSec <= minFloor) return
     const next = Math.max(minFloor, Math.min(600, currentDwellSec + deltaSec))
     setInputValue(String(next))
+    setIsEditing(true)
     if (effectiveMode === 'countdown') {
       handleCountdownChange(next)
     } else {
@@ -161,17 +165,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleDirectInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '')
     setInputValue(raw)
-    const parsed = parseInt(raw, 10)
-    if (!isNaN(parsed) && parsed >= minFloor && parsed <= 600) {
-      if (!isActive) {
-        useAppStore.getState().setAutoscrollActive(true)
-      }
-      if (effectiveMode === 'countdown') {
-        handleCountdownChange(parsed)
-      } else {
-        handleAdaptiveSecChange(parsed)
-      }
-    }
+    setIsEditing(true)
   }
 
   const handleInputCommit = () => {
@@ -197,6 +191,14 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
       handleAdaptiveSecChange(clamped)
     }
   }
+
+  const handleLockIn = () => {
+    handleInputCommit()
+    setIsEditing(false)
+    setIsModalOpen(false)
+  }
+
+  const showConfirmTick = isEditing || inputValue !== String(currentDwellSec)
 
   const triggerTooltip = !isActive
     ? `Auto-Flip (${currentDwellSec}s) · Click to open controls (A)`
@@ -267,12 +269,21 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const centerPillClass =
     currentTheme === 'day'
-      ? 'flex-1 h-9 px-3 rounded-full bg-black/[0.03] border border-black/[0.10] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
+      ? 'relative flex-1 h-9 px-3 rounded-full bg-black/[0.03] border border-black/[0.10] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
       : currentTheme === 'light-sepia'
-      ? 'flex-1 h-9 px-3 rounded-full bg-[#5f4b32]/[0.05] border border-[#5f4b32]/[0.16] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-[#fbf4e4] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
+      ? 'relative flex-1 h-9 px-3 rounded-full bg-[#5f4b32]/[0.05] border border-[#5f4b32]/[0.16] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-[#fbf4e4] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
       : currentTheme === 'dark-sepia'
-      ? 'flex-1 h-9 px-3 rounded-full bg-white/[0.05] border border-[#e6c8a5]/[0.12] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
-      : 'flex-1 h-9 px-3 rounded-full bg-white/[0.06] border border-white/[0.10] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
+      ? 'relative flex-1 h-9 px-3 rounded-full bg-white/[0.05] border border-[#e6c8a5]/[0.12] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
+      : 'relative flex-1 h-9 px-3 rounded-full bg-white/[0.06] border border-white/[0.10] flex items-center justify-center focus-within:border-[var(--app-accent)] focus-within:bg-white/[0.10] focus-within:ring-1 focus-within:ring-[var(--app-accent)]/30 transition-all shadow-inner'
+
+  const confirmTickClass =
+    currentTheme === 'day'
+      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_2px_8px_rgba(5,150,105,0.35)] border border-white/80'
+      : currentTheme === 'light-sepia'
+      ? 'bg-[#2d6a4f] hover:bg-[#1b4332] text-[#f7efe0] shadow-[0_2px_8px_rgba(45,106,79,0.35)] border border-[#f7efe0]/80'
+      : currentTheme === 'dark-sepia'
+      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_2px_10px_rgba(5,150,105,0.45)] border border-[#1b1611]/80'
+      : 'bg-emerald-500 hover:bg-emerald-400 text-[#0d1117] shadow-[0_2px_10px_rgba(16,185,129,0.45)] border border-[#12151b]/80'
 
   return (
     <>
@@ -388,14 +399,22 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                     pattern="[0-9]*"
                     value={inputValue}
                     onChange={handleDirectInputChange}
-                    onFocus={(e) => e.target.select()}
-                    onBlur={handleInputCommit}
+                    onFocus={(e) => {
+                      setIsEditing(true)
+                      e.target.select()
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setIsEditing(false), 200)
+                      handleInputCommit()
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        handleInputCommit()
-                        ;(e.target as HTMLElement).blur()
+                        e.preventDefault()
+                        handleLockIn()
                       } else if (e.key === 'Escape') {
+                        e.stopPropagation()
                         setInputValue(String(currentDwellSec))
+                        setIsEditing(false)
                         ;(e.target as HTMLElement).blur()
                       }
                     }}
@@ -408,6 +427,23 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   sec
                 </span>
               </div>
+
+              {/* Hovering Circular Confirmation Tick (Lock in value and close HUD) */}
+              {showConfirmTick && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleLockIn()
+                  }}
+                  title="Lock in dwell and start (Enter)"
+                  aria-label="Lock in dwell and start"
+                  className={`absolute -top-3 -right-1.5 z-20 w-6 h-6 rounded-full flex items-center justify-center shadow-md cursor-pointer transition-all hover:scale-110 active:scale-95 animate-in zoom-in-75 fade-in duration-150 ${confirmTickClass}`}
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              )}
             </div>
 
             <button

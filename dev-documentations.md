@@ -3270,5 +3270,32 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
 - `npm run build`: Production bundle built cleanly via `electron-vite build` in 23.22s.
 
+---
+
+## Increment 56: Library Return on Escape Restoration & Hovering Dwell Confirmation Lock
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Restored Library Return on Escape Key (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Re-enabled `onBackRef.current()` in `EpubReaderView.tsx` (iframe and main window keydown listeners) and `onBack()` in `PdfReaderView.tsx` when `Escape` is pressed and no drawers, popovers, or fullscreen modes are active.
+   - Preserves progressive dismissal hierarchy: active text selections, context menus, search/TOC/bookmarks/notes/settings drawers, and immersive fullscreen exit first upon pressing Escape; once the reading canvas is clean, pressing Escape promptly navigates back to the library.
+2. **Hovering Circular Confirmation Tick & Lock-In (`AdaptiveScrollOverlay.tsx`)**:
+   - Integrated a floating circular confirmation checkmark (`<Check />` from `lucide-react`) positioned elevated at `-top-3 -right-1.5` over the dwell input pill.
+   - When typing a dwell value into the input box or adjusting with the stepper, the confirmation tick appears immediately with an emerald glow and theme-sensitive border.
+   - Clicking the hovering tick button (or pressing `Enter` on the keyboard) invokes `handleLockIn()`, locking in the typed duration, updating user settings, rearming the engine, and closing the HUD popover.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 75/75 unit & integration assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 19.96s.
+
+
 
 

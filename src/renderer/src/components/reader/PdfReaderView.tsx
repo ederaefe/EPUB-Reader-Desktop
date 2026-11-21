@@ -872,7 +872,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           }
           return
         }
-        return
+        onBack()
       }
     }
     window.addEventListener('keydown', onKeyDown)
