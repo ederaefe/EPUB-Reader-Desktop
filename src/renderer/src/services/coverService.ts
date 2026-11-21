@@ -692,16 +692,19 @@ async function extractPdfCoverAndMeta(
   embedded: EmbeddedBookMetadata
 }> {
   let pdf: pdfjsLib.PDFDocumentProxy | null = null
+  let loadingTask: any = null
+  let totalPages = 1
+  let title: string | null = null
+  let author: string | null = null
+  const embedded: EmbeddedBookMetadata = {}
+
   try {
     // Always copy bytes so transferring into PDF.js worker never detaches caller's ArrayBuffer
     const bytes = new Uint8Array(data.slice(0))
-    const loadingTask = pdfjsLib.getDocument({ data: bytes, isEvalSupported: false })
+    loadingTask = pdfjsLib.getDocument({ data: bytes, isEvalSupported: false })
     pdf = await loadingTask.promise
 
-    const totalPages = pdf.numPages || 1
-    let title: string | null = null
-    let author: string | null = null
-    const embedded: EmbeddedBookMetadata = {}
+    totalPages = pdf.numPages || 1
 
     try {
       const meta = await pdf.getMetadata()
@@ -783,39 +786,56 @@ async function extractPdfCoverAndMeta(
 
     let coverDataUrl: string | null = null
     if (totalPages > 0) {
-      const page = await pdf.getPage(1)
-      const baseViewport = page.getViewport({ scale: 1.0 })
-      // Dynamically scale so the rendered thumbnail is always crisp (~360px wide)
-      const targetWidth = 360
-      const scale = Math.min(2.0, Math.max(0.35, targetWidth / Math.max(1, baseViewport.width)))
-      const viewport = page.getViewport({ scale })
+      let page: any = null
+      try {
+        page = await pdf.getPage(1)
+        const baseViewport = page.getViewport({ scale: 1.0 })
+        // Dynamically scale so the rendered thumbnail is always crisp (~360px wide)
+        const targetWidth = 360
+        const scale = Math.min(2.0, Math.max(0.35, targetWidth / Math.max(1, baseViewport.width)))
+        const viewport = page.getViewport({ scale })
 
-      const canvas = document.createElement('canvas')
-      const context = canvas.getContext('2d')
-      if (context) {
-        canvas.width = Math.round(viewport.width)
-        canvas.height = Math.round(viewport.height)
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        if (context) {
+          canvas.width = Math.round(viewport.width)
+          canvas.height = Math.round(viewport.height)
 
-        // Paint crisp white paper backdrop before rendering so transparent PDFs stay legible
-        context.fillStyle = '#ffffff'
-        context.fillRect(0, 0, canvas.width, canvas.height)
+          // Paint crisp white paper backdrop before rendering so transparent PDFs stay legible
+          context.fillStyle = '#ffffff'
+          context.fillRect(0, 0, canvas.width, canvas.height)
 
-        await page.render({
-          canvasContext: context,
-          viewport
-        }).promise
+          await page.render({
+            canvasContext: context,
+            viewport
+          }).promise
 
-        coverDataUrl = canvas.toDataURL('image/jpeg', 0.88)
+          coverDataUrl = canvas.toDataURL('image/jpeg', 0.88)
+        }
+      } catch (renderErr) {
+        console.warn('Failed to render PDF first-page thumbnail canvas:', renderErr)
+      } finally {
+        try {
+          if (page?.cleanup) {
+            page.cleanup()
+          }
+        } catch {
+          // Ignore page cleanup errors
+        }
       }
     }
 
     return { coverDataUrl, totalPages, title, author, embedded }
   } catch (err) {
-    console.warn('Failed to render PDF first-page thumbnail:', err)
-    return { coverDataUrl: null, totalPages: 100, title: null, author: null, embedded: {} }
+    console.warn('Failed to load PDF document for thumbnail:', err)
+    return { coverDataUrl: null, totalPages: Math.max(1, totalPages), title, author, embedded }
   } finally {
     try {
-      await pdf?.destroy()
+      if (pdf) {
+        await pdf.destroy()
+      } else if (loadingTask?.destroy) {
+        await loadingTask.destroy()
+      }
     } catch {
       // Ignore cleanup errors
     }
