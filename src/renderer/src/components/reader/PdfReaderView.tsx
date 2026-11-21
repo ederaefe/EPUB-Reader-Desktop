@@ -516,6 +516,14 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
   const totalPagesRef = useRef(totalPages)
   currentPageRef.current = currentPage
   totalPagesRef.current = totalPages
+  const armPageRef = useRef<() => void>(() => {})
+
+  // Re-arm autoscroll on page change reactively
+  useEffect(() => {
+    if (useAppStore.getState().isAutoscrollActive) {
+      armPageRef.current()
+    }
+  }, [currentPage])
 
   // Cleanup autoscroll on unmount
   useEffect(() => {
@@ -566,7 +574,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     })
   }, [])
 
-  // Shared Autoscroll Engine Lifecycle for PDF (Dwell time only, no WPM)
+  // Shared Autoscroll Engine Lifecycle for PDF
   // Single page default: 25s, Dual spread default: 45s.
   useEffect(() => {
     if (!isAutoscrollActive) {
@@ -574,32 +582,41 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       return
     }
 
-    // Lone odd-page end guard: in dual mode on the final odd page where only 1 page is visible, treat as single page
-    const isSpread = isDual && currentPage + 1 <= totalPages
+    const mode = settings.autoscrollMode ?? 'countdown'
+    const cur = currentPageRef.current
+    const tot = totalPagesRef.current
+    const isSpread = isDual && cur + 1 <= tot
     const dwellSec = isSpread
       ? (settings.pdfCountdownSecDual ?? 45)
       : (settings.pdfCountdownSecSingle ?? 25)
-    adaptiveScrollEngine.configure({ mode: 'countdown', fixedCountdownSec: dwellSec })
+
+    adaptiveScrollEngine.configure({
+      mode,
+      fixedCountdownSec: dwellSec,
+      adaptiveBaseSec: settings.autoscrollAdaptiveSec ?? dwellSec
+    })
 
     let cancelled = false
 
     const armPage = () => {
       if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-      if (currentPage > totalPages) {
+      const cur = currentPageRef.current
+      const tot = totalPagesRef.current
+      if (cur > tot) {
         adaptiveScrollEngine.stop()
         setAutoscrollActive(false)
         return
       }
 
-      const isCurrentSpread = isDual && currentPage + 1 <= totalPages
+      const isCurrentSpread = isDual && cur + 1 <= tot
 
       adaptiveScrollEngine.startPageCountdown(
         180,
         false,
         () => {
           if (cancelled || !useAppStore.getState().isAutoscrollActive) return
-          const cur = currentPageRef.current
-          const tot = totalPagesRef.current
+          const current = currentPageRef.current
+          const total = totalPagesRef.current
           const vp = viewportRef.current
           const canScrollVertically =
             vp &&
@@ -613,7 +630,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             }, 450)
             return
           }
-          const isLastSpread = isDual ? cur + 1 >= tot : cur >= tot
+          const isLastSpread = isDual ? current + 1 >= total : current >= total
           if (isLastSpread) {
             adaptiveScrollEngine.stop()
             useAppStore.getState().setAutoscrollActive(false)
@@ -623,10 +640,11 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           }
         },
         isCurrentSpread,
-        currentPage
+        cur
       )
     }
 
+    armPageRef.current = armPage
     armPage()
 
     return () => {
@@ -634,12 +652,13 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     }
   }, [
     isAutoscrollActive,
-    currentPage,
-    totalPages,
     isDual,
-    step,
     handleNext,
-    setAutoscrollActive
+    setAutoscrollActive,
+    settings.autoscrollMode,
+    settings.pdfCountdownSecDual,
+    settings.pdfCountdownSecSingle,
+    settings.autoscrollAdaptiveSec
   ])
 
   // Keyboard navigation (responsive Up/Down smooth scroll + seamless edge page turning)

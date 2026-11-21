@@ -235,3 +235,8 @@
 - **Harmonized Glassmorphic Zoom Segmented Track**:
   - **Unified Geometry & Alignment**: The Zoom row directly beneath Page Layout now uses the exact same curved glass track (`156px` width) and button spacing as Text Size, Line Spacing, and Page Layout.
   - **Centered Percentage Pill**: Replaced descriptive labels with a clean, centered glassmorphic percentage indicator (e.g. `120%`, `100%`) flanked by independent minus and plus pill buttons. Clicking the center pill resets the reading scale to default.
+
+- **Auto-Flip Mid-Book Calibration Anchor & Persistent Reader HUD**:
+  - **Mid-Book Calibration Starting Anywhere**: Auto-Flip no longer requires starting from page 1. When activated on any page past the frontmatter (page 5 onwards), the intelligent pacing engine immediately begins its 7-page calibration batch using your saved dwell time as the baseline, adapting dynamically to your reading rhythm every 7 pages.
+  - **Permanent Reader HUD Trigger**: The bottom-right countdown badge (`{25s}`) remains visible at all times across all themes and book formats (including reflowed PDFs). Tapping the badge opens the 3-zone glass HUD popover to start hands-free reading or adjust dwell pacing with single-click ease.
+  - **Detailed Preferences in Settings**: The main Settings Drawer and Full Settings Modal now host full telemetry (real-time WPM, SPP, and batch progress), Timer vs. Smart pacing mode toggles, dwell presets, chapter end grace buffers, and keyboard shortcuts, while keeping the on-canvas floating HUD sleek and minimal.

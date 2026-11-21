@@ -263,7 +263,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
   const manualScrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const triggerManualScrollTakeover = useCallback(() => {
-    if (book.format === 'pdf' || !useAppStore.getState().isAutoscrollActive) return
+    if (!useAppStore.getState().isAutoscrollActive) return
     adaptiveScrollEngine.setSuspension('manualScroll', true)
     if (manualScrollIdleTimerRef.current) {
       clearTimeout(manualScrollIdleTimerRef.current)
@@ -274,7 +274,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         armPageRef.current()
       }
     }, 400)
-  }, [book.format])
+  }, [])
 
   // Theme palettes aligned with Vercel/Geist Obsidian + Paper surfaces
   const themeStyles = {
@@ -724,12 +724,12 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         handleStopTTSRef.current()
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
         e.preventDefault()
-        if (book.format !== 'pdf' && useAppStore.getState().isAutoscrollActive) {
+        if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
         } else {
           navigateStepRef.current('next')
         }
-      } else if (book.format !== 'pdf' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         useAppStore.getState().setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'j') {
@@ -1857,7 +1857,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
 
   // Feature 1: Dual-Mode Auto-Scroll Countdown Lifecycle (with stall recovery across chapter edges)
   useEffect(() => {
-    if (!isAutoscrollActive || book.format === 'pdf') {
+    if (!isAutoscrollActive) {
       adaptiveScrollEngine.stop()
       return
     }
@@ -1972,7 +1972,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       cancelled = true
       if (recoveryTimer) clearTimeout(recoveryTimer)
     }
-  }, [isAutoscrollActive, book.format, analyzeVisiblePage, handleNext, setAutoscrollActive])
+  }, [isAutoscrollActive, analyzeVisiblePage, handleNext, setAutoscrollActive])
 
   // Cleanly stop Auto-Scroll, Read Aloud (TTS), and close Search drawer when exiting the reader back to Library
   useEffect(() => {
@@ -2337,12 +2337,12 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
 
       if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key === ' ') {
         e.preventDefault()
-        if (book.format !== 'pdf' && useAppStore.getState().isAutoscrollActive) {
+        if (useAppStore.getState().isAutoscrollActive) {
           adaptiveScrollEngine.setUserPaused(!adaptiveScrollEngine.isPausedState())
         } else {
           handleNext()
         }
-      } else if (book.format !== 'pdf' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
+      } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         setAutoscrollActive(!useAppStore.getState().isAutoscrollActive)
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'j') {
@@ -3119,16 +3119,12 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           icon: <Bookmark className={`w-3.5 h-3.5 text-[#2a69df] ${isCurrentPageBookmarked ? 'fill-current' : ''}`} />,
           onClick: () => handleToggleCurrentBookmark()
         },
-        ...(book.format !== 'pdf'
-          ? [
-              {
-                id: 'autoscroll',
-                label: isAutoscrollActive ? 'Stop Auto-Flip' : 'Start Auto-Flip',
-                icon: <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />,
-                onClick: () => setAutoscrollActive(!isAutoscrollActive)
-              }
-            ]
-          : []),
+        {
+          id: 'autoscroll',
+          label: isAutoscrollActive ? 'Stop Auto-Flip' : 'Start Auto-Flip',
+          icon: <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />,
+          onClick: () => setAutoscrollActive(!isAutoscrollActive)
+        },
         { id: 'div-view', divider: true },
         {
           id: 'fullscreen',
@@ -3298,13 +3294,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         )}
       </div>
 
-      {/* Feature 1: Minimalist Bottom-Right Auto-Scroll Countdown (persists even in Fullscreen) */}
-      {book.format !== 'pdf' && (
-        <AdaptiveScrollOverlay
-          isActive={isAutoscrollActive}
-          onClose={() => setAutoscrollActive(false)}
-        />
-      )}
+      {/* Feature 1: Minimalist Bottom-Right Auto-Flip Countdown HUD (persists even in Fullscreen) */}
+      <AdaptiveScrollOverlay
+        isActive={isAutoscrollActive}
+        onClose={() => setAutoscrollActive(false)}
+      />
 
       {/* Draggable & Minimizable Reader Audio HUD for Read Aloud */}
       <ReaderAudioHUD

@@ -219,6 +219,7 @@ export class AdaptiveScrollEngine {
         }
       }
       if (this.mode === 'adaptive') {
+        this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec || this.fixedCountdownSec || 25)
         this.pacingEngine.resetBatch(this.getCurrentUnit())
       }
     }
@@ -305,6 +306,14 @@ export class AdaptiveScrollEngine {
         elapsedMs,
         this.isDoubleSpread
       )
+    }
+
+    // Mid-book continuation: if starting fresh (lastTrackedUnit === 0) on any page >= 5, seed batch anchor
+    if (this.lastTrackedUnit === 0 && newUnit >= 5) {
+      if (this.mode === 'adaptive') {
+        this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec || this.fixedCountdownSec || 25)
+      }
+      this.pacingEngine.resetBatch(newUnit)
     }
 
     this.lastTrackedUnit = newUnit

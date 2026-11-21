@@ -707,40 +707,7 @@ export const FullSettingsModal: React.FC = () => {
                       </button>
                     </div>
 
-                    {isPdf ? (
-                      <div className="space-y-2.5 pt-0.5">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
-                              Dwell per spread
-                            </span>
-                            <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                              ({isPdfDual ? 'Dual page' : 'Single page'})
-                            </span>
-                            {pdfDwellSec !== (isPdfDual ? 45 : 25) && (
-                              <button
-                                type="button"
-                                onClick={() => handlePdfCountdownChange(isPdfDual ? 45 : 25)}
-                                title={`Reset to default (${isPdfDual ? '45s' : '25s'})`}
-                                className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                          <SecondsNumberInput
-                            value={pdfDwellSec}
-                            min={3}
-                            max={600}
-                            step={5}
-                            onChange={handlePdfCountdownChange}
-                            ariaLabel="PDF Dwell per spread"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Segmented Mode Selector */}
+                    {/* Segmented Mode Selector */}
                     <div className="glass-pill-track grid-cols-2 p-1">
                       <button
                         type="button"
@@ -758,41 +725,74 @@ export const FullSettingsModal: React.FC = () => {
                         onClick={() => handleModeChange('adaptive')}
                         className="glass-pill-btn !h-7 gap-1.5 !text-[12px] font-semibold"
                       >
-                        <Zap className="w-3.5 h-3.5" />
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
                         <span>Smart Auto-Flip</span>
                       </button>
                     </div>
 
-                    {/* Inline Compact Mode Controls */}
+                    {/* Mode Controls */}
                     {effectiveMode === 'countdown' ? (
-                      <div className="flex items-center justify-between gap-3 pt-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
-                            Seconds per page
-                          </span>
-                          <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
-                            (3–600s)
-                          </span>
-                          {countdownSec !== 20 && (
-                            <button
-                              type="button"
-                              onClick={() => handleCountdownChange(20)}
-                              title="Reset to 20s"
-                              className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                            </button>
-                          )}
+                      isPdf ? (
+                        <div className="space-y-2.5 pt-0.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                                Dwell per spread
+                              </span>
+                              <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                                ({isPdfDual ? 'Dual page' : 'Single page'})
+                              </span>
+                              {pdfDwellSec !== (isPdfDual ? 45 : 25) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePdfCountdownChange(isPdfDual ? 45 : 25)}
+                                  title={`Reset to default (${isPdfDual ? '45s' : '25s'})`}
+                                  className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                            <SecondsNumberInput
+                              value={pdfDwellSec}
+                              min={3}
+                              max={600}
+                              step={5}
+                              onChange={handlePdfCountdownChange}
+                              ariaLabel="PDF Dwell per spread"
+                            />
+                          </div>
                         </div>
-                        <SecondsNumberInput
-                          value={countdownSec}
-                          min={3}
-                          max={600}
-                          step={5}
-                          onChange={handleCountdownChange}
-                          ariaLabel="Fixed seconds per page"
-                        />
-                      </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-3 pt-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[12.5px] font-bold text-[var(--app-text-strong)]">
+                              Seconds per page
+                            </span>
+                            <span className="text-[11px] font-normal text-[var(--app-text-muted)]">
+                              (3–600s)
+                            </span>
+                            {countdownSec !== 20 && (
+                              <button
+                                type="button"
+                                onClick={() => handleCountdownChange(20)}
+                                title="Reset to 20s"
+                                className="p-1 rounded-md text-[var(--app-text-muted)] hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent-text)] active:scale-90 transition-all cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <SecondsNumberInput
+                            value={countdownSec}
+                            min={3}
+                            max={600}
+                            step={5}
+                            onChange={handleCountdownChange}
+                            ariaLabel="Fixed seconds per page"
+                          />
+                        </div>
+                      )
                     ) : (
                       <div className="space-y-2.5 pt-0.5">
                         <div className="flex items-center justify-between gap-3">
@@ -852,8 +852,6 @@ export const FullSettingsModal: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                    )}
-                      </>
                     )}
                   </div>
                 )

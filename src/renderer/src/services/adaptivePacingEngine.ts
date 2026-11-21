@@ -145,13 +145,12 @@ export class AdaptivePacingEngine {
 
   public isLearning(pageIndexOrSpread: number, isDualSpread: boolean): boolean {
     const start = isDualSpread ? DUAL_LEARNING_SPREAD_START : SINGLE_LEARNING_PAGE_START
-    const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
-    return pageIndexOrSpread >= start && pageIndexOrSpread < calibratedStart
+    return pageIndexOrSpread >= start
   }
 
   public isCalibrated(pageIndexOrSpread: number, isDualSpread: boolean): boolean {
-    const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
-    return pageIndexOrSpread >= calibratedStart
+    const start = isDualSpread ? DUAL_LEARNING_SPREAD_START : SINGLE_LEARNING_PAGE_START
+    return pageIndexOrSpread >= start
   }
 
   /**
@@ -294,8 +293,7 @@ export class AdaptivePacingEngine {
 
     // Increment batch progress and recalibrate at 7-page milestone
     this.batchPagesRead++
-    const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
-    if (pageIndexOrSpread >= calibratedStart) {
+    if (pageIndexOrSpread >= learningStart) {
       if (this.batchPagesRead >= BATCH_RECALIBRATION_INTERVAL) {
         this.lastRecalibratedIndex = pageIndexOrSpread
         this.lastBatchWpm = this.currentWpm
@@ -484,20 +482,18 @@ export class AdaptivePacingEngine {
     let baseDurationSec: number
 
     if (!calibrated) {
-      // Pages 1-19 (or spreads 1-10): Run safely on user base duration without fluctuating
+      // Pages 1-4 (or spreads 1-2): Frontmatter runs safely on user base duration without fluctuating
       baseDurationSec = userBaseSec * spreadFactor
     } else {
-      // Page >= 20 (or spread >= 11): Calibrated dynamic pacing engaged
+      // Page >= 5 (or spread >= 3): Active calibrated dynamic pacing engaged
       // Check batch recalibration milestone (every 7 pages / spreads or 7 pages from user anchor)
-      const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
-      const pagesSinceCalibrated = pageIndexOrSpread - calibratedStart
       const pagesSinceLastBatch =
         this.lastRecalibratedIndex > 0 ? pageIndexOrSpread - this.lastRecalibratedIndex : -1
 
       if (
         this.lastRecalibratedIndex === 0 ||
-        (pagesSinceCalibrated >= 0 && pagesSinceCalibrated % BATCH_RECALIBRATION_INTERVAL === 0) ||
-        (pagesSinceLastBatch >= BATCH_RECALIBRATION_INTERVAL)
+        this.batchPagesRead >= BATCH_RECALIBRATION_INTERVAL ||
+        pagesSinceLastBatch >= BATCH_RECALIBRATION_INTERVAL
       ) {
         this.lastRecalibratedIndex = pageIndexOrSpread
         this.lastBatchWpm = this.currentWpm

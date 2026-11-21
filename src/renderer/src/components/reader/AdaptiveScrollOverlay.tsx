@@ -86,13 +86,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     }
   }, [isModalOpen])
 
-  // Close modal if Auto-Scroll is turned off externally
-  useEffect(() => {
-    if (!isActive && isModalOpen) {
-      setIsModalOpen(false)
-    }
-  }, [isActive, isModalOpen])
-
   // Allow Escape to dismiss just this modal without stopping Auto-Scroll
   useEffect(() => {
     if (!isModalOpen) return
@@ -105,8 +98,6 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     window.addEventListener('keydown', handleEsc, true)
     return () => window.removeEventListener('keydown', handleEsc, true)
   }, [isModalOpen])
-
-  if (!isActive) return null
 
   const handleModeChange = (mode: AutoscrollMode) => {
     adaptiveScrollEngine.recordUserActivity()
@@ -183,6 +174,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   }
 
   const handleTogglePause = () => {
+    if (!isActive) {
+      useAppStore.getState().setAutoscrollActive(true)
+      return
+    }
     adaptiveScrollEngine.setUserPaused(!metrics.isUserPaused)
   }
 
@@ -192,14 +187,15 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     onClose()
   }
 
-  const triggerTooltip =
-    metrics.pauseReason === 'inactivity'
-      ? `Auto-Flip paused while away ({${metrics.remainingSec}s} left) — Click to configure`
-      : metrics.isUserPaused
-      ? `Auto-Flip paused ({${metrics.remainingSec}s} left) — Click to configure`
-      : effectiveMode === 'adaptive'
-      ? `Smart Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
-      : `Fixed Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
+  const triggerTooltip = !isActive
+    ? `Auto-Flip ({${currentDwellSec}s}) · Click to open controls (A)`
+    : metrics.pauseReason === 'inactivity'
+    ? `Auto-Flip paused while away ({${metrics.remainingSec}s} left) — Click to configure`
+    : metrics.isUserPaused
+    ? `Auto-Flip paused ({${metrics.remainingSec}s} left) — Click to configure`
+    : effectiveMode === 'adaptive'
+    ? `Smart Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
+    : `Fixed Auto-Flip: {${metrics.remainingSec}s} left — Click to configure`
 
   const currentTheme = theme || 'night'
   const isLight = currentTheme === 'day' || currentTheme === 'light-sepia'
@@ -305,16 +301,21 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
               <button
                 type="button"
                 onClick={handleTogglePause}
-                aria-label={metrics.isUserPaused ? 'Resume Auto-Flip' : 'Pause Auto-Flip'}
+                aria-label={!isActive ? 'Start Auto-Flip' : metrics.isUserPaused ? 'Resume Auto-Flip' : 'Pause Auto-Flip'}
                 className={`h-7 px-3 flex items-center justify-center gap-1.5 rounded-full font-sans text-[11.5px] font-medium transition-all cursor-pointer ${
-                  metrics.isUserPaused
+                  !isActive || metrics.isUserPaused
                     ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-xs hover:opacity-90'
                     : isLight
                     ? 'bg-black/[0.06] text-[var(--app-text-strong)] hover:bg-black/[0.10] border border-black/[0.08]'
                     : 'bg-white/[0.08] text-[var(--app-text-strong)] hover:bg-white/[0.14] border border-white/[0.10]'
                 }`}
               >
-                {metrics.isUserPaused ? (
+                {!isActive ? (
+                  <>
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>Start</span>
+                  </>
+                ) : metrics.isUserPaused ? (
                   <>
                     <Play className="w-3 h-3 fill-current" />
                     <span>Resume</span>
@@ -526,8 +527,10 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           <Clock className="w-3 h-3 text-amber-500" />
         ) : metrics.isUserPaused ? (
           <Pause className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)]" />
+        ) : !isActive ? (
+          <Play className="w-2.5 h-2.5 fill-current text-[var(--app-text-muted)]" />
         ) : null}
-        <span>&#123;{metrics.remainingSec}s&#125;</span>
+        <span>&#123;{isActive ? metrics.remainingSec : currentDwellSec}s&#125;</span>
       </button>
     </>
   )

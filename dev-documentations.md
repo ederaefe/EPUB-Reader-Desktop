@@ -3063,3 +3063,50 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 
 ### Handoff Notes
 - In `SettingsDrawer.tsx`, the zoom control now strictly inherits the global `.glass-pill-track` and `.glass-pill-btn` styles from `src/renderer/src/index.css`, guaranteeing seamless color contrast across Night, Dark Sepia, Light Sepia, and Day reading themes.
+
+---
+
+## Increment 51: Auto-Flip Mid-Book Calibration Anchor, Persistent Reader HUD & Comprehensive Settings Architecture
+> **Agent**: @Agent-AutoFlipArchitect | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Mid-Book Activation & Immediate 7-Page Batch Calibration Anchor** (`src/renderer/src/services/adaptivePacingEngine.ts`, `src/renderer/src/services/adaptiveScrollService.ts`):
+   - Eliminated the artificial constraint that assumed readers must start Auto-Flip from page 1.
+   - Frontmatter immunity is strictly reserved for the first 4 pages (copyright, dedication, table of contents).
+   - Any page $\ge 5$ (or dual spread $\ge 3$) immediately starts active learning and calibrated dynamic pacing. When starting or resuming Auto-Flip anywhere mid-book (e.g. page 30 or 74), the 7-page calibration batch anchors immediately to the user's base dwell setting (e.g. 25s $\rightarrow$ 432 WPM) and recalibrates every 7 pages read.
+2. **Permanent Reader HUD & Countdown Trigger Persistence** (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`, `src/renderer/src/components/reader/EpubReaderView.tsx`, `src/renderer/src/components/reader/PdfReaderView.tsx`):
+   - Removed `if (!isActive) return null;` from `AdaptiveScrollOverlay.tsx`. The minimalist bottom-right trigger badge (`{25s}`) is now permanently visible in the bottom-right corner (`fixed bottom-11 right-5 z-40`) across all reading modes and themes, regardless of whether Auto-Flip is currently playing, paused, or idle.
+   - When idle, the trigger button displays `<Play />` alongside the configured dwell time (`{25s}`). Clicking the badge opens the 3-zone glass HUD popover, where readers can start Auto-Flip via the primary action button or adjust their dwell pacing.
+   - Removed legacy `book.format !== 'pdf'` and `book.format === 'pdf'` guards in `EpubReaderView.tsx`, ensuring reflowed PDFs, paginated EPUBs, and fixed-layout documents have identical Auto-Flip capabilities and HUD access.
+3. **Decoupled Architecture & Detailed Configuration in Settings Drawer & Modal** (`src/renderer/src/components/drawers/SettingsDrawer.tsx`, `src/renderer/src/components/modals/FullSettingsModal.tsx`):
+   - Restored the comprehensive, detailed Auto-Flip configuration in the main Settings Drawer and Full Settings Modal while preserving the ultra-streamlined minimalist 3-zone glass card for the floating in-reader HUD popover:
+     - **Live Telemetry & Speedometer Card**: Displays active batch status (`Calibrated (Batch X/7)` or `Learning (Batch X/7)`), real-time Reading Pace (WPM) in sky-400, and Reading Speed (SPP) in emerald-400 with hover explanations.
+     - **Mode Selector**: Tactile segmented glass track for `Timer` (Fixed) vs `Smart` (Adaptive) with informative descriptive subtitles.
+     - **Dwell Steppers & Quick Preset Chips**: Numeric steppers with 5s increments and quick-select chip grids (`10s`, `15s`, `20s`, `25s`, `30s`, `45s`, `60s`).
+     - **Intelligent Safeguards**: Toggle for +3s grace buffer at chapter ends/breaks, 5-minute inactivity watchdog notice, and retreat dwell accumulation explanation.
+     - **Shortcuts & Help Reference**: Keyboard shortcuts (`A` to toggle, `Space` to pause/resume, `+`/`-` to nudge ±2s).
+
+### Problem Statement
+1. Premature Frontmatter Learning Gate: `AdaptivePacingEngine` required readers to read sequentially from page 1 to activate calibrated pacing. Readers activating Auto-Flip midway through a book (e.g., page 74) were treated as uncalibrated or forced to wait for prolonged baseline phases.
+2. Missing Trigger Badge / HUD: When Auto-Flip was turned off, `AdaptiveScrollOverlay` returned `null`, completely removing the `{20s}` countdown trigger badge from the screen. Readers had no visible cue or entry point to open the HUD or turn on Auto-Flip from the reading canvas.
+3. Over-Simplified Settings in Main Drawers: In earlier iterations, the main Settings Drawer and Full Settings Modal were stripped down alongside the HUD, removing essential telemetry, batch calibration status, and mode configuration from the app preferences.
+
+### Touched Files
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `src/renderer/src/components/modals/FullSettingsModal.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 73/73 unit & integration assertions passed across countdown, pacing, retreat accumulation, rapid scrub reset, and coordinator lifecycle.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer processes.
+- `npm run build`: Production bundle built cleanly via `electron-vite build` in 23.24s (`out/main`: 134.20 kB, `out/preload`: 5.36 kB, `out/renderer`: 3,478.20 kB JS, 128.91 kB CSS).
+
+### Handoff Notes
+- In `AdaptiveScrollOverlay.tsx`, the trigger badge persists at `bottom-11 right-5 z-40`, positioned directly above the liquid climax progress bar footer and page counter without overlapping.
+- When the reader is on page $\ge 5$ and enters a custom dwell duration (e.g., 34s in Smart mode), `adaptiveScrollEngine.recalibrateFromUserAnchor` immediately anchors the velocity profile and restarts the 7-page calibration batch.

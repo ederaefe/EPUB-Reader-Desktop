@@ -12,7 +12,9 @@ import {
   SlidersHorizontal,
   Keyboard,
   Minus,
-  Plus
+  Plus,
+  Timer,
+  Zap
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { ttsService } from '../../services/ttsService'
@@ -799,9 +801,84 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Pacing & Dwell Controls */}
+                {/* 1. Live Reading Telemetry & Speedometer Card */}
+                <div className="p-3 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-[var(--app-text-muted)] uppercase tracking-wider">
+                      Live Telemetry
+                    </span>
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[var(--app-accent-soft)] text-[var(--app-accent-text)] font-medium">
+                      {autoscrollMetrics.isCalibrated
+                        ? `Calibrated (Batch ${autoscrollMetrics.batchProgress || 1}/7)`
+                        : `Learning (Batch ${autoscrollMetrics.batchProgress || 1}/7)`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-center py-1">
+                    <div className="border-r border-[var(--app-border)] pr-2">
+                      <div className="font-mono text-[17px] font-bold text-sky-400 tabular-nums">
+                        {autoscrollMetrics.readingPaceWpm || 250} <span className="text-[10px] font-sans font-medium text-[var(--app-text-muted)]">WPM</span>
+                      </div>
+                      <div className="text-[9.5px] uppercase tracking-wider text-[var(--app-text-subtle)] font-medium">
+                        Reading Pace
+                      </div>
+                    </div>
+                    <div className="pl-2">
+                      <div className="font-mono text-[17px] font-bold text-emerald-400 tabular-nums">
+                        {Math.max(10, autoscrollMetrics.readingSpeedSpp || 10)}s <span className="text-[10px] font-sans font-medium text-[var(--app-text-muted)]">SPP</span>
+                      </div>
+                      <div className="text-[9.5px] uppercase tracking-wider text-[var(--app-text-subtle)] font-medium">
+                        Reading Speed
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Mode Selector: Fixed Timer vs Smart Adaptive */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                      Pacing Mode
+                    </span>
+                    <div
+                      className="glass-pill-track grid-cols-2 w-[160px]"
+                      role="radiogroup"
+                      aria-label="Auto-flip pacing mode"
+                    >
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveMode === 'countdown'}
+                        data-active={effectiveMode === 'countdown' ? 'true' : 'false'}
+                        onClick={() => handleModeChange('countdown')}
+                        className="glass-pill-btn flex items-center justify-center gap-1"
+                      >
+                        <Timer className="w-3 h-3" />
+                        <span>Timer</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={effectiveMode === 'adaptive'}
+                        data-active={effectiveMode === 'adaptive' ? 'true' : 'false'}
+                        onClick={() => handleModeChange('adaptive')}
+                        className="glass-pill-btn flex items-center justify-center gap-1"
+                      >
+                        <Zap className="w-3 h-3 text-amber-500" />
+                        <span>Smart</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-[var(--app-text-subtle)] leading-normal">
+                    {effectiveMode === 'countdown'
+                      ? 'Turns pages at a fixed, predictable dwell interval.'
+                      : 'Learns your pace and adapts dwell duration to page length (min 10s floor).'}
+                  </p>
+                </div>
+
+                {/* 3. Dwell & Interval Steppers */}
                 {isPdf ? (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2.5 pt-1 border-t border-[var(--app-border)]">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
@@ -849,155 +926,132 @@ export const SettingsDrawer: React.FC = () => {
                       })}
                     </div>
                   </div>
-                ) : (
-                  <>
-                    {/* Small Inline Mode Switcher */}
+                ) : effectiveMode === 'countdown' ? (
+                  <div className="space-y-2.5 pt-1 border-t border-[var(--app-border)]">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                        Pacing
-                      </span>
-                      <div
-                        className="glass-pill-track grid-cols-2 w-[140px]"
-                        role="radiogroup"
-                        aria-label="Auto-flip pacing mode"
-                      >
-                        {(
-                          [
-                            { id: 'countdown', label: 'Timer' },
-                            { id: 'adaptive', label: 'Smart' }
-                          ] as const
-                        ).map((m) => {
-                          const active = effectiveMode === m.id
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={active}
-                              data-active={active ? 'true' : 'false'}
-                              onClick={() => handleModeChange(m.id)}
-                              className="glass-pill-btn"
-                            >
-                              {m.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Interval + Subtle Presets */}
-                    {effectiveMode === 'countdown' ? (
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                              Turn every
-                            </span>
-                            {countdownSec !== 20 && (
-                              <button
-                                type="button"
-                                onClick={() => handleCountdownChange(20)}
-                                title="Reset to 20s"
-                                className="text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)]"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                          <SecondsNumberInput
-                            value={countdownSec}
-                            min={3}
-                            max={600}
-                            step={5}
-                            compact
-                            onChange={handleCountdownChange}
-                            ariaLabel="Fixed seconds per page"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-6 gap-1">
-                          {TIMER_PRESETS.map((sec) => {
-                            const active = countdownSec === sec
-                            return (
-                              <button
-                                key={sec}
-                                type="button"
-                                data-active={active ? 'true' : 'false'}
-                                onClick={() => handleCountdownChange(sec)}
-                                className="glass-preset-btn !text-[11px] !px-1"
-                              >
-                                {sec}s
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)] block">
-                              Base sec
-                            </span>
-                            <span className="font-mono text-[9.5px] text-[var(--app-text-subtle)] font-normal">
-                              Scales by words (min 10s)
-                            </span>
-                          </div>
-                          <SecondsNumberInput
-                            value={adaptiveSec}
-                            min={10}
-                            max={600}
-                            step={5}
-                            compact
-                            onChange={handleAdaptiveSecChange}
-                            ariaLabel="Smart base seconds per page"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-6 gap-1">
-                          {SMART_SEC_PRESETS.map((sec) => {
-                            const active = adaptiveSec === sec
-                            return (
-                              <button
-                                key={sec}
-                                type="button"
-                                data-active={active ? 'true' : 'false'}
-                                onClick={() => handleAdaptiveSecChange(sec)}
-                                className="glass-preset-btn !text-[11px] !px-1"
-                              >
-                                {sec}s
-                              </button>
-                            )
-                          })}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-[var(--app-border)]">
-                          <div>
-                            <div className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
-                              Pause at breaks
-                            </div>
-                            <div className="text-[9.5px] text-[var(--app-text-subtle)] font-normal">
-                              +3s at section breaks & chapter ends
-                            </div>
-                          </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                          Turn every
+                        </span>
+                        {countdownSec !== 20 && (
                           <button
                             type="button"
-                            role="switch"
-                            aria-checked={microPauseEnabled}
-                            onClick={handleMicroPauseToggle}
-                            className={`w-7 h-4 rounded-full transition-colors p-0.5 flex items-center cursor-pointer ${
-                              microPauseEnabled
-                                ? 'bg-[var(--app-accent)] justify-end'
-                                : 'bg-[var(--app-border-strong)] justify-start'
-                            }`}
+                            onClick={() => handleCountdownChange(20)}
+                            title="Reset to 20s"
+                            className="text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)]"
                           >
-                            <span className="w-3 h-3 bg-white rounded-full block shadow-sm" />
+                            <RotateCcw className="w-3 h-3" />
                           </button>
+                        )}
+                      </div>
+                      <SecondsNumberInput
+                        value={countdownSec}
+                        min={3}
+                        max={600}
+                        step={5}
+                        compact
+                        onChange={handleCountdownChange}
+                        ariaLabel="Fixed seconds per page"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-1">
+                      {TIMER_PRESETS.map((sec) => {
+                        const active = countdownSec === sec
+                        return (
+                          <button
+                            key={sec}
+                            type="button"
+                            data-active={active ? 'true' : 'false'}
+                            onClick={() => handleCountdownChange(sec)}
+                            className="glass-preset-btn !text-[11px] !px-1"
+                          >
+                            {sec}s
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 pt-1 border-t border-[var(--app-border)]">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[11.5px] font-semibold text-[var(--app-text-muted)] block">
+                          Base sec
+                        </span>
+                        <span className="font-mono text-[9.5px] text-[var(--app-text-subtle)] font-normal">
+                          Scales by words (min 10s floor)
+                        </span>
+                      </div>
+                      <SecondsNumberInput
+                        value={adaptiveSec}
+                        min={10}
+                        max={600}
+                        step={5}
+                        compact
+                        onChange={handleAdaptiveSecChange}
+                        ariaLabel="Smart base seconds per page"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-6 gap-1">
+                      {SMART_SEC_PRESETS.map((sec) => {
+                        const active = adaptiveSec === sec
+                        return (
+                          <button
+                            key={sec}
+                            type="button"
+                            data-active={active ? 'true' : 'false'}
+                            onClick={() => handleAdaptiveSecChange(sec)}
+                            className="glass-preset-btn !text-[11px] !px-1"
+                          >
+                            {sec}s
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-[var(--app-border)]">
+                      <div>
+                        <div className="text-[11.5px] font-semibold text-[var(--app-text-muted)]">
+                          Pause at breaks
+                        </div>
+                        <div className="text-[9.5px] text-[var(--app-text-subtle)] font-normal">
+                          +3s at section breaks & chapter ends
                         </div>
                       </div>
-                    )}
-                  </>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={microPauseEnabled}
+                        onClick={handleMicroPauseToggle}
+                        className={`w-7 h-4 rounded-full transition-colors p-0.5 flex items-center cursor-pointer ${
+                          microPauseEnabled
+                            ? 'bg-[var(--app-accent)] justify-end'
+                            : 'bg-[var(--app-border-strong)] justify-start'
+                        }`}
+                      >
+                        <span className="w-3 h-3 bg-white rounded-full block shadow-sm" />
+                      </button>
+                    </div>
+                  </div>
                 )}
+
+                {/* 4. Shortcuts & Help Card */}
+                <div className="p-2.5 rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-2)]/50 text-[10.5px] space-y-1 text-[var(--app-text-subtle)]">
+                  <div className="flex items-center justify-between font-mono text-[10px]">
+                    <span className="font-semibold text-[var(--app-text-muted)]">Toggle Auto-Flip:</span>
+                    <span className="px-1 py-0.5 rounded bg-[var(--app-surface)] border border-[var(--app-border)]">A</span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-[10px]">
+                    <span className="font-semibold text-[var(--app-text-muted)]">Pause / Resume:</span>
+                    <span className="px-1 py-0.5 rounded bg-[var(--app-surface)] border border-[var(--app-border)]">Space</span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono text-[10px]">
+                    <span className="font-semibold text-[var(--app-text-muted)]">Nudge Dwell ±2s:</span>
+                    <span className="px-1 py-0.5 rounded bg-[var(--app-surface)] border border-[var(--app-border)]">+ / -</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
