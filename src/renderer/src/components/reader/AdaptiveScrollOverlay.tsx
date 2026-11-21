@@ -111,7 +111,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
   const handleModeChange = (mode: AutoscrollMode) => {
     adaptiveScrollEngine.recordUserActivity()
     updateSettings({ autoscrollMode: mode, autoscrollAdaptive: mode === 'adaptive' })
-    adaptiveScrollEngine.configure({ mode })
+    adaptiveScrollEngine.configure({ mode, rearm: true })
   }
 
   const handleCountdownChange = (nextSec: number) => {
@@ -126,17 +126,18 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     } else {
       updateSettings({ autoscrollCountdownSec: clamped })
     }
-    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped, mode: 'countdown' })
+    adaptiveScrollEngine.configure({ fixedCountdownSec: clamped, mode: 'countdown', rearm: true })
   }
 
   const handleAdaptiveSecChange = (nextSec: number) => {
     const clamped = Math.max(10, Math.min(600, Math.round(nextSec)))
     adaptiveScrollEngine.recordUserActivity()
     updateSettings({ autoscrollAdaptiveSec: clamped })
-    adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped })
+    adaptiveScrollEngine.configure({ adaptiveBaseSec: clamped, mode: 'adaptive', rearm: true })
   }
 
   const handleDwellNudge = (deltaSec: number) => {
+    if (deltaSec < 0 && currentDwellSec <= minFloor) return
     const next = Math.max(minFloor, Math.min(600, currentDwellSec + deltaSec))
     if (effectiveMode === 'countdown') {
       handleCountdownChange(next)
@@ -253,12 +254,12 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
   const stepperBtnClass =
     currentTheme === 'day'
-      ? 'w-9 h-9 rounded-full bg-black/[0.06] hover:bg-black/[0.12] active:scale-95 border border-black/[0.12] shadow-xs flex items-center justify-center text-[#0d1117] transition-all cursor-pointer'
+      ? 'w-9 h-9 rounded-full bg-black/[0.06] hover:bg-black/[0.12] active:scale-95 border border-black/[0.12] shadow-xs flex items-center justify-center text-[#0d1117] transition-all cursor-pointer disabled:opacity-25 disabled:pointer-events-none disabled:cursor-not-allowed'
       : currentTheme === 'light-sepia'
-      ? 'w-9 h-9 rounded-full bg-[#5f4b32]/[0.10] hover:bg-[#5f4b32]/[0.18] active:scale-95 border border-[#5f4b32]/[0.20] shadow-xs flex items-center justify-center text-[#17110a] transition-all cursor-pointer'
+      ? 'w-9 h-9 rounded-full bg-[#5f4b32]/[0.10] hover:bg-[#5f4b32]/[0.18] active:scale-95 border border-[#5f4b32]/[0.20] shadow-xs flex items-center justify-center text-[#17110a] transition-all cursor-pointer disabled:opacity-25 disabled:pointer-events-none disabled:cursor-not-allowed'
       : currentTheme === 'dark-sepia'
-      ? 'w-9 h-9 rounded-full bg-white/[0.12] hover:bg-white/[0.22] active:scale-95 border border-[#e6c8a5]/[0.18] shadow-xs flex items-center justify-center text-[#fffbf5] transition-all cursor-pointer'
-      : 'w-9 h-9 rounded-full bg-white/[0.14] hover:bg-white/[0.24] active:scale-95 border border-white/[0.18] shadow-xs flex items-center justify-center text-white transition-all cursor-pointer'
+      ? 'w-9 h-9 rounded-full bg-white/[0.12] hover:bg-white/[0.22] active:scale-95 border border-[#e6c8a5]/[0.18] shadow-xs flex items-center justify-center text-[#fffbf5] transition-all cursor-pointer disabled:opacity-25 disabled:pointer-events-none disabled:cursor-not-allowed'
+      : 'w-9 h-9 rounded-full bg-white/[0.14] hover:bg-white/[0.24] active:scale-95 border border-white/[0.18] shadow-xs flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-25 disabled:pointer-events-none disabled:cursor-not-allowed'
 
   const centerPillClass =
     currentTheme === 'day'
@@ -293,7 +294,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           aria-label="Auto-Flip Settings"
           className={`fixed ${
             isImmersiveFullscreen ? 'bottom-14' : 'bottom-20'
-          } right-5 z-50 w-[280px] backdrop-blur-2xl rounded-2xl p-4 flex flex-col gap-3.5 select-none animate-in fade-in slide-in-from-bottom-2 duration-150 app-no-drag border ${containerThemeClasses}`}
+          } right-5 z-50 w-[280px] font-sans select-none antialiased backdrop-blur-2xl rounded-2xl p-4 flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-150 app-no-drag border ${containerThemeClasses}`}
         >
           {/* Header Row: Minimalist Playback & Lifecycle Actions */}
           <div className={`flex items-center justify-between pb-1 border-b ${headerBorderClass}`}>
@@ -302,7 +303,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                 type="button"
                 onClick={handleTogglePause}
                 aria-label={metrics.isUserPaused ? 'Resume Auto-Flip' : 'Pause Auto-Flip'}
-                className={`h-7 px-3 flex items-center justify-center gap-1.5 rounded-full text-[11.5px] font-medium transition-all cursor-pointer ${
+                className={`h-7 px-3 flex items-center justify-center gap-1.5 rounded-full font-sans text-[11.5px] font-medium transition-all cursor-pointer ${
                   metrics.isUserPaused
                     ? 'bg-[var(--app-btn-primary-bg)] text-[var(--app-btn-primary-fg)] shadow-xs hover:opacity-90'
                     : isLight
@@ -383,13 +384,13 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   {metrics.readingPaceWpm || metrics.currentWpm || 250}
                 </span>
                 <span
-                  className="text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
+                  className="font-sans text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
                   title="Words Per Minute"
                 >
                   WPM
                 </span>
               </div>
-              <span className="text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
                 reading pace
               </span>
             </div>
@@ -401,13 +402,13 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                   {metrics.readingSpeedSpp || 24}s
                 </span>
                 <span
-                  className="text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
+                  className="font-sans text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
                   title="Seconds Per Page"
                 >
                   SPP
                 </span>
               </div>
-              <span className="text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-[var(--app-text-muted)] opacity-60 font-medium mt-0.5 select-none">
                 reading speed
               </span>
             </div>
@@ -415,7 +416,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
           {/* Optional Skim Guard Pill Indicator */}
           {metrics.isSkimming && (
-            <div className={`flex items-center justify-center py-0.5 px-2 rounded-full text-[10.5px] font-medium select-none border ${skimGuardClass}`}>
+            <div className={`flex items-center justify-center py-0.5 px-2 rounded-full font-sans text-[10.5px] font-medium select-none border ${skimGuardClass}`}>
               <span>Skim Guard Active</span>
             </div>
           )}
@@ -426,7 +427,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
               type="button"
               data-active={effectiveMode === 'countdown' ? 'true' : 'false'}
               onClick={() => handleModeChange('countdown')}
-              className="glass-pill-btn flex-1 py-1 text-[12px] font-medium"
+              className="glass-pill-btn flex-1 py-1 font-sans text-[12px] font-medium"
             >
               Fixed
             </button>
@@ -434,7 +435,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
               type="button"
               data-active={effectiveMode === 'adaptive' ? 'true' : 'false'}
               onClick={() => handleModeChange('adaptive')}
-              className="glass-pill-btn flex-1 py-1 text-[12px] font-medium"
+              className="glass-pill-btn flex-1 py-1 font-sans text-[12px] font-medium"
             >
               Smart
             </button>
@@ -444,9 +445,14 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
           <div className="flex items-center justify-between gap-3 pt-0.5">
             <button
               type="button"
+              disabled={currentDwellSec <= minFloor}
               onClick={() => handleDwellNudge(-2)}
               className={stepperBtnClass}
-              title="Decrease dwell by 2 seconds"
+              title={
+                currentDwellSec <= minFloor
+                  ? `Minimum dwell floor is ${minFloor}s`
+                  : 'Decrease dwell by 2 seconds'
+              }
               aria-label="Decrease dwell by 2 seconds"
             >
               <Minus className="w-4 h-4 stroke-[2.5]" />
@@ -454,25 +460,29 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
 
             {/* Editable Pill with Blinking Cursor */}
             <div className={centerPillClass}>
-              <input
-                type="number"
-                min={minFloor}
-                max={600}
-                value={inputValue}
-                onChange={handleDirectInputChange}
-                onBlur={handleInputCommit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    ;(e.target as HTMLElement).blur()
-                  } else if (e.key === 'Escape') {
-                    setInputValue(String(currentDwellSec))
-                    ;(e.target as HTMLElement).blur()
-                  }
-                }}
-                className="w-12 text-center text-[15px] font-semibold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                aria-label="Dwell seconds"
-              />
-              <span className="text-[12px] text-[var(--app-text-muted)] font-mono select-none">sec</span>
+              <div className="flex items-center justify-center gap-1 font-mono">
+                <input
+                  type="number"
+                  min={minFloor}
+                  max={600}
+                  value={inputValue}
+                  onChange={handleDirectInputChange}
+                  onBlur={handleInputCommit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      ;(e.target as HTMLElement).blur()
+                    } else if (e.key === 'Escape') {
+                      setInputValue(String(currentDwellSec))
+                      ;(e.target as HTMLElement).blur()
+                    }
+                  }}
+                  className={`${
+                    inputValue.length >= 3 ? 'w-10' : 'w-7'
+                  } text-right text-[15px] font-semibold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                  aria-label="Dwell seconds"
+                />
+                <span className="text-[12px] text-[var(--app-text-muted)] font-mono select-none">sec</span>
+              </div>
             </div>
 
             <button

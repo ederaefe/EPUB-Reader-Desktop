@@ -121,9 +121,9 @@ const PDF_ZOOM_PRESETS = [
 
 const getPdfZoomPresetLabel = (zoom: number): string => {
   const rounded = Math.round(zoom * 100)
-  if (Math.abs(zoom - 0.85) < 0.06) return 'Fit'
-  if (Math.abs(zoom - 1.2) < 0.06) return 'Default'
-  if (Math.abs(zoom - 1.6) < 0.06) return 'Full'
+  if (Math.abs(zoom - 0.85) < 0.06) return 'Fit (85%)'
+  if (Math.abs(zoom - 1.2) < 0.06) return 'Default (120%)'
+  if (Math.abs(zoom - 1.6) < 0.06) return 'Full (160%)'
   return `${rounded}%`
 }
 
@@ -560,64 +560,37 @@ export const SettingsDrawer: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PDF Zoom Stepper: - [ Fit | Default | Full ] + */}
+                {/* PDF Zoom Stepper: - [ size ] + in the exact same row structure with subtle neo styling */}
                 {isOriginalPdf && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[12px] font-semibold text-[var(--app-text)]">Zoom</span>
-                    <div className="inline-flex items-center h-7 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] overflow-hidden shrink-0 shadow-sm">
+                    <div className="inline-flex items-center h-7 w-[156px] rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-2)] shadow-sm overflow-hidden shrink-0">
                       <button
                         type="button"
                         onClick={() => setPdfZoom(Math.max(0.5, Number((pdfZoom - 0.15).toFixed(2))))}
                         disabled={pdfZoom <= 0.5}
-                        className="w-6 h-full flex items-center justify-center text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                        className="w-7 h-full shrink-0 flex items-center justify-center border-r border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                         title="Zoom out (Ctrl -)"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <div
-                        className="glass-pill-track grid-cols-3 w-[162px] border-x border-[var(--app-border)] !p-0.5 !bg-transparent"
-                        role="radiogroup"
-                        aria-label="PDF Zoom Preset"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (Math.abs(pdfZoom - 0.85) < 0.08) setPdfZoom(1.2)
+                          else if (Math.abs(pdfZoom - 1.2) < 0.08) setPdfZoom(1.6)
+                          else setPdfZoom(0.85)
+                        }}
+                        className="flex-1 h-full flex items-center justify-center px-1 text-[10.5px] font-semibold tracking-tight text-[var(--app-text)] hover:bg-[var(--app-surface-hover)] active:scale-[0.98] transition-all cursor-pointer select-none"
+                        title={`Zoom: ${Math.round(pdfZoom * 100)}% (Click to cycle Fit (85%) → Default (120%) → Full (160%))`}
                       >
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={Math.abs(pdfZoom - 0.85) < 0.08}
-                          data-active={Math.abs(pdfZoom - 0.85) < 0.08 ? 'true' : 'false'}
-                          onClick={() => setPdfZoom(0.85)}
-                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
-                          title="Fit (85%)"
-                        >
-                          Fit
-                        </button>
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={Math.abs(pdfZoom - 1.2) < 0.08}
-                          data-active={Math.abs(pdfZoom - 1.2) < 0.08 ? 'true' : 'false'}
-                          onClick={() => setPdfZoom(1.2)}
-                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
-                          title="Default (120%)"
-                        >
-                          Default
-                        </button>
-                        <button
-                          type="button"
-                          role="radio"
-                          aria-checked={Math.abs(pdfZoom - 1.6) < 0.08}
-                          data-active={Math.abs(pdfZoom - 1.6) < 0.08 ? 'true' : 'false'}
-                          onClick={() => setPdfZoom(1.6)}
-                          className="glass-pill-btn !h-6 !text-[11px] font-medium"
-                          title="Full (160%)"
-                        >
-                          Full
-                        </button>
-                      </div>
+                        {getPdfZoomPresetLabel(pdfZoom)}
+                      </button>
                       <button
                         type="button"
                         onClick={() => setPdfZoom(Math.min(3.0, Number((pdfZoom + 0.15).toFixed(2))))}
                         disabled={pdfZoom >= 3.0}
-                        className="w-6 h-full flex items-center justify-center text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+                        className="w-7 h-full shrink-0 flex items-center justify-center border-l border-[var(--app-border)] text-[var(--app-text-muted)] hover:bg-[var(--app-accent)] hover:text-white transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                         title="Zoom in (Ctrl +)"
                       >
                         <Plus className="w-3 h-3" />
@@ -1142,23 +1115,6 @@ export const SettingsDrawer: React.FC = () => {
                 )}
               </div>
 
-              {isOriginalPdf && (
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-[var(--app-text)]">
-                    Page zoom
-                  </span>
-                  <ValueStepper
-                    value={Math.round(pdfZoom * 100)}
-                    min={50}
-                    max={300}
-                    step={15}
-                    unit="%"
-                    ariaLabel="PDF zoom"
-                    onChange={(val) => setPdfZoom(val / 100)}
-                    compact
-                  />
-                </div>
-              )}
 
               {/* Quiet Borderless Utility Rows */}
               <div className="space-y-1 pt-2">

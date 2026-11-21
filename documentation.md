@@ -201,3 +201,16 @@
   - **Tactile Segmented Mode Pill**: Features an in-place glass pill selector (`( Fixed | Smart )`) for instant mode toggling.
   - **Minimalist Stepper with Direct Input**: Flanked by circular decrement and increment buttons (`-2s` / `+2s`), with an editable central number box and blinking cursor that allows direct numerical dwell entry.
   - **Zero Visual Clutter**: Removed bulky telemetry banners, redundant preset chip rows, floor text labels, and clutter for an effortless hands-free reading experience.
+
+- **Data Integrity & Document Conformance Hardening**:
+  - **Symmetrical Reading History Reversibility**: Full undo and redo capabilities for annotations and bookmarks. Reverting an undone highlight restoration or deletion now alternates predictably and indefinitely without risk of lost records or duplicate notes.
+  - **EPUB Specification Language Preservation**: Editing book metadata in the library now strictly retains the publication's declared Dublin Core language element. Empty language fields default safely to standard language identifiers, ensuring ongoing compliance with international e-reading standards and external reader software.
+  - **Off-Screen Window Metric Filtering**: When the desktop application closes while minimized on Windows, window coordinates are preserved from the last active layout, eliminating displaced window positioning on subsequent app launches.
+  - **Isolated Library Backup Import**: When restoring an additive library archive, annotations and bookmarks are strictly mapped only to valid, matching books within the library, preventing unmapped notes from associating with unrelated books.
+
+- **Unified PDF Zoom Stepper & Pacing Refinement**:
+  - **Neo-Styled Inline Zoom Control**: Added a segmented, tactile pill stepper (`-[size]+`) for PDF documents directly inside the Display settings panel. Fits seamlessly alongside existing layout controls with subtle borders, background tinting, and smooth hover feedback.
+  - **Adaptive Preset Cycling**: The center display indicates active preset dimensions (**Fit 85%**, **Default 120%**, and **Full 160%**). Clicking the badge cycles through preset dimensions, while minus and plus steppers allow continuous scaling from 50% to 300%.
+  - **Immediate Shortcut Synchronization**: Resetting zoom via `0` or `Ctrl + 0` restores the calibrated 120% Default reading scale across all viewports.
+  - **Uninterrupted Timer Adjustments**: Adjusting countdown timers or switching modes in Auto-Flip re-arms the timer cleanly to the full duration without cutting off active reading sessions.
+

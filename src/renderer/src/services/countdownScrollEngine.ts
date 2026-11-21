@@ -140,6 +140,21 @@ export class CountdownScrollEngine {
     return this.adjustSeconds(diff, minSec, maxSec)
   }
 
+  /**
+   * Cleanly re-arm the active countdown from the new full duration.
+   * Resets remainingSec to totalSec and refreshes lastTickAt without losing onExpire callback.
+   */
+  public rearm(seconds?: number, minSec = 3, maxSec = 600): number {
+    if (seconds !== undefined) {
+      const validSec = Number.isFinite(seconds) ? Math.round(seconds) : this.totalSec
+      this.totalSec = Math.max(minSec, Math.min(maxSec, validSec))
+    }
+    this.remainingSec = this.totalSec
+    this.lastTickAt = this.nowFn()
+    this.notify()
+    return this.totalSec
+  }
+
   public tick(): void {
     if (!this.isActive || this.isPaused) return
 

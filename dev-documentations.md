@@ -2810,3 +2810,93 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ### Handoff Notes
 - In `AdaptivePacingEngine`, `rollbackPrematureSample` only reverts the immediate prior unit's committed sample upon a single-page retreat ($\Delta = -1$). If multi-page navigation occurs, `resetBatch` is called instead, leaving historical ledger dwells intact while cleanly restarting the 7-page calibration batch.
 
+---
+
+## Increment 45: Core Data Integrity Hardening (Reader History Redo Symmetry, EPUB Language Preservation, Win32 Window Bounds & Additive Backup ID Isolation)
+> **Agent**: @Agent-DataIntegrityLead | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Symmetrized Reader History Undo/Redo Engine (`readerHistoryService.ts`)**:
+   - Resolved inverted stack semantics where `undo()` of additions previously pushed `delete_*` onto `redoStack` (causing `redo()` to delete rather than restore), and `undo()` of deletions pushed `add_*` (causing `redo()` to duplicate items).
+   - In `undo()`, reverting an `add_annotation` removes the note from IndexedDB and rendition, pushing `{ type: 'add_annotation', annotation: ann }` to `redoStack`.
+   - In `redo()`, executing `add_annotation` re-adds the note to IndexedDB, binds it to the rendition, and pushes `{ type: 'add_annotation', annotation: restored }` back to `undoStack`.
+   - Mirrored identical forward/inverse symmetry for bookmark additions and deletions.
+2. **Mandatory Dublin Core `<dc:language>` Tag Preservation (`metadataService.ts`)**:
+   - Replaced unconstrained XML tag stripping with a specification-compliant fallback mechanism.
+   - When saving EPUB metadata edits, if `payload.language` is empty or whitespace, the parser extracts and preserves the existing `<dc:language>` from `<metadata>`. If no language tag was previously present in the archive, it safely falls back to `'en'`, ensuring strict W3C/IDPF EPUB 2.0.1 and EPUB 3.3 compliance without third-party e-reader rejection.
+3. **Win32 Minimized Window State Protection (`src/main/index.ts`)**:
+   - Added guards against serializing negative off-screen coordinates in `saveWindowState()`.
+   - Checks `win.isMinimized()` to abort state persistence during minimized window lifecycle transitions.
+   - Added coordinate safety validation (`bounds.x <= -10000 || bounds.y <= -10000`) to guarantee Windows minimized metrics `(-32000, -32000)` never corrupt `window-state.json`.
+4. **Foreign Key Integrity in Additive Backup Restore (`backupService.ts`)**:
+   - Removed unmapped integer fallback `|| remoteAnn.bookId` and `|| remoteBm.bookId`.
+   - Replaced with strict mapping checks: if `!bookIdMapping.get(remoteId)`, orphaned annotations and bookmarks are safely dropped, completely eliminating cross-book note injection into unrelated local books.
+
+### Problem Statement
+1. Inverted Redo Action Types (`readerHistoryService.ts`): Undoing an annotation or bookmark deletion pushed `add_annotation` or `add_bookmark`, which in `redo()` added a duplicate record; undoing an addition pushed `delete_*`, which in `redo()` deleted the note permanently.
+2. Mandatory `<dc:language>` Stripping (`metadataService.ts`): Saving EPUB metadata with an empty or whitespace language field stripped `<dc:language>` entirely, invalidating the OPF package and causing strict e-readers to reject the book.
+3. Window Geometry Corruption on Minimized Exit (`src/main/index.ts`): Minimized windows on Windows report negative off-screen coordinates, corrupting `window-state.json` on app close or shutdown.
+4. Unchecked ID Mapping Collision During Additive Restore (`backupService.ts`): Unmapped annotations and bookmarks fell back to `remoteAnn.bookId`, grafting orphaned notes onto unrelated local books sharing that numeric ID.
+
+### Touched Files
+- `src/renderer/src/services/readerHistoryService.ts`
+- `src/main/metadataService.ts`
+- `src/main/index.ts`
+- `src/renderer/src/services/backupService.ts`
+- `scratch/test_phase1_integrity.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_phase1_integrity.ts`: 5/5 test suites passed cleanly (symmetrical history undo/redo transitions, metadata `<dc:language>` preservation with fallback to `'en'`, additive backup unmapped ID isolation, and Win32 minimized coordinate rejection).
+- `npx tsx scratch/test_autoflip_engines.ts`: 101/101 test assertions passed cleanly.
+- `npx tsc --noEmit`: 0 TypeScript errors across main, preload, and renderer sources.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 12.87s.
+
+### Handoff Notes
+- In `ReaderHistoryService`, both `undo()` and `redo()` now maintain forward action descriptors in both stacks, allowing infinite alternating `Ctrl+Z` / `Ctrl+Y` cycles without database corruption or duplicate records.
+- In `backupService.ts`, all dependent entities (annotations, bookmarks) require strict presence in `bookIdMapping`. Books that are intentionally skipped or invalid during import will never leave ghost artifacts attached to unrelated existing books.
+
+
+
+
+---
+
+## Increment 46: Auto-Flip Timer Re-Arming, Calibration Anchor Synchronization, Fat-Finger Bounce Guard & Neo-Styled PDF Zoom Stepper
+> **Agent**: @Agent-AutoFlipRefinement | **Status**: [COMPLETED]
+
+### Problem Statement
+1. In `adaptiveScrollEngine`, editing the timer or switching modes truncated running countdown down to 1s rather than cleanly re-arming from the new full duration.
+2. In `adaptivePacingEngine.ts`, `getReadingSpeedSpp()` did not enforce the strict 10s minimum dwell floor and used `REFERENCE_SPP_WORDS = 100` instead of `REFERENCE_PAGE_WORDS = 180`, displaying sub-10s SPP.
+3. In `AdaptiveScrollOverlay.tsx`, book fonts (e.g. Georgia, Times) leaked into the HUD due to missing `font-sans` on the container, the center stepper pill had an awkward spacing gap before `sec` from `w-12 text-center`, and the `[-]` button remained active at the floor.
+4. When users edited timer in Smart mode, the 7-page calibration batch was not restarted from the user's anchor duration.
+5. Accidental double-taps back followed by an immediate forward advance within <= 1500ms triggered scrub batch resets rather than being forgiven as an accidental bounce.
+6. In dual spread mode on the final odd page, users waited double duration even though only a single page was displayed on screen.
+7. In `SettingsDrawer.tsx`, PDF mode lacked a cohesive neo-styled stepper control matching existing row layouts (`flex items-center justify-between gap-2` at `w-[156px]`), had a redundant secondary zoom control in typography, and keyboard shortcut resets in `PdfReaderView.tsx` reset to `1.0` instead of the `1.2` (`Default`) calibrated preset.
+
+### Technical Fix
+1. **Countdown & Pacing Re-Arming** (`src/renderer/src/services/countdownScrollEngine.ts`, `src/renderer/src/services/adaptiveScrollService.ts`): Re-armed countdowns to the full new duration upon user edits. Re-anchored the 7-page calibration batch to the user's chosen duration when adjusting timers in Smart mode.
+2. **SPP Floor & Reference Alignment** (`src/renderer/src/services/adaptivePacingEngine.ts`): Updated `REFERENCE_SPP_WORDS = 180` and enforced a strict `MIN_DWELL_FLOOR_SEC = 10` floor on `getReadingSpeedSpp()`. Implemented the 1500ms accidental bounce guard to distinguish fat-finger multi-taps from deliberate scrub navigation.
+3. **Typography & Overlay Isolation** (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`): Added `font-sans` to the root overlay container to block reflowable book font leaks, tightened stepper pill spacing, and disabled the `[-]` stepper when at floor duration.
+4. **Final Odd Page Spread Compensation** (`src/renderer/src/components/reader/PdfReaderView.tsx`, `src/renderer/src/components/reader/EpubReaderView.tsx`): Prevented dual-page duration doubling on lone trailing odd pages at the end of books.
+5. **Neo-Styled PDF Zoom Stepper** (`src/renderer/src/components/drawers/SettingsDrawer.tsx`, `src/renderer/src/components/reader/PdfReaderView.tsx`): Built the tactile segmented neo-stepper `-[size]+` in the exact same div and class as existing drawer rows (`w-[156px]`). Formatted the center display to indicate active preset dimensions (`Fit (85%)`, `Default (120%)`, `Full (160%)`, or `${zoom}%`) and wired cycling on click. Flanked with `-` and `+` steppers allowing scaling from 50% to 300%. Removed the redundant `Page zoom` input and aligned shortcut reset (`0` / `Ctrl+0`) to the `1.2` default scale.
+
+### Touched Files
+- `src/renderer/src/services/adaptivePacingEngine.ts`
+- `src/renderer/src/services/countdownScrollEngine.ts`
+- `src/renderer/src/services/adaptiveScrollService.ts`
+- `src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/drawers/SettingsDrawer.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 101/101 test assertions passed cleanly.
+- `npm run typecheck`: Passed with 0 errors (`tsc --noEmit`).
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 13.75s.
+
+### Handoff Notes
+- In `SettingsDrawer.tsx`, the PDF zoom control strictly adheres to the standard single-row layout without secondary rows or nested wrappers. All zoom changes propagate to `PdfReaderView.tsx` via `pdfZoom` store state in real time.

@@ -272,7 +272,16 @@ function updateOpfXml(
   upsertSingleDcElement('description', payload.description)
   upsertSingleDcElement('publisher', payload.publisher)
   upsertSingleDcElement('date', payload.publishedDate)
-  upsertSingleDcElement('language', payload.language)
+
+  // Mandatory Dublin Core element: W3C/IDPF EPUB specifications strictly require <dc:language>.
+  // If payload.language is provided, apply it. If empty or cleared, preserve existing or fallback to 'en'.
+  const existingLangMatch = metaBody.match(
+    /<([a-zA-Z0-9_-]+:)?language(\b[^>]*)>([\s\S]*?)<\/\1language>/i
+  )
+  const existingLanguage = existingLangMatch?.[3]?.trim()
+  const safeLanguage = (payload.language && payload.language.trim()) || existingLanguage || 'en'
+  upsertSingleDcElement('language', safeLanguage)
+
   upsertSingleDcElement('identifier', payload.identifier, true)
   upsertSingleDcElement('rights', payload.rights)
 

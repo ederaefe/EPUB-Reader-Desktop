@@ -9,7 +9,7 @@
 // 7. Physiological Skimming (<800ms / >750 WPM) and Idling (<60 WPM) guard with EMA (alpha = 0.15)
 
 export const REFERENCE_PAGE_WORDS = 180
-export const REFERENCE_SPP_WORDS = 100
+export const REFERENCE_SPP_WORDS = 180
 export const DEFAULT_WPM = 250
 export const MIN_WPM = 60
 export const MAX_WPM = 750
@@ -122,6 +122,13 @@ export class AdaptivePacingEngine {
   private consecutiveRapidFlips = 0
   private lastUnit = 0
   private lastCommittedSample: CommittedSampleSnapshot | null = null
+  private pendingBounceRetreat: {
+    fromUnit: number
+    toUnit: number
+    timestamp: number
+    savedBatchPagesRead: number
+    savedLastRecalibratedIndex: number
+  } | null = null
 
   private readonly pageDwellLedger = new Map<number, PageDwellLedgerEntry>()
 
@@ -156,12 +163,13 @@ export class AdaptivePacingEngine {
 
   /**
    * Reading speed in Seconds Per Page (derived from reference page word count).
-   * In dual-spread mode, duration is exactly 2x single-page SPP without rounding drift.
+   * Enforces strict 10s minimum dwell floor. In dual-spread mode, duration is exactly 2x single-page SPP.
    */
   public getReadingSpeedSpp(isDualSpread = false): number {
-    const referenceWords = REFERENCE_SPP_WORDS
+    const referenceWords = REFERENCE_PAGE_WORDS
     const wpm = this.currentWpm > 0 ? this.currentWpm : DEFAULT_WPM
-    const singleSpp = Math.max(1, Math.round((referenceWords / wpm) * 60))
+    const rawSpp = Math.round((referenceWords / wpm) * 60)
+    const singleSpp = Math.max(MIN_DWELL_FLOOR_SEC, rawSpp)
     return isDualSpread ? singleSpp * 2 : singleSpp
   }
 
@@ -379,6 +387,41 @@ export class AdaptivePacingEngine {
     const timeSinceLastNav = isInitialNav ? 0 : now - this.lastNavTimestamp
     this.lastNavTimestamp = now
 
+    // 0. Accidental Bounce / Fat-Finger Retreat Guard:
+    // If user stepped back 2 pages and immediately advances 1 page within <= 1500ms,
+    // recognize as accidental bounce rather than a deliberate multi-page scrub, preserving batch progress.
+    if (
+      this.pendingBounceRetreat &&
+      fromUnit === this.pendingBounceRetreat.toUnit &&
+      toUnit === this.pendingBounceRetreat.toUnit + 1 &&
+      now - this.pendingBounceRetreat.timestamp <= 1500
+    ) {
+      this.batchPagesRead = this.pendingBounceRetreat.savedBatchPagesRead
+      this.lastRecalibratedIndex = this.pendingBounceRetreat.savedLastRecalibratedIndex
+      this.pendingBounceRetreat = null
+      this.consecutiveRapidFlips = 0
+      this.lastUnit = toUnit
+      return { isRetreat: false, isScrub: false, updated: false }
+    }
+
+    if (this.pendingBounceRetreat && (now - this.pendingBounceRetreat.timestamp > 1500 || delta !== 1)) {
+      this.pendingBounceRetreat = null
+    }
+
+    // Step back 2 pages candidate for accidental bounce
+    if (delta === -2) {
+      this.pendingBounceRetreat = {
+        fromUnit,
+        toUnit,
+        timestamp: now,
+        savedBatchPagesRead: this.batchPagesRead,
+        savedLastRecalibratedIndex: this.lastRecalibratedIndex
+      }
+      this.consecutiveRapidFlips = 0
+      this.resetBatch(toUnit)
+      return { isRetreat: true, isScrub: true, updated: false }
+    }
+
     // 1. Detect rapid scrub / discontinuous jump:
     // Discontinuous jump (|delta| >= 2) OR sequential rapid flips (2+ consecutive flips in < 2500ms with < 4000ms interval)
     const isDiscontinuous = Math.abs(delta) >= 2
@@ -521,6 +564,7 @@ export class AdaptivePacingEngine {
     this.consecutiveRapidFlips = 0
     this.lastUnit = 0
     this.lastCommittedSample = null
+    this.pendingBounceRetreat = null
     this.pageDwellLedger.clear()
   }
 }

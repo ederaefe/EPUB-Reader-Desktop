@@ -59,7 +59,8 @@ class ReaderHistoryService {
           }
           await syncBookNotesCount(ann.bookId)
         }
-        this.redoStack.push({ type: 'delete_annotation', annotation: ann })
+        // Redo will re-add this undone annotation
+        this.redoStack.push({ type: 'add_annotation', annotation: ann })
         return true
       }
 
@@ -75,7 +76,8 @@ class ReaderHistoryService {
           }
         }
         await syncBookNotesCount(restored.bookId)
-        this.redoStack.push({ type: 'add_annotation', annotation: restored })
+        // Redo will re-delete this restored annotation
+        this.redoStack.push({ type: 'delete_annotation', annotation: restored })
         return true
       }
 
@@ -84,7 +86,8 @@ class ReaderHistoryService {
         if (bm.id) {
           await db.bookmarks.delete(bm.id)
         }
-        this.redoStack.push({ type: 'delete_bookmark', bookmark: bm })
+        // Redo will re-add this undone bookmark
+        this.redoStack.push({ type: 'add_bookmark', bookmark: bm })
         return true
       }
 
@@ -92,7 +95,8 @@ class ReaderHistoryService {
         const { id: _oldId, ...rest } = entry.bookmark
         const newId = await db.bookmarks.add(rest)
         const restored: BookmarkItem = { ...rest, id: Number(newId) }
-        this.redoStack.push({ type: 'add_bookmark', bookmark: restored })
+        // Redo will re-delete this restored bookmark
+        this.redoStack.push({ type: 'delete_bookmark', bookmark: restored })
         return true
       }
     } catch {
@@ -111,6 +115,22 @@ class ReaderHistoryService {
     if (!entry) return false
 
     try {
+      if (entry.type === 'add_annotation') {
+        const { id: _oldId, ...rest } = entry.annotation
+        const newId = await db.annotations.add(rest)
+        const restored: Annotation = { ...rest, id: Number(newId) }
+        if (rendition && restored.cfiRange) {
+          try {
+            applyAnnotationToRendition(rendition, restored, theme, (a, ev) => onAnnotationClick(a, ev))
+          } catch {
+            // Annotation may be in a different unmounted chapter
+          }
+        }
+        await syncBookNotesCount(restored.bookId)
+        this.undoStack.push({ type: 'add_annotation', annotation: restored })
+        return true
+      }
+
       if (entry.type === 'delete_annotation') {
         const ann = entry.annotation
         if (ann.id) {
@@ -124,23 +144,15 @@ class ReaderHistoryService {
           }
           await syncBookNotesCount(ann.bookId)
         }
-        this.undoStack.push({ type: 'add_annotation', annotation: ann })
+        this.undoStack.push({ type: 'delete_annotation', annotation: ann })
         return true
       }
 
-      if (entry.type === 'add_annotation') {
-        const { id: _oldId, ...rest } = entry.annotation
-        const newId = await db.annotations.add(rest)
-        const restored: Annotation = { ...rest, id: Number(newId) }
-        if (rendition && restored.cfiRange) {
-          try {
-            applyAnnotationToRendition(rendition, restored, theme, (a, ev) => onAnnotationClick(a, ev))
-          } catch {
-            // Annotation may be in a different unmounted chapter
-          }
-        }
-        await syncBookNotesCount(restored.bookId)
-        this.undoStack.push({ type: 'delete_annotation', annotation: restored })
+      if (entry.type === 'add_bookmark') {
+        const { id: _oldId, ...rest } = entry.bookmark
+        const newId = await db.bookmarks.add(rest)
+        const restored: BookmarkItem = { ...rest, id: Number(newId) }
+        this.undoStack.push({ type: 'add_bookmark', bookmark: restored })
         return true
       }
 
@@ -149,15 +161,7 @@ class ReaderHistoryService {
         if (bm.id) {
           await db.bookmarks.delete(bm.id)
         }
-        this.undoStack.push({ type: 'add_bookmark', bookmark: bm })
-        return true
-      }
-
-      if (entry.type === 'add_bookmark') {
-        const { id: _oldId, ...rest } = entry.bookmark
-        const newId = await db.bookmarks.add(rest)
-        const restored: BookmarkItem = { ...rest, id: Number(newId) }
-        this.undoStack.push({ type: 'delete_bookmark', bookmark: restored })
+        this.undoStack.push({ type: 'delete_bookmark', bookmark: bm })
         return true
       }
     } catch {

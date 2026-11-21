@@ -516,7 +516,11 @@ export class BackupService {
     })
 
     for (const remoteAnn of (backup.annotations || []).slice(0, MAX_BACKUP_ANNOTATIONS)) {
-      const localBookId = bookIdMapping.get(remoteAnn.bookId) || remoteAnn.bookId
+      const localBookId = bookIdMapping.get(remoteAnn.bookId)
+      if (!localBookId) {
+        // Drop orphaned annotation referencing an omitted or unmapped book to prevent cross-book contamination
+        continue
+      }
       const safeCfiRange = sanitizeString(remoteAnn.cfiRange, 512)
       if (!safeCfiRange) continue
       const key = `${localBookId}:::${safeCfiRange}`
@@ -543,7 +547,11 @@ export class BackupService {
     })
 
     for (const remoteBm of (backup.bookmarks || []).slice(0, MAX_BACKUP_BOOKMARKS)) {
-      const localBookId = bookIdMapping.get(remoteBm.bookId) || remoteBm.bookId
+      const localBookId = bookIdMapping.get(remoteBm.bookId)
+      if (!localBookId) {
+        // Drop orphaned bookmark referencing an omitted or unmapped book to prevent cross-book contamination
+        continue
+      }
       const safeCfi = sanitizeString(remoteBm.cfi, 512)
       if (!safeCfi) continue
       const key = `${localBookId}:::${safeCfi}`

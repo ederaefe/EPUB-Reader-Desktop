@@ -331,11 +331,14 @@ function loadWindowState(): SavedWindowState {
 }
 
 function saveWindowState(win: BrowserWindow): void {
+  if (win.isDestroyed() || win.isMinimized()) return
   const targetPath = getWindowStatePath()
   const tempPath = `${targetPath}.${randomBytes(6).toString('hex')}.tmp`
   try {
     const isMaximized = win.isMaximized()
     const bounds = isMaximized ? win.getNormalBounds() : win.getBounds()
+    // Reject Win32 minimized off-screen coordinates (-32000, -32000)
+    if (bounds.x <= -10000 || bounds.y <= -10000) return
     const payload: SavedWindowState = {
       x: bounds.x,
       y: bounds.y,

@@ -574,7 +574,9 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       return
     }
 
-    const dwellSec = isDual
+    // Lone odd-page end guard: in dual mode on the final odd page where only 1 page is visible, treat as single page
+    const isSpread = isDual && currentPage + 1 <= totalPages
+    const dwellSec = isSpread
       ? (settings.pdfCountdownSecDual ?? 45)
       : (settings.pdfCountdownSecSingle ?? 25)
     adaptiveScrollEngine.configure({ mode: 'countdown', fixedCountdownSec: dwellSec })
@@ -588,6 +590,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         setAutoscrollActive(false)
         return
       }
+
+      const isCurrentSpread = isDual && currentPage + 1 <= totalPages
 
       adaptiveScrollEngine.startPageCountdown(
         180,
@@ -618,7 +622,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
           }
         },
-        isDual,
+        isCurrentSpread,
         currentPage
       )
     }
@@ -710,7 +714,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         }
         if (k === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
           e.preventDefault()
-          setPdfZoom(1.0)
+          setPdfZoom(1.2)
           return
         }
         if (k === 'r') {
@@ -811,7 +815,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         }
       } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '0') {
         e.preventDefault()
-        setPdfZoom(1.0)
+        setPdfZoom(1.2)
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
         const nextDual = !isDual

@@ -1897,6 +1897,10 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       const scrollTopBeforeTurn = container?.scrollTop ?? 0
       const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
       const curPage = currentPageRef.current || 1
+      const totalPages = totalPagesRef.current || bookTotalPagesRef.current || 1
+      // Lone odd-page end guard: in dual mode on the final odd page where only 1 page is visible, treat as single page
+      const isLoneOddFinalPage = isDual && totalPages > 1 && curPage >= totalPages
+      const isDoubleSpread = isDual && !isLoneOddFinalPage
 
       const advancePage = async () => {
         if (cancelled || !useAppStore.getState().isAutoscrollActive || isAdvancing) return
@@ -1960,7 +1964,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
             }
           }, 1200)
         },
-        isDual,
+        isDoubleSpread,
         curPage
       )
     }
