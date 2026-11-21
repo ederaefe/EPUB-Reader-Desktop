@@ -10,7 +10,8 @@ import {
   X,
   Languages,
   MoreHorizontal,
-  StickyNote
+  StickyNote,
+  Search
 } from 'lucide-react'
 import {
   DICT_PROVIDERS,
@@ -59,6 +60,17 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   const [definition, setDefinition] = useState<InlineDefinition | null>(null)
   const [showDictHistory, setShowDictHistory] = useState(false)
   const [dictHistory, setDictHistory] = useState<DictHistoryEntry[]>([])
+  const [historySearchQuery, setHistorySearchQuery] = useState('')
+
+  const normalizedSearch = historySearchQuery.trim().toLowerCase()
+  const filteredHistory = dictHistory.filter((item) => {
+    if (!normalizedSearch) return true
+    if (item.word.toLowerCase().includes(normalizedSearch)) return true
+    if (item.definition.phonetic?.toLowerCase().includes(normalizedSearch)) return true
+    return item.definition.meanings?.some((m) =>
+      m.definitions?.some((d) => d.definition?.toLowerCase().includes(normalizedSearch))
+    )
+  })
 
   const [showWikiModal, setShowWikiModal] = useState(false)
   const [wikiLoading, setWikiLoading] = useState(false)
@@ -407,6 +419,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                   onClick={() => {
                     if (!showDictHistory) {
                       setDictHistory(getDictionaryHistory())
+                      setHistorySearchQuery('')
                     }
                     setShowDictHistory((prev) => !prev)
                   }}
@@ -416,7 +429,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                       : 'text-[var(--app-text-muted)] hover:text-[var(--app-text-strong)] hover:bg-[var(--app-surface-hover)]'
                   }`}
                 >
-                  {showDictHistory ? 'Definition' : `History (${dictHistory.length || getDictionaryHistory().length})`}
+                  {showDictHistory ? 'Definition' : 'History'}
                 </button>
                 <button
                   onClick={() => {
@@ -431,15 +444,72 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
             </div>
 
             {showDictHistory ? (
-              <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[50vh]">
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 max-h-[50vh]">
+                {/* Real-time Vocabulary Search Bar */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--app-text-subtle)] pointer-events-none" />
+                  <input
+                    type="text"
+                    value={historySearchQuery}
+                    onChange={(e) => setHistorySearchQuery(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter' && historySearchQuery.trim()) {
+                        e.preventDefault()
+                        const term = historySearchQuery.trim()
+                        setDictLoading(true)
+                        setShowDictHistory(false)
+                        const res = await fetchInlineDefinition(term)
+                        setDefinition(res)
+                        setDictHistory(getDictionaryHistory())
+                        setDictLoading(false)
+                      }
+                    }}
+                    placeholder="Search history or look up a word..."
+                    className="w-full bg-[var(--app-surface-2)] border border-[var(--app-border)] focus:border-[var(--app-accent)] focus:outline-none rounded-lg pl-8 pr-7 py-1.5 text-xs text-[var(--app-text-strong)] placeholder-[var(--app-text-subtle)] transition-colors"
+                    autoFocus
+                  />
+                  {historySearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setHistorySearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--app-text-subtle)] hover:text-[var(--app-text-strong)] p-0.5 rounded cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
                 {dictHistory.length === 0 ? (
                   <div className="py-8 text-center text-[var(--app-text-subtle)]">
                     No past lookups in dictionary history yet.
                   </div>
+                ) : filteredHistory.length === 0 ? (
+                  <div className="py-6 text-center space-y-2">
+                    <p className="text-[var(--app-text-subtle)] text-xs">
+                      No history matches for &ldquo;{historySearchQuery}&rdquo;
+                    </p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const term = historySearchQuery.trim()
+                        setDictLoading(true)
+                        setShowDictHistory(false)
+                        const res = await fetchInlineDefinition(term)
+                        setDefinition(res)
+                        setDictHistory(getDictionaryHistory())
+                        setDictLoading(false)
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--app-surface-2)] hover:bg-[var(--app-surface-hover)] border border-[var(--app-border)] text-xs font-medium text-[var(--app-accent-text)] transition-colors cursor-pointer"
+                    >
+                      <Search className="w-3 h-3" />
+                      <span>Look up &ldquo;{historySearchQuery.trim()}&rdquo;</span>
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <div className="space-y-1.5">
-                      {dictHistory.map((item) => (
+                      {filteredHistory.map((item) => (
                         <button
                           key={item.word + item.timestamp}
                           type="button"
@@ -470,7 +540,10 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
                         </button>
                       ))}
                     </div>
-                    <div className="pt-2 flex justify-end">
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-[10px] text-[var(--app-text-subtle)] font-mono">
+                        {filteredHistory.length} of {dictHistory.length} {dictHistory.length === 1 ? 'word' : 'words'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => {

@@ -3305,17 +3305,25 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         />
       )}
 
-      {/* Floating Exit Fullscreen Control (only visible in immersive fullscreen) */}
+      {/* Floating Exit Fullscreen Control & Page Indicator (only visible in immersive fullscreen) */}
       {isImmersiveFullscreen && (
-        <button
-          type="button"
-          onClick={handleExitFullscreen}
-          className="fixed top-3 right-3 z-50 w-8 h-8 flex items-center justify-center rounded-md bg-[#14161c]/80 hover:bg-[#1f232d] border border-[#2d323f] text-[#c8d1dc] hover:text-white shadow-lg opacity-40 hover:opacity-100 transition-all duration-150 app-no-drag cursor-pointer"
-          title="Exit Fullscreen (Esc / F11)"
-          aria-label="Exit Fullscreen"
-        >
-          <Minimize2 className="w-4 h-4" />
-        </button>
+        <div className="fixed top-3 right-3 z-50 flex items-center gap-2.5 app-no-drag">
+          <span
+            className="text-[12px] font-mono font-medium tracking-wide text-[#8b949e] opacity-50 select-none pointer-events-none"
+            title={`Page ${currentPage}`}
+          >
+            {currentPage}
+          </span>
+          <button
+            type="button"
+            onClick={handleExitFullscreen}
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-[#14161c]/80 hover:bg-[#1f232d] border border-[#2d323f] text-[#c8d1dc] hover:text-white shadow-lg opacity-40 hover:opacity-100 transition-all duration-150 cursor-pointer"
+            title="Exit Fullscreen (Esc / F11)"
+            aria-label="Exit Fullscreen"
+          >
+            <Minimize2 className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {/* Main Reading Viewport */}
