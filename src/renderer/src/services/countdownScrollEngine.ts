@@ -151,6 +151,7 @@ export class CountdownScrollEngine {
     }
     this.remainingSec = this.totalSec
     this.lastTickAt = this.nowFn()
+    this.ensureTimer()
     this.notify()
     return this.totalSec
   }

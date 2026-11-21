@@ -213,5 +213,11 @@
   - **Adaptive Preset Cycling**: The center display indicates active preset dimensions (**Fit 85%**, **Default 120%**, and **Full 160%**). Clicking the badge cycles through preset dimensions, while minus and plus steppers allow continuous scaling from 50% to 300%.
   - **Immediate Shortcut Synchronization**: Resetting zoom via `0` or `Ctrl + 0` restores the calibrated 120% Default reading scale across all viewports.
   - **Uninterrupted Timer Adjustments**: Adjusting countdown timers or switching modes in Auto-Flip re-arms the timer cleanly to the full duration without cutting off active reading sessions.
+
+- **Native Browser Ergonomics & Platform Resilience**:
+  - **Standard Browser Navigation Shortcuts**: Navigation throughout the reader, library, and overlay dialogs adheres strictly to native browser conventions. `Alt + Left Arrow` navigates backwards (returning to the library, closing active side drawers or modal windows, or paging backward), while `Alt + Right Arrow` advances forward to the next page. Legacy punctuation keys are completely detached from navigation.
+  - **Global Contextual Toast Alerts**: Restored instant, non-intrusive on-screen toast notifications across the entire application for file import rejections, vault write failures, font download updates, and Auto-Flip dwell speed changes with automatic 3.8-second dismissal.
+  - **Antivirus-Resilient Library Vault Storage**: File transfers into the configured Vault directory handle transient locks from Windows Defender and background search indexers with automated retry backoffs, ensuring book imports succeed reliably without permission errors.
+  - **Optimized PDF Worker Memory Management**: Decoded page data and rendering contexts from PDF thumbnail extraction are immediately recycled, eliminating memory retention across large library imports while preserving accurate document page counts.
   - **Smart Pacing Anchor Calibration & Typography Isolation**: Setting a custom timer in Smart mode anchors adaptive calibration to the user's chosen duration and resets the 7-page learning batch to calibrate smoothly from that new baseline. Quick 2-page retreats corrected within 1500ms are treated as accidental bounces to preserve batch progress, while HUD popovers enforce strict system typography and final odd pages in dual spread mode adapt to single-page dwell duration.
 

@@ -8,7 +8,8 @@ import {
   AdaptivePacingEngine,
   computeEffectiveWordCount,
   DEFAULT_WPM,
-  MIN_DWELL_FLOOR_SEC
+  MIN_DWELL_FLOOR_SEC,
+  REFERENCE_PAGE_WORDS
 } from './adaptivePacingEngine'
 
 export { computeEffectiveWordCount }
@@ -223,8 +224,10 @@ export class AdaptiveScrollEngine {
     }
 
     if (params.fixedCountdownSec !== undefined) {
-      this.fixedCountdownSec = Math.max(MIN_COUNTDOWN_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.fixedCountdownSec)))
-      if (this.mode === 'countdown' && this.countdownEngine.getState().isActive) {
+      const nextFixed = Math.max(MIN_COUNTDOWN_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.fixedCountdownSec)))
+      const fixedChanged = nextFixed !== this.fixedCountdownSec
+      this.fixedCountdownSec = nextFixed
+      if (this.mode === 'countdown' && this.countdownEngine.getState().isActive && (fixedChanged || params.rearm === true)) {
         if (shouldRearm) {
           this.countdownEngine.rearm(this.fixedCountdownSec, MIN_COUNTDOWN_SEC, MAX_COUNTDOWN_SEC)
         } else {
@@ -234,16 +237,20 @@ export class AdaptiveScrollEngine {
     }
 
     if (params.adaptiveBaseSec !== undefined) {
-      this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.adaptiveBaseSec)))
-      this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
-      this.pacingEngine.resetBatch(this.getCurrentUnit())
-      if (this.mode === 'adaptive' && this.countdownEngine.getState().isActive) {
-        const spreadFactor = this.isDoubleSpread ? 2 : 1
-        const targetSec = this.adaptiveBaseSec * spreadFactor
-        if (shouldRearm) {
-          this.countdownEngine.rearm(targetSec, MIN_DWELL_FLOOR_SEC, MAX_COUNTDOWN_SEC)
-        } else {
-          this.countdownEngine.setSeconds(targetSec, MIN_DWELL_FLOOR_SEC, MAX_COUNTDOWN_SEC)
+      const nextAdaptive = Math.max(MIN_DWELL_FLOOR_SEC, Math.min(MAX_COUNTDOWN_SEC, Math.round(params.adaptiveBaseSec)))
+      const adaptiveChanged = nextAdaptive !== this.adaptiveBaseSec
+      this.adaptiveBaseSec = nextAdaptive
+      if (adaptiveChanged || params.rearm === true) {
+        this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
+        this.pacingEngine.resetBatch(this.getCurrentUnit())
+        if (this.mode === 'adaptive' && this.countdownEngine.getState().isActive) {
+          const spreadFactor = this.isDoubleSpread ? 2 : 1
+          const targetSec = this.adaptiveBaseSec * spreadFactor
+          if (shouldRearm) {
+            this.countdownEngine.rearm(targetSec, MIN_DWELL_FLOOR_SEC, MAX_COUNTDOWN_SEC)
+          } else {
+            this.countdownEngine.setSeconds(targetSec, MIN_DWELL_FLOOR_SEC, MAX_COUNTDOWN_SEC)
+          }
         }
       }
     }
@@ -442,6 +449,7 @@ export class AdaptiveScrollEngine {
     if (isAdaptive) {
       this.adaptiveBaseSec = Math.max(minFloor, Math.min(MAX_COUNTDOWN_SEC, this.adaptiveBaseSec + deltaSec))
       this.pacingEngine.syncBaseSeconds(this.adaptiveBaseSec)
+      this.pacingEngine.resetBatch(this.getCurrentUnit())
     } else {
       this.fixedCountdownSec = Math.max(minFloor, Math.min(MAX_COUNTDOWN_SEC, this.fixedCountdownSec + deltaSec))
     }
@@ -551,7 +559,7 @@ export class AdaptiveScrollEngine {
       const spreadFactor = this.isDoubleSpread ? 2 : 1
       const targetSec = this.mode === 'countdown' ? this.fixedCountdownSec : (this.adaptiveBaseSec * spreadFactor)
       const minFloor = this.mode === 'countdown' ? MIN_COUNTDOWN_SEC : MIN_DWELL_FLOOR_SEC
-      this.countdownEngine.setSeconds(targetSec, minFloor, MAX_COUNTDOWN_SEC)
+      this.countdownEngine.rearm(targetSec, minFloor, MAX_COUNTDOWN_SEC)
     }
     this.triggerSettingsSync()
     this.notify()
@@ -559,7 +567,7 @@ export class AdaptiveScrollEngine {
 
   public setTargetWpm(wpm: number): void {
     this.pacingEngine.setTargetWpm(wpm)
-    this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((180 / wpm) * 60))
+    this.adaptiveBaseSec = Math.max(MIN_DWELL_FLOOR_SEC, Math.round((REFERENCE_PAGE_WORDS / wpm) * 60))
     this.triggerSettingsSync()
     this.notify()
   }

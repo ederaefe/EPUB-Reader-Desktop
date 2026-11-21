@@ -1895,7 +1895,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       const curPage = currentPageRef.current || 1
       const totalPages = totalPagesRef.current || bookTotalPagesRef.current || 1
       // Lone odd-page end guard: in dual mode on the final odd page where only 1 page is visible, treat as single page
-      const isLoneOddFinalPage = isDual && totalPages > 1 && curPage >= totalPages
+      const isLoneOddFinalPage = isDual && totalPages > 1 && totalPages % 2 !== 0 && curPage >= totalPages
       const isDoubleSpread = isDual && !isLoneOddFinalPage
 
       const advancePage = async () => {
@@ -1977,15 +1977,112 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
   // Cleanly stop Auto-Scroll, Read Aloud (TTS), and close Search drawer when exiting the reader back to Library
   useEffect(() => {
     return () => {
+      isTTSSpeakingLoopRef.current = false
       adaptiveScrollEngine.stop()
       ttsService.stop()
       const st = useAppStore.getState()
       st.setAutoscrollActive(false)
       st.setTTSActive(false)
       st.setTTSMuted(false)
+      st.setActiveTTSWord(null)
       st.toggleSearchDrawer(false)
     }
   }, [])
+
+  const isTTSSpeakingLoopRef = useRef(false)
+
+  const getVisibleSpreadText = useCallback((): string => {
+    const loc = safeGetRenditionLocation(renditionRef.current)
+    const iframeDoc = (renditionRef.current?.getContents()?.[0] as any)?.document
+
+    try {
+      if (loc?.start?.cfi && loc?.end?.cfi && renditionRef.current) {
+        const startR = (renditionRef.current as any).getRange?.(loc.start.cfi) as Range | undefined
+        const endR = (renditionRef.current as any).getRange?.(loc.end.cfi) as Range | undefined
+        if (startR && endR && startR.startContainer?.ownerDocument) {
+          const startDoc = startR.startContainer.ownerDocument
+          const endDoc = endR.endContainer?.ownerDocument
+          if (startDoc === endDoc) {
+            const combined = startDoc.createRange()
+            combined.setStart(startR.startContainer, startR.startOffset)
+            combined.setEnd(endR.endContainer, endR.endOffset)
+            const frag = combined.cloneContents()
+            frag.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+            const text = (frag.textContent || combined.toString() || '').trim()
+            if (text.length > 0) return text
+          } else {
+            const r1 = startDoc.createRange()
+            r1.setStart(startR.startContainer, startR.startOffset)
+            if (startDoc.body) r1.setEndAfter(startDoc.body.lastChild || startDoc.body)
+            const frag1 = r1.cloneContents()
+
+            let frag2: DocumentFragment | null = null
+            if (endDoc && endDoc.body) {
+              const r2 = endDoc.createRange()
+              r2.setStartBefore(endDoc.body.firstChild || endDoc.body)
+              r2.setEnd(endR.endContainer, endR.endOffset)
+              frag2 = r2.cloneContents()
+            }
+
+            frag1.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+            if (frag2) frag2.querySelectorAll('script, style, rt, rp, aside, [hidden], [aria-hidden="true"]').forEach((el) => el.remove())
+
+            const text = ((frag1.textContent || '') + ' ' + (frag2?.textContent || '')).trim()
+            if (text.length > 0) return text
+          }
+        }
+      }
+    } catch {}
+
+    return iframeDoc?.body?.innerText?.trim() || book.title || 'Reading'
+  }, [book.title])
+
+  const speakSpreadLoop = useCallback(() => {
+    const st = useAppStore.getState()
+    if (!st.isTTSActive || !isTTSSpeakingLoopRef.current) return
+
+    const text = getVisibleSpreadText()
+    ttsService.speak(text, {
+      rate: st.settings.ttsSpeed,
+      pitch: st.settings.ttsPitch,
+      voiceURI: st.settings.ttsVoice,
+      onBoundary: (word) => {
+        useAppStore.getState().setActiveTTSWord(word)
+      },
+      onEnd: async () => {
+        useAppStore.getState().setActiveTTSWord(null)
+        const cur = useAppStore.getState()
+        if (!cur.isTTSActive || !isTTSSpeakingLoopRef.current) return
+
+        const loc = safeGetRenditionLocation(renditionRef.current)
+        const spineItems = (epubBookRef.current?.spine as any)?.spineItems || []
+        const spineLength = spineItems.length || (epubBookRef.current?.spine as any)?.length || 0
+        const endIdx = loc?.end?.index ?? loc?.start?.index ?? 0
+        const isBookEnd = Boolean(loc?.atEnd && spineLength > 0 && endIdx >= spineLength - 1)
+
+        if (isBookEnd) {
+          cur.setTTSActive(false)
+          cur.setTTSMuted(false)
+          isTTSSpeakingLoopRef.current = false
+          return
+        }
+
+        // Visually advance spread or progress across chapter boundary
+        try {
+          await navigateStep('next')
+          setTimeout(() => {
+            if (useAppStore.getState().isTTSActive && isTTSSpeakingLoopRef.current) {
+              speakSpreadLoop()
+            }
+          }, 350)
+        } catch (err) {
+          console.warn('TTS auto-advance error:', err)
+          cur.setTTSActive(false)
+          isTTSSpeakingLoopRef.current = false
+        }
+      }
+    })
+  }, [getVisibleSpreadText, navigateStep])
 
   // Wire F7 (Play/Pause Read Aloud) and F8 (Stop Read Aloud) refs for isolated EPUB iframe keydown
   handleToggleTTSRef.current = () => {
@@ -2000,28 +2097,20 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
       }
       return
     }
-    const iframeDoc = (renditionRef.current?.getContents()?.[0] as any)?.document
-    const text = iframeDoc?.body?.innerText?.trim() || book.title || 'Reading'
     st.setTTSActive(true)
     st.setTTSMuted(false)
-    ttsService.speak(text, {
-      rate: st.settings.ttsSpeed,
-      pitch: st.settings.ttsPitch,
-      voiceURI: st.settings.ttsVoice,
-      onEnd: () => {
-        const cur = useAppStore.getState()
-        cur.setTTSActive(false)
-        cur.setTTSMuted(false)
-      }
-    })
+    isTTSSpeakingLoopRef.current = true
+    speakSpreadLoop()
   }
 
   handleStopTTSRef.current = () => {
+    isTTSSpeakingLoopRef.current = false
     const st = useAppStore.getState()
     if (!st.isTTSActive) return
     ttsService.stop()
     st.setTTSActive(false)
     st.setTTSMuted(false)
+    st.setActiveTTSWord(null)
   }
 
   // Reliable progress bar seeking with strict locations readiness check, CFI validation & spine/scroll fallbacks

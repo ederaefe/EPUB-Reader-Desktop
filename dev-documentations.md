@@ -2875,10 +2875,10 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 7. In `SettingsDrawer.tsx`, PDF mode lacked a cohesive neo-styled stepper control matching existing row layouts (`flex items-center justify-between gap-2` at `w-[156px]`), had a redundant secondary zoom control in typography, and keyboard shortcut resets in `PdfReaderView.tsx` reset to `1.0` instead of the `1.2` (`Default`) calibrated preset.
 
 ### Technical Fix
-1. **Countdown & Pacing Re-Arming** (`src/renderer/src/services/countdownScrollEngine.ts`, `src/renderer/src/services/adaptiveScrollService.ts`): Re-armed countdowns to the full new duration upon user edits. Re-anchored the 7-page calibration batch to the user's chosen duration when adjusting timers in Smart mode.
-2. **SPP Floor & Reference Alignment** (`src/renderer/src/services/adaptivePacingEngine.ts`): Updated `REFERENCE_SPP_WORDS = 180` and enforced a strict `MIN_DWELL_FLOOR_SEC = 10` floor on `getReadingSpeedSpp()`. Implemented the 1500ms accidental bounce guard to distinguish fat-finger multi-taps from deliberate scrub navigation.
-3. **Typography & Overlay Isolation** (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`): Added `font-sans` to the root overlay container to block reflowable book font leaks, tightened stepper pill spacing, and disabled the `[-]` stepper when at floor duration.
-4. **Final Odd Page Spread Compensation** (`src/renderer/src/components/reader/PdfReaderView.tsx`, `src/renderer/src/components/reader/EpubReaderView.tsx`): Prevented dual-page duration doubling on lone trailing odd pages at the end of books.
+1. **Countdown & Pacing Re-Arming** (`src/renderer/src/services/countdownScrollEngine.ts`, `src/renderer/src/services/adaptiveScrollService.ts`): Re-armed countdowns to the full new duration upon user edits. Guarded `configure()` with `adaptiveChanged` and `fixedChanged` checks to ensure idempotent store synchronizations do not prematurely re-arm timers or destroy the 7-page calibration batch. In `reset()`, enforced `rearm` over `setSeconds`.
+2. **SPP Floor & Reference Alignment** (`src/renderer/src/services/adaptivePacingEngine.ts`): Updated `REFERENCE_SPP_WORDS = 180` and enforced a strict `MIN_DWELL_FLOOR_SEC = 10` floor on `getReadingSpeedSpp()` and `AdaptiveScrollOverlay.tsx`. Implemented the 1500ms accidental bounce guard to distinguish fat-finger multi-taps from deliberate scrub navigation. In `computeDwellSeconds()`, recalibrates strictly relative to the user-set anchor or 7-page batches rather than arbitrary page index modulo.
+3. **Typography & Overlay Isolation** (`src/renderer/src/components/reader/AdaptiveScrollOverlay.tsx`): Added `font-sans` to the root overlay container to block reflowable book font leaks, tightened stepper pill spacing with dynamic monospace character width (`Math.max(2, inputValue.length)}ch`), and disabled the `[-]` stepper when at floor duration.
+4. **Final Odd Page Spread Compensation** (`src/renderer/src/components/reader/PdfReaderView.tsx`, `src/renderer/src/components/reader/EpubReaderView.tsx`): Prevented dual-page duration doubling on lone trailing odd pages at the end of books, while verifying total page count parity (`totalPages % 2 !== 0`) so even-page dual spreads (e.g. 100/100) are never truncated.
 5. **Neo-Styled PDF Zoom Stepper** (`src/renderer/src/components/drawers/SettingsDrawer.tsx`, `src/renderer/src/components/reader/PdfReaderView.tsx`): Built the tactile segmented neo-stepper `-[size]+` in the exact same div and class as existing drawer rows (`w-[156px]`). Formatted the center display to indicate active preset dimensions (`Fit (85%)`, `Default (120%)`, `Full (160%)`, or `${zoom}%`) and wired cycling on click. Flanked with `-` and `+` steppers allowing scaling from 50% to 300%. Removed the redundant `Page zoom` input and aligned shortcut reset (`0` / `Ctrl+0`) to the `1.2` default scale.
 
 ### Touched Files
@@ -2894,7 +2894,7 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `documentation.md`
 
 ### Verification Matrix
-- `npx tsx scratch/test_autoflip_engines.ts`: 111/111 test assertions passed cleanly (monotonic countdown, sleep/suspend guard, EMA learning, retreat accumulation 11s+5s=16s via `recordNavigation`, premature flip rollback, sequential rapid scrub detection, accidental bounce preservation <= 1500ms, skimming recovery, scrub batch reset, WPM/SPP dual metrics with strict 10s floor, stepper input parsing, modifier collision filtering, continuous vertical headroom, lone odd-page spread compensation, and countdown re-arming).
+- `npx tsx scratch/test_autoflip_engines.ts`: 117/117 test assertions passed cleanly (monotonic countdown, sleep/suspend guard, EMA learning, retreat accumulation 11s+5s=16s via `recordNavigation`, premature flip rollback, sequential rapid scrub detection, accidental bounce preservation <= 1500ms, skimming recovery, scrub batch reset, WPM/SPP dual metrics with strict 10s floor, stepper input parsing, modifier collision filtering, continuous vertical headroom, lone odd-page spread compensation distinguishing even vs odd totals, idempotent configure protection against store sync resets, and clean countdown re-arming).
 - `npm run typecheck` (`tsc --noEmit`): Passed with 0 errors across main, preload, and renderer sources.
 - `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 13.75s.
 
@@ -2904,13 +2904,22 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 ---
 
 ## Increment 47: Native Browser Alt+Arrow Navigation & Platform Resilience (Toasts, Windows Vault Retry & PDF Memory Cleanup)
-> **Agent**: @Agent-ResilienceAndErgonomics | **Status**: [IN PROGRESS]
+> **Agent**: @Agent-ResilienceAndErgonomics | **Status**: [COMPLETED]
 
-### What I Am Doing
-1. Standardizing keyboard navigation across the entire desktop reader to native browser conventions: `Alt + ArrowLeft` for backwards (back to library, close open drawer/modal, or page back) and `Alt + ArrowRight` for forward (page forward), eliminating legacy `<` and `>` aliases.
-2. Wiring the Zustand toast notification subsystem (`useAppStore.ts`) with automatic 3800ms dismissal timers and timer cancellation to restore 40+ user-facing alerts.
-3. Hardening Obsidian-style vault imports (`securityBoundaryService.ts`) with `renameWithWindowsRetry` to absorb transient locks from Windows Defender and Search Indexer.
-4. Eliminating PDF worker and canvas memory leaks (`coverService.ts`) by enforcing `page.cleanup()` in a `try/finally` block and removing the hardcoded `100` page fallback.
+### What Was Done
+1. **Native Browser Alt+Arrow Navigation Standard** (`App.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`, `ReaderTopBar.tsx`, `SearchDrawer.tsx`, `SettingsDrawer.tsx`, `BookMetadataModal.tsx`, `FullSettingsModal.tsx`, `HelpModal.tsx`):
+   - Replaced all legacy `<` and `>` (and `,`, `.`, `x`, `IntlBackslash`) bindings with native browser navigation conventions: `Alt + ArrowLeft` for backwards (back to library, close open drawer/modal, or page step backwards) and `Alt + ArrowRight` for forward (page step next).
+   - Synchronized top bar tooltips and modal shortcut reference tables.
+2. **Global In-App Toast Feedback Subsystem** (`src/renderer/src/stores/useAppStore.ts`):
+   - Implemented `showToast(message, variant)` and `clearToast()` with auto-dismiss timers (3800ms) and previous timer cancellation.
+   - Activates 40+ user-facing notifications via `NativeFeedbackHost.tsx` across file picker errors, unsupported format rejections, vault import failures, font download alerts, and auto-flip dwell nudges.
+3. **Antivirus & Search Indexer Resilient Vault Imports** (`src/main/securityBoundaryService.ts`):
+   - Implemented `renameWithWindowsRetry` in `securityBoundaryService.ts` with exponential backoff on retryable Windows filesystem codes (`EPERM`, `EBUSY`, `EACCES`).
+   - Wired into both `copyFileIntoVaultIfConfigured` and `importBufferIntoVault`, preventing transient file locking crashes during book imports on Windows Defender.
+4. **PDF Worker Memory Leak & Page Metric Integrity** (`src/renderer/src/services/coverService.ts`):
+   - Wrapped first-page thumbnail rendering in an isolated `try/finally` block that guarantees `page.cleanup()` is invoked, immediately releasing decoded glyphs and operator lists.
+   - Guarded document destruction in outer `finally` to invoke `loadingTask.destroy()` when `pdf` is uninstantiated.
+   - Removed the arbitrary hardcoded `totalPages: 100` fallback; the service now preserves the real `pdf.numPages` or defaults cleanly to `1`, preventing corrupted reading metrics.
 
 ### Problem Statement
 1. Non-standard navigation hotkeys: `Alt + <` and `Alt + >` (along with `,`, `.`, and `x` aliases) conflicted with keyboard typing habits instead of behaving like native web browser `Alt + ArrowLeft` (back) and `Alt + ArrowRight` (forward).
@@ -2918,7 +2927,7 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 3. Vault import race condition on Windows: Raw `rename` triggered `EPERM` or `EBUSY` when Windows Defender or Search Indexer locked newly written `.tmp` files.
 4. PDF worker memory leak & falsified page counts: `coverService.ts` never invoked `page.cleanup()`, and thumbnail failures fell back to an arbitrary `totalPages: 100`.
 
-### Active Files / Lock
+### Touched Files
 - `src/renderer/src/App.tsx`
 - `src/renderer/src/components/reader/EpubReaderView.tsx`
 - `src/renderer/src/components/reader/PdfReaderView.tsx`
@@ -2931,6 +2940,55 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 - `src/renderer/src/stores/useAppStore.ts`
 - `src/main/securityBoundaryService.ts`
 - `src/renderer/src/services/coverService.ts`
+- `scratch/test_phase2_resilience.ts`
 - `dev-documentations.md`
 - `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_phase2_resilience.ts`: 4/4 automated test suites passed cleanly (native browser `Alt + ArrowLeft`/`ArrowRight` filter, toast store lifecycle & auto-dismissal, Windows antivirus file lock retry loop, and PDF page cleanup / page count fallback).
+- `npx tsx scratch/test_autoflip_engines.ts`: 111/111 test assertions passed cleanly.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer targets.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 14.65s (out/main: 134.20 kB, out/preload: 5.36 kB, out/renderer: 3,495.46 kB JS, 128.91 kB CSS).
+
+### Handoff Notes
+- All global reader navigation now consistently uses `Alt + ArrowLeft` and `Alt + ArrowRight`. No keyboard listener traps `<` or `>` with Alt modifier.
+- When `showToast` is called repeatedly in rapid succession, prior timeouts are immediately cleared, preventing stale dismissal timers from prematurely hiding fresh notifications.
+
+---
+
+## Increment 48: Lightweight ZIP Backup Deduplication & Continuous EPUB Read Aloud Chaining
+> **Agent**: @Agent-ArchiveAndSpeechEngine | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Lightweight ZIP Backup Deduplication** (`src/renderer/src/services/backupService.ts`):
+   - Eliminated redundant Base64 payload storage in `exportToZip()`.
+   - Discrete JPEG cover files are stored inside `covers/book_X_cover.jpg`, while `library_metadata.json` strips large embedded `coverDataUrl` strings from book records.
+   - Reduced ZIP archive size by 50–70% and removed large string allocations during `JSON.stringify()`.
+   - `importAdditiveBackup` seamlessly re-hydrates covers from the `covers/` directory or falls back to legacy embedded data URLs if present in older backup files.
+2. **Spread-Level Continuous EPUB Read Aloud & Chapter Chaining** (`src/renderer/src/components/reader/EpubReaderView.tsx`):
+   - Implemented `getVisibleSpreadText()` leveraging DOM ranges between `loc.start.cfi` and `loc.end.cfi` to extract strictly the text displayed on the active spread.
+   - Built `speakSpreadLoop()` to read current spread text, broadcast spoken words to `useAppStore.activeTTSWord`, and upon `onEnd`, invoke `navigateStep('next')` to visually flip pages in synchronization with speech.
+   - Seamlessly advances across chapter boundaries when the end of a spine document is reached, continuing speech until `loc.atEnd` or explicit user pause/stop.
+
+### Problem Statement
+1. Duplicated Base64 Cover Art in Backup ZIP Exports (`backupService.ts`): `exportToZip` bundled `library_metadata.json` with multi-megabyte embedded base64 image strings while simultaneously writing identical JPEG files to `covers/`, doubling archive sizes and spiking memory during export.
+2. Single-Chapter TTS Boundary & Missing Visual Page Turns (`EpubReaderView.tsx`): TTS grabbed `iframeDoc.body.innerText` from the start of the chapter, failed to flip pages or scroll as speech progressed, and terminated abruptly upon reaching the chapter boundary.
+
+### Touched Files
+- `src/renderer/src/services/backupService.ts`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `scratch/test_phase3_features.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_phase3_features.ts`: 2/2 automated test suites passed cleanly (ZIP backup deduplication with additive cover hydration, and multi-chapter continuous spread progression).
+- `npx tsx scratch/test_phase1_integrity.ts; npx tsx scratch/test_phase2_resilience.ts; npx tsx scratch/test_phase3_features.ts`: All phase 1, 2, and 3 regression suites passed cleanly.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors across main, preload, and renderer targets.
+- `npm run build`: Production bundle (`electron-vite build`) generated cleanly in 12.04s (out/main: 134.20 kB, out/preload: 5.36 kB, out/renderer: 3,500.04 kB JS, 128.91 kB CSS).
+
+### Handoff Notes
+- In `EpubReaderView.tsx`, `isTTSSpeakingLoopRef` prevents runaway navigation loops when Read Aloud is paused or stopped during page transition animations.
+- ZIP export and import remain completely backward-compatible with legacy archives containing Base64 strings directly in `library_metadata.json`.
+
 

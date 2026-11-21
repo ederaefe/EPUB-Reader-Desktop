@@ -169,13 +169,16 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
     adaptiveScrollEngine.recordUserActivity()
     if (isPdf) {
       handleCountdownChange(pdfDefaultDwell)
+      setInputValue(String(pdfDefaultDwell))
       return
     }
     adaptiveScrollEngine.reset()
     if (effectiveMode === 'countdown') {
       updateSettings({ autoscrollCountdownSec: 20 })
+      setInputValue('20')
     } else {
       updateSettings({ autoscrollAdaptiveSec: 25, targetWpm: 250 })
+      setInputValue('25')
     }
   }
 
@@ -399,7 +402,7 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
             <div className="flex flex-col items-center justify-center pl-2">
               <div className="flex items-baseline gap-1">
                 <span className={`text-[18px] font-bold tracking-tight tabular-nums font-mono ${sppColorClass}`}>
-                  {metrics.readingSpeedSpp || 24}s
+                  {Math.max(10, metrics.readingSpeedSpp || 10)}s
                 </span>
                 <span
                   className="font-sans text-[11px] font-medium text-[var(--app-text-muted)] opacity-70 cursor-help select-none"
@@ -476,9 +479,8 @@ export const AdaptiveScrollOverlay: React.FC<AdaptiveScrollOverlayProps> = ({
                       ;(e.target as HTMLElement).blur()
                     }
                   }}
-                  className={`${
-                    inputValue.length >= 3 ? 'w-10' : 'w-7'
-                  } text-right text-[15px] font-semibold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                  style={{ width: `${Math.max(2, inputValue.length)}ch` }}
+                  className="text-right text-[15px] font-semibold text-[var(--app-text-strong)] font-mono bg-transparent outline-none caret-[var(--app-accent)] tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   aria-label="Dwell seconds"
                 />
                 <span className="text-[12px] text-[var(--app-text-muted)] font-mono select-none">sec</span>

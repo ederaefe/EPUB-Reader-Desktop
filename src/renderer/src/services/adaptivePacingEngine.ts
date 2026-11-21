@@ -488,13 +488,16 @@ export class AdaptivePacingEngine {
       baseDurationSec = userBaseSec * spreadFactor
     } else {
       // Page >= 20 (or spread >= 11): Calibrated dynamic pacing engaged
-      // Check batch recalibration milestone (every 7 pages / spreads)
+      // Check batch recalibration milestone (every 7 pages / spreads or 7 pages from user anchor)
       const calibratedStart = isDualSpread ? DUAL_CALIBRATED_SPREAD_START : SINGLE_CALIBRATED_PAGE_START
       const pagesSinceCalibrated = pageIndexOrSpread - calibratedStart
+      const pagesSinceLastBatch =
+        this.lastRecalibratedIndex > 0 ? pageIndexOrSpread - this.lastRecalibratedIndex : -1
 
       if (
         this.lastRecalibratedIndex === 0 ||
-        pagesSinceCalibrated % BATCH_RECALIBRATION_INTERVAL === 0
+        (pagesSinceCalibrated >= 0 && pagesSinceCalibrated % BATCH_RECALIBRATION_INTERVAL === 0) ||
+        (pagesSinceLastBatch >= BATCH_RECALIBRATION_INTERVAL)
       ) {
         this.lastRecalibratedIndex = pageIndexOrSpread
         this.lastBatchWpm = this.currentWpm
