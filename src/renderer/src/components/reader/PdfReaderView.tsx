@@ -21,6 +21,7 @@ import { SideNavigation } from './SideNavigation'
 import { TOCDrawer, type TocItem } from '../drawers/TOCDrawer'
 import { NotesDrawer } from '../drawers/NotesDrawer'
 import { BookmarksDrawer } from '../drawers/BookmarksDrawer'
+import { SearchDrawer, type SearchMatch } from '../drawers/SearchDrawer'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu'
 import { SelectionPopup } from './SelectionPopup'
@@ -138,6 +139,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     annotation: Annotation
     position: { x: number; y: number }
   } | null>(null)
+  const [searchFocusNonce, setSearchFocusNonce] = useState(0)
+  const [activeSearchHighlightQuery, setActiveSearchHighlightQuery] = useState<string | null>(null)
 
   const pdfProgressPercent =
     totalPages > 1 ? ((currentPage - 1) / (totalPages - 1)) * 100 : 100
@@ -386,8 +389,13 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             span.style.cursor = 'text'
             span.style.userSelect = 'text'
 
-            // Check if span matches any page highlight with word-boundary safety
+            // Check if span matches search query or any user annotation
             const strTrimmed = item.str.trim()
+            const isSearchMatch = Boolean(
+              activeSearchHighlightQuery &&
+              strTrimmed.length > 0 &&
+              strTrimmed.toLowerCase().includes(activeSearchHighlightQuery.toLowerCase())
+            )
             const matchingAnn = strTrimmed.length > 0
               ? pageAnns.find((a) => {
                   if (!a.text) return false
@@ -397,7 +405,10 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
                   return strTrimmed.length > 3 && annTrimmed.includes(strTrimmed)
                 })
               : null
-            if (matchingAnn) {
+            if (isSearchMatch) {
+              span.style.backgroundColor = 'rgba(245, 158, 11, 0.45)'
+              span.style.borderRadius = '2px'
+            } else if (matchingAnn) {
               const hex = (ICE_NOTE_COLORS[matchingAnn.color] || ICE_NOTE_COLORS.yellow).hex
               span.style.backgroundColor = hex
               span.style.opacity = '0.42'
@@ -454,7 +465,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     return () => {
       cancelled = true
     }
-  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageLayout, settings.pageSpread, book.id, syncActiveBookProgress, annotationsVersion])
+  }, [pdfDoc, currentPage, totalPages, zoom, settings.pageLayout, settings.pageSpread, book.id, syncActiveBookProgress, annotationsVersion, activeSearchHighlightQuery])
 
   const isDual = (settings.pageLayout ?? (settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
   const step = isDual ? 2 : 1
@@ -663,6 +674,212 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     settings.autoscrollAdaptiveSec
   ])
 
+  // Continuous PDF Read Aloud (Full-Page loop with auto-page advance)
+  const isTTSSpeakingLoopRef = useRef(false)
+
+  const getVisiblePdfText = useCallback(
+    async (pageNum: number) => {
+      if (!pdfDoc || pageNum < 1 || pageNum > pdfDoc.numPages) return ''
+      try {
+        const page = await pdfDoc.getPage(pageNum)
+        const content = await page.getTextContent()
+        const text = (content.items as any[])
+          .map((item) => item.str || '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        return text
+      } catch {
+        return ''
+      }
+    },
+    [pdfDoc]
+  )
+
+  const speakPdfLoop = useCallback(
+    async (targetPage?: number) => {
+      const pageToSpeak = targetPage ?? currentPage
+      if (!pdfDoc || pageToSpeak < 1 || pageToSpeak > pdfDoc.numPages) {
+        const cur = useAppStore.getState()
+        cur.setTTSActive(false)
+        cur.setTTSMuted(false)
+        isTTSSpeakingLoopRef.current = false
+        return
+      }
+
+      const st = useAppStore.getState()
+      isTTSSpeakingLoopRef.current = true
+      st.setTTSActive(true)
+      st.setTTSMuted(false)
+
+      let pageText = await getVisiblePdfText(pageToSpeak)
+      const isDouble = (st.settings.pageLayout ?? (st.settings.pageSpread === 'single' ? 'single' : 'dual')) === 'dual'
+      if (isDouble && pageToSpeak + 1 <= pdfDoc.numPages) {
+        const rightText = await getVisiblePdfText(pageToSpeak + 1)
+        if (rightText) {
+          pageText = `${pageText} ${rightText}`.trim()
+        }
+      }
+
+      if (!pageText) {
+        const stepCount = isDouble ? 2 : 1
+        const nextPage = pageToSpeak + stepCount
+        if (nextPage <= pdfDoc.numPages && useAppStore.getState().isTTSActive && isTTSSpeakingLoopRef.current) {
+          setCurrentPage(nextPage)
+          viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+          setTimeout(() => speakPdfLoop(nextPage), 200)
+        } else {
+          st.setTTSActive(false)
+          st.setTTSMuted(false)
+          isTTSSpeakingLoopRef.current = false
+        }
+        return
+      }
+
+      ttsService.speak(pageText, {
+        rate: st.settings.ttsSpeed,
+        pitch: st.settings.ttsPitch,
+        voiceURI: st.settings.ttsVoice,
+        onBoundary: (word) => {
+          useAppStore.getState().setActiveTTSWord(word)
+        },
+        onEnd: async () => {
+          useAppStore.getState().setActiveTTSWord(null)
+          const cur = useAppStore.getState()
+          if (!cur.isTTSActive || !isTTSSpeakingLoopRef.current) return
+
+          const stepCount = isDouble ? 2 : 1
+          const nextPage = pageToSpeak + stepCount
+          if (nextPage > (pdfDoc?.numPages || 1)) {
+            cur.setTTSActive(false)
+            cur.setTTSMuted(false)
+            isTTSSpeakingLoopRef.current = false
+            return
+          }
+
+          try {
+            setCurrentPage(nextPage)
+            viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+            setTimeout(() => {
+              if (useAppStore.getState().isTTSActive && isTTSSpeakingLoopRef.current) {
+                speakPdfLoop(nextPage)
+              }
+            }, 350)
+          } catch (err) {
+            console.warn('PDF TTS auto-advance error:', err)
+            cur.setTTSActive(false)
+            isTTSSpeakingLoopRef.current = false
+          }
+        }
+      })
+    },
+    [currentPage, pdfDoc, getVisiblePdfText]
+  )
+
+  const handleTogglePdfTTS = useCallback(() => {
+    const st = useAppStore.getState()
+    if (st.isTTSActive) {
+      if (st.isTTSMuted) {
+        ttsService.resume()
+        st.setTTSMuted(false)
+      } else {
+        ttsService.pause()
+        st.setTTSMuted(true)
+      }
+      return
+    }
+    speakPdfLoop(currentPage)
+  }, [currentPage, speakPdfLoop])
+
+  const handleStopPdfTTS = useCallback(() => {
+    isTTSSpeakingLoopRef.current = false
+    ttsService.stop()
+    const st = useAppStore.getState()
+    st.setTTSActive(false)
+    st.setTTSMuted(false)
+    st.setActiveTTSWord(null)
+  }, [])
+
+  // Listen to global TTS toggle/stop events dispatched from App.tsx
+  useEffect(() => {
+    const onToggle = () => handleTogglePdfTTS()
+    const onStop = () => handleStopPdfTTS()
+    window.addEventListener('sempi-reader:toggle-tts', onToggle)
+    window.addEventListener('sempi-reader:stop-tts', onStop)
+    return () => {
+      window.removeEventListener('sempi-reader:toggle-tts', onToggle)
+      window.removeEventListener('sempi-reader:stop-tts', onStop)
+    }
+  }, [handleTogglePdfTTS, handleStopPdfTTS])
+
+  // PDF Full-Text Search Drawer Handlers
+  const handleClearPdfSearchHighlight = useCallback(() => {
+    setActiveSearchHighlightQuery(null)
+  }, [])
+
+  const handleSelectPdfSearchMatch = useCallback(
+    (cfi: string) => {
+      const pageNum = parseInt(cfi, 10)
+      if (!Number.isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+        setCurrentPage(pageNum)
+        viewportRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    },
+    [totalPages]
+  )
+
+  const handleSearchPdf = useCallback(
+    async (query: string, signal?: AbortSignal): Promise<SearchMatch[]> => {
+      if (!pdfDoc || !query.trim() || signal?.aborted) return []
+      const cleanQuery = query.trim().toLowerCase()
+      setActiveSearchHighlightQuery(query.trim())
+      const matches: SearchMatch[] = []
+      const MAX_RESULTS = 250
+
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        if (signal?.aborted || matches.length >= MAX_RESULTS) break
+        try {
+          const page = await pdfDoc.getPage(pageNum)
+          if (signal?.aborted) break
+          const content = await page.getTextContent()
+          const pageText = (content.items as any[])
+            .map((item) => item.str || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+
+          let searchIdx = 0
+          while (searchIdx < pageText.length && matches.length < MAX_RESULTS) {
+            if (signal?.aborted) break
+            const foundIdx = pageText.toLowerCase().indexOf(cleanQuery, searchIdx)
+            if (foundIdx === -1) break
+
+            const start = Math.max(0, foundIdx - 40)
+            const end = Math.min(pageText.length, foundIdx + cleanQuery.length + 40)
+            const excerpt =
+              (start > 0 ? '...' : '') +
+              pageText.slice(start, end).trim() +
+              (end < pageText.length ? '...' : '')
+
+            const matchingToc = findActivePdfTocItem(toc, pageNum)
+            const chapterLabel = matchingToc?.label || `Page ${pageNum}`
+
+            matches.push({
+              cfi: String(pageNum),
+              excerpt,
+              chapter: chapterLabel
+            })
+
+            searchIdx = foundIdx + cleanQuery.length
+          }
+        } catch {
+          // Skip unreadable page
+        }
+      }
+      return matches
+    },
+    [pdfDoc, toc]
+  )
+
   const handleCancelReflow = useCallback(async () => {
     await useAppStore.getState().cancelPdfConversion()
   }, [])
@@ -737,6 +954,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         }
         if (k === 'f') {
           e.preventDefault()
+          setSearchFocusNonce((n) => n + 1)
           toggleSearchDrawer(true)
           return
         }
@@ -806,6 +1024,14 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
       } else if (e.key === 'End') {
         e.preventDefault()
         setCurrentPage(totalPages)
+      } else if (e.key === 'F7') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleTogglePdfTTS()
+      } else if (e.key === 'F8') {
+        e.preventDefault()
+        e.stopPropagation()
+        handleStopPdfTTS()
       } else if (e.key === 'F10') {
         e.preventDefault()
         const nextDual = !isDual
@@ -925,6 +1151,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     isTTSActive,
     setTTSActive,
     setTTSMuted,
+    handleTogglePdfTTS,
+    handleStopPdfTTS,
     isImmersiveFullscreen,
     setImmersiveFullscreen,
     onBack
@@ -1244,24 +1472,8 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
         isTTSMuted={isTTSMuted}
         currentChapter={activePdfChapterLabel}
         ttsSpeed={settings.ttsSpeed}
-        onTogglePlay={() => {
-          const st = useAppStore.getState()
-          if (st.isTTSActive) {
-            if (st.isTTSMuted) {
-              ttsService.resume()
-              st.setTTSMuted(false)
-            } else {
-              ttsService.pause()
-              st.setTTSMuted(true)
-            }
-          }
-        }}
-        onStop={() => {
-          ttsService.stop()
-          const st = useAppStore.getState()
-          st.setTTSActive(false)
-          st.setTTSMuted(false)
-        }}
+        onTogglePlay={() => handleTogglePdfTTS()}
+        onStop={() => handleStopPdfTTS()}
       />
 
       {/* Auto-Scroll Dwell-Timer Overlay for PDF */}
@@ -1368,6 +1580,12 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
             bumpBookmarksVersion()
           }
         }}
+      />
+      <SearchDrawer
+        onSearch={handleSearchPdf}
+        onSelectMatch={handleSelectPdfSearchMatch}
+        onClearHighlight={handleClearPdfSearchHighlight}
+        focusNonce={searchFocusNonce}
       />
       <SettingsDrawer />
 

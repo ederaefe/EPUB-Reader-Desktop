@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
 import type {
   CheckBookWritableResult,
   WriteBookMetadataRequest,
@@ -108,6 +108,8 @@ export interface DesktopAPI {
   importBufferToVault: (fileName: string, buffer: ArrayBuffer) => Promise<VaultImportBufferResult>
   openVaultInExplorer: () => Promise<boolean>
   checkForUpdates: () => Promise<AppUpdateCheckResult>
+  getPathForFile: (file: File) => string
+  authorizeDroppedFile: (filePath: string) => Promise<{ success: boolean; filePath: string; error?: string }>
 }
 
 const api: DesktopAPI = {
@@ -198,7 +200,15 @@ const api: DesktopAPI = {
   importBufferToVault: (fileName: string, buffer: ArrayBuffer) =>
     ipcRenderer.invoke('security:importBufferToVault', fileName, buffer),
   openVaultInExplorer: () => ipcRenderer.invoke('security:openVaultInExplorer'),
-  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates')
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates'),
+  getPathForFile: (file: File) => {
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      return (file as any).path || ''
+    }
+  },
+  authorizeDroppedFile: (filePath: string) => ipcRenderer.invoke('app:authorizeDroppedFile', filePath)
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

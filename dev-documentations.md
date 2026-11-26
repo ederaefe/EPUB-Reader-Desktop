@@ -3940,6 +3940,108 @@ Conducted a deep forensic audit on the cloned `Aquile-Reader-Premium` repository
 ### Handoff Notes
 - The threat has been completely neutralized. No scripts were executed from the purged directory.
 
+---
+
+## Increment 72: Bug Bounty Sweep: PDF Search Drawer & TTS Engine, Drag-Drop WebUtils & Vault Authorization, Backup Fidelity & External Link Hardening
+> **Agent**: @Agent-BugBounty | **Status**: [COMPLETED]
+
+### What Was Done
+Conducted a forensic bug hunt and system-wide remediation resolving 5 critical architectural, engine, security, and UI defects:
+1. Mounted `<SearchDrawer>` in `PdfReaderView.tsx` with full-text search indexing across PDF pages, jump-to-page navigation, and matching phrase highlighting in the selectable text layer.
+2. Built a continuous full-page Read Aloud (TTS) narration engine in `PdfReaderView.tsx` with automatic page-advance loops, dual-page spread concatenation, `F7` (Play/Pause) and `F8` (Stop) shortcuts, and `ReaderAudioHUD` wiring.
+3. Fixed Electron 34 drag-and-drop deprecation in `App.tsx` and `LibraryView.tsx` using `webUtils.getPathForFile` and authorized dropped files via a dedicated `app:authorizeDroppedFile` main IPC handler.
+4. Eliminated data loss in `backupService.ts` additive imports by preserving `href` and `iceRange` on annotations, `excerpt`, `href`, `xpath` on bookmarks, and recalculating `notesCount` on all affected books in Dexie.
+5. Routed Merriam-Webster dictionary and Google Translate external links in `EpubReaderView.tsx` and external definition providers in `SelectionPopup.tsx` through `window.desktopAPI.openExternal`, and permitted `.pdf` files in main process `ALLOWED_WRITE_EXTS`.
+
+### Problem Statement
+1. **Missing `SearchDrawer` in `PdfReaderView.tsx`**: `isSearchDrawerOpen` was bound in store and top bar search buttons triggered it, but `<SearchDrawer>` was never mounted in `PdfReaderView.tsx`. Pressing `Ctrl+F` or clicking Search dimmed the reader canvas and suspended autoscroll, trapping users with no search UI.
+2. **Missing Full-Page Continuous Read Aloud (TTS) in `PdfReaderView.tsx`**: While `ReaderAudioHUD` was mounted, clicking Play when paused had no start handler, and `App.tsx`'s global `F7` listener attempted to query an EPUB `iframe` body which does not exist in native PDF mode.
+3. **Electron 34 Drag-and-Drop Path Deprecation & Security Boundary Lockout**: Chromium/Electron 34 removed `File.path` on DOM `File` objects in sandboxed renderers, evaluating `(file as any).path` as `undefined` and falling back to bare filenames (`"book.epub"`). Furthermore, dropped books were not registered with `authorizeFile()`, causing `[OUTSIDE_AUTHORIZED_BOUNDARY]` errors on read under Folder Lock.
+4. **Additive Backup Import Data Loss**: `backupService.ts:importAdditiveBackup` dropped `href` and `iceRange` on annotations and `excerpt`, `href`, `xpath` on bookmarks, and failed to update `notesCount` on affected books in `db.books`.
+5. **Renderer External Links & PDF Output Extension**: `EpubReaderView.tsx` (lines 3133 & 3145) and `SelectionPopup.tsx` (line 196) invoked `window.open` directly instead of `window.desktopAPI.openExternal`, and `ALLOWED_WRITE_EXTS` in `src/main/index.ts` omitted `.pdf`.
+
+### Technical Fix
+1. **Preload & Main Process Authorization Bridge (`src/preload/index.ts`, `src/main/index.ts`)**:
+   - Exposed `getPathForFile(file: File): string` via Electron's `webUtils.getPathForFile`.
+   - Exposed `authorizeDroppedFile(filePath: string): Promise<{ success: boolean; filePath?: string; error?: string }>`.
+   - In `src/main/index.ts`, registered `app:authorizeDroppedFile` with `handleTrusted()`: validates path via `assertSafePath(rawPath, 'read')`, copies into vault if configured via `copyFileIntoVaultIfConfigured(rawPath)`, authorizes the canonical path via `authorizeFile(finalPath)`, and returns the authorized path.
+   - Added `'.pdf'` to `ALLOWED_WRITE_EXTS`.
+2. **Drag-and-Drop Integration (`src/renderer/src/App.tsx`, `src/renderer/src/components/library/LibraryView.tsx`)**:
+   - Updated window-level and catalog-level drop handlers: resolved real paths via `window.desktopAPI.getPathForFile(file)` and authorized via `window.desktopAPI.authorizeDroppedFile(rawPath)`.
+   - Added global `sempi-reader:toggle-tts` and `sempi-reader:stop-tts` event dispatching in `App.tsx` when `activeBook.format === 'pdf'`.
+3. **PDF Full-Text Search Engine (`src/renderer/src/components/reader/PdfReaderView.tsx`)**:
+   - Imported `SearchDrawer, { type SearchMatch }` from `../drawers/SearchDrawer`.
+   - Added `searchFocusNonce` and `activeSearchHighlightQuery` state.
+   - Implemented `handleSearchPdf(query, signal)`: iterates `1..numPages`, extracts structured text via `page.getTextContent()`, matches queries case-insensitively, builds contextual excerpts, and links to outline TOC chapters.
+   - Implemented `handleSelectPdfSearchMatch`: navigates to matched page and scrolls viewport to top.
+   - Implemented `handleClearPdfSearchHighlight`: clears active search highlight.
+   - Mounted `<SearchDrawer>` above `<SettingsDrawer>`.
+   - In `renderSingleCanvas`, highlighted matching text spans with amber backdrop (`rgba(245, 158, 11, 0.45)`) and added `activeSearchHighlightQuery` to render effect dependencies.
+4. **Continuous Full-Page Read Aloud (TTS) Engine (`src/renderer/src/components/reader/PdfReaderView.tsx`)**:
+   - Implemented `getVisiblePdfText(pageNum)`: extracts and normalizes text from PDF page.
+   - Implemented `speakPdfLoop(targetPage)`: concatenates text (accounting for dual-page spreads), speaks via `ttsService.speak()`, updates word boundaries (`setActiveTTSWord`), and on completion automatically navigates to `nextPage` and recurses until the end of document.
+   - Implemented `handleTogglePdfTTS()` (play/pause/resume) and `handleStopPdfTTS()`.
+   - Wired `F7` and `F8` shortcuts and `sempi-reader:toggle-tts` / `sempi-reader:stop-tts` events.
+   - Bound `ReaderAudioHUD` `onTogglePlay` and `onStop`.
+5. **Additive Backup Fidelity & Notes Count Sync (`src/renderer/src/services/backupService.ts`)**:
+   - Added `sanitizeIceRange` validator guarding against prototype pollution and non-string XPaths.
+   - Preserved `href`, `iceRange`, and `updatedAt` on imported annotations.
+   - Preserved `excerpt`, `href`, and `xpath` on imported bookmarks.
+   - Tracked all `affectedBookIds`: recalculated `notesCount` via `db.annotations.where('bookId').equals(id).count()` and updated `db.books`.
+   - Triggered version bumps (`bumpAnnotationsVersion`, `bumpBookmarksVersion`, `bumpLibraryVersion`).
+6. **External Link Hardening (`src/renderer/src/components/reader/EpubReaderView.tsx`, `src/renderer/src/components/reader/SelectionPopup.tsx`)**:
+   - Replaced raw `window.open` calls with `window.desktopAPI?.openExternal(url)` for Merriam-Webster dictionary, Google Translate, and external providers in selection popups.
+
+### Touched Files
+- `src/main/index.ts`
+- `src/preload/index.ts`
+- `src/renderer/src/App.tsx`
+- `src/renderer/src/components/library/LibraryView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/SelectionPopup.tsx`
+- `src/renderer/src/services/backupService.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification
+- `npx tsc --noEmit`: Clean pass (0 TypeScript errors across main, preload, and renderer processes).
+- Git status verified: exactly 9 modified files, zero untracked artifacts.
+
+### Handoff Notes
+- In `PdfReaderView.tsx`, `activeSearchHighlightQuery` triggers automatic canvas text layer re-rendering when searches are run or cleared.
+- In `backupService.ts`, all additive imports maintain exact XPath and ICE range anchors for EPUB highlights and update `notesCount` reactively.
+
+---
+
+## Increment 66: Notes Drawer Filter Reset & Visual Synchronization
+> **Agent**: @Agent-NotesUI | **Status**: [COMPLETED]
+
+### What Was Done
+1. **True "All" Notes Filter Reset (`NotesDrawer.tsx`)**:
+   - Updated the "All" filter button in the Notes drawer to reset both `selectedColor = 'all'` and `onlyCommented = false`.
+   - Previously, clicking "All" only cleared color filters, leaving the `onlyCommented` filter active and hiding notes that lacked comments while deceptively showing "All" as selected.
+2. **Visual State Synchronization (`NotesDrawer.tsx`)**:
+   - Conditioned the active blue styling of the "All" button strictly on `selectedColor === 'all' && !onlyCommented`, preventing the UI from showing "All" active when the comment filter is active.
+
+### Problem Statement
+In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all'` but did not reset `onlyCommented` to `false`. When a user had toggled the comment-only filter (`💬 1`), tapping "All" left the comment filter active, causing the drawer to display only 1 note even though the header indicated 4 notes and the "All" button appeared highlighted in blue.
+
+### Technical Fix
+- In `src/renderer/src/components/drawers/NotesDrawer.tsx`:
+  - Bound `onClick` on the "All" button to `{ setSelectedColor('all'); setOnlyCommented(false); }`.
+  - Updated the active class condition to `selectedColor === 'all' && !onlyCommented`.
+
+### Touched Files
+- `src/renderer/src/components/drawers/NotesDrawer.tsx`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+
+
+
 
 
 

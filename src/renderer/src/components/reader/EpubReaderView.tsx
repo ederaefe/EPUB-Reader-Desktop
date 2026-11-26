@@ -3133,23 +3133,27 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           id: 'dict',
           label: 'Define in Dictionary',
           icon: <BookOpen className="w-3.5 h-3.5 text-[#a78bfa]" />,
-          onClick: () =>
-            window.open(
-              `https://www.merriam-webster.com/dictionary/${encodeURIComponent(text)}`,
-              '_blank',
-              'noopener,noreferrer'
-            )
+          onClick: () => {
+            const url = `https://www.merriam-webster.com/dictionary/${encodeURIComponent(text)}`
+            if (window.desktopAPI?.openExternal) {
+              window.desktopAPI.openExternal(url)
+            } else {
+              window.open(url, '_blank', 'noopener,noreferrer')
+            }
+          }
         },
         {
           id: 'translate',
           label: 'Translate Selection',
           icon: <Languages className="w-3.5 h-3.5 text-[#4cd964]" />,
-          onClick: () =>
-            window.open(
-              `https://translate.google.com/?sl=auto&tl=en&text=${encodeURIComponent(text)}`,
-              '_blank',
-              'noopener,noreferrer'
-            )
+          onClick: () => {
+            const url = `https://translate.google.com/?sl=auto&tl=en&text=${encodeURIComponent(text)}`
+            if (window.desktopAPI?.openExternal) {
+              window.desktopAPI.openExternal(url)
+            } else {
+              window.open(url, '_blank', 'noopener,noreferrer')
+            }
+          }
         },
         {
           id: 'tts',

@@ -317,6 +317,10 @@ export const App: React.FC = () => {
         e.preventDefault()
         const state = useAppStore.getState()
         if (state.currentView === 'reader' && state.activeBook) {
+          if (state.activeBook.format === 'pdf' && state.pdfViewMode === 'original') {
+            window.dispatchEvent(new CustomEvent('sempi-reader:toggle-tts'))
+            return
+          }
           if (state.isTTSActive) {
             if (state.isTTSMuted) {
               state.setTTSMuted(false)
@@ -346,6 +350,10 @@ export const App: React.FC = () => {
         // Stop TTS
         e.preventDefault()
         const state = useAppStore.getState()
+        if (state.activeBook?.format === 'pdf' && state.pdfViewMode === 'original') {
+          window.dispatchEvent(new CustomEvent('sempi-reader:stop-tts'))
+          return
+        }
         if (state.isTTSActive) {
           ttsService.stop()
           state.setTTSActive(false)
@@ -498,9 +506,18 @@ export const App: React.FC = () => {
         }
         return
       }
-      const firstPath = (firstFile as any)?.path as string | undefined
-      if (firstPath) {
-        await openLocalBookPath(firstPath)
+      const rawPath = firstFile
+        ? (window.desktopAPI?.getPathForFile ? window.desktopAPI.getPathForFile(firstFile) : ((firstFile as any)?.path as string | undefined))
+        : undefined
+      if (rawPath) {
+        if (window.desktopAPI?.authorizeDroppedFile) {
+          const authRes = await window.desktopAPI.authorizeDroppedFile(rawPath)
+          if (authRes.success && authRes.filePath) {
+            await openLocalBookPath(authRes.filePath)
+            return
+          }
+        }
+        await openLocalBookPath(rawPath)
       }
       return
     }
@@ -512,7 +529,8 @@ export const App: React.FC = () => {
       const ext = file.name.split('.').pop()?.toLowerCase() || ''
       if (ext !== 'epub' && ext !== 'pdf' && ext !== 'mobi' && ext !== 'txt') continue
       const buffer = await file.arrayBuffer()
-      let filePath = ((file as any).path as string | undefined) || file.name
+      const rawPath = window.desktopAPI?.getPathForFile ? window.desktopAPI.getPathForFile(file) : ((file as any).path as string | undefined)
+      let filePath = rawPath || file.name
       if (useVaultImport) {
         const vaultRes = await window.desktopAPI.importBufferToVault(file.name, buffer.slice(0))
         if (vaultRes.success && vaultRes.filePath) {
@@ -520,6 +538,11 @@ export const App: React.FC = () => {
         } else {
           showToast(vaultRes.error || `Could not copy ${file.name} into Vault`, 'error')
           continue
+        }
+      } else if (rawPath && window.desktopAPI?.authorizeDroppedFile) {
+        const authRes = await window.desktopAPI.authorizeDroppedFile(rawPath)
+        if (authRes.success && authRes.filePath) {
+          filePath = authRes.filePath
         }
       }
       const existing = await db.books.where('filePath').equals(filePath).first()

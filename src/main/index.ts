@@ -82,7 +82,7 @@ let pendingExternalFile: string | null = null
 
 const SUPPORTED_EXTS = new Set(['.epub', '.pdf'])
 const ALLOWED_READ_EXTS = new Set(['.epub', '.pdf', '.mobi', '.txt', '.json', '.zip'])
-const ALLOWED_WRITE_EXTS = new Set(['.json', '.zip', '.epub', '.txt', '.md', '.html'])
+const ALLOWED_WRITE_EXTS = new Set(['.json', '.zip', '.epub', '.pdf', '.txt', '.md', '.html'])
 const MAX_BUFFER_READ_SIZE = 250 * 1024 * 1024 // 250 MB ceiling to prevent main process memory exhaustion
 const MAX_TEXT_READ_SIZE = 100 * 1024 * 1024 // 100 MB ceiling for UTF-8 text reads (supports large JSON backups)
 const MAX_WRITE_SIZE = 250 * 1024 * 1024 // 250 MB ceiling for file writes
@@ -795,6 +795,17 @@ handleTrusted('dialog:openFiles', async () => {
     }
   }
   return authorizedPaths
+})
+
+handleTrusted('app:authorizeDroppedFile', async (_, rawPath: string) => {
+  try {
+    const safePath = assertSafePath(rawPath, 'read')
+    const finalPath = await copyFileIntoVaultIfConfigured(safePath)
+    authorizeFile(finalPath)
+    return { success: true, filePath: finalPath }
+  } catch (err: any) {
+    return { success: false, filePath: '', error: err?.message || 'Access denied: file could not be authorized' }
+  }
 })
 
 handleTrusted('dialog:openFolder', async () => {

@@ -193,7 +193,11 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     try {
       const parsed = new URL(url)
       if (parsed.protocol === 'https:') {
-        window.open(url, '_blank', 'noopener,noreferrer')
+        if (window.desktopAPI?.openExternal) {
+          window.desktopAPI.openExternal(url)
+        } else {
+          window.open(url, '_blank', 'noopener,noreferrer')
+        }
       }
     } catch {
       // Ignore invalid or non-HTTPS URLs

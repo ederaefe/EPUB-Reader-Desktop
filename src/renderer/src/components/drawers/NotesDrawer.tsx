@@ -516,9 +516,12 @@ export const NotesDrawer: React.FC<NotesDrawerProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setSelectedColor('all')}
+                  onClick={() => {
+                    setSelectedColor('all')
+                    setOnlyCommented(false)
+                  }}
                   className={`px-2 h-6 rounded-[2px] transition-colors cursor-pointer ${
-                    selectedColor === 'all'
+                    selectedColor === 'all' && !onlyCommented
                       ? 'bg-[#2a69df] text-white font-medium'
                       : 'text-[#8b949e] hover:bg-[#232732] hover:text-white'
                   }`}

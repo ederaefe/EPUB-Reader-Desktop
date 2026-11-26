@@ -820,7 +820,8 @@ export const LibraryView: React.FC = () => {
         else if (ext === 'txt') format = 'txt'
 
         const buffer = await file.arrayBuffer()
-        let finalFilePath = (file as any).path || file.name
+        const rawPath = window.desktopAPI?.getPathForFile ? window.desktopAPI.getPathForFile(file) : ((file as any).path as string | undefined)
+        let finalFilePath = rawPath || file.name
         if (useVaultImport) {
           const vaultRes = await window.desktopAPI.importBufferToVault(file.name, buffer.slice(0))
           if (vaultRes.success && vaultRes.filePath) {
@@ -828,6 +829,11 @@ export const LibraryView: React.FC = () => {
           } else {
             showToast(vaultRes.error || `Could not copy ${file.name} into Vault`, 'error')
             continue
+          }
+        } else if (rawPath && window.desktopAPI?.authorizeDroppedFile) {
+          const authRes = await window.desktopAPI.authorizeDroppedFile(rawPath)
+          if (authRes.success && authRes.filePath) {
+            finalFilePath = authRes.filePath
           }
         }
 

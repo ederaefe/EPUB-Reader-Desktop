@@ -2,7 +2,7 @@
 // Implements non-destructive JSON & ZIP export and additive upsert merge
 
 import JSZip from 'jszip'
-import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings, type NoteColor } from '../db'
+import { db, type Book, type Category, type Annotation, type Bookmark, type UserSettings, type NoteColor, type IceRangeAnchor } from '../db'
 import { useAppStore } from '../stores/useAppStore'
 import { normalizeTags } from '../../../shared/bookMetadata'
 import { FONT_CATALOG } from '../../../shared/fontCatalog'
@@ -199,6 +199,24 @@ export function sanitizeSettings(raw: unknown): Partial<UserSettings> {
   }
 
   return out
+}
+
+function sanitizeIceRange(raw: any): IceRangeAnchor | undefined {
+  if (!isPlainObject(raw) || hasPrototypePollutionKey(raw)) return undefined
+  if (typeof raw.startXPath !== 'string' || typeof raw.endXPath !== 'string') return undefined
+  return {
+    startXPath: sanitizeString(raw.startXPath, 256),
+    startOffset:
+      typeof raw.startOffset === 'number' && Number.isFinite(raw.startOffset)
+        ? Math.max(0, raw.startOffset)
+        : 0,
+    endXPath: sanitizeString(raw.endXPath, 256),
+    endOffset:
+      typeof raw.endOffset === 'number' && Number.isFinite(raw.endOffset)
+        ? Math.max(0, raw.endOffset)
+        : 0,
+    href: raw.href ? sanitizeString(raw.href, 256) : undefined
+  }
 }
 
 export function validateBackupStructure(raw: unknown): raw is LibraryBackupData {
@@ -514,6 +532,7 @@ export class BackupService {
     existingAnnotations.forEach((a) => {
       annotationKeySet.add(`${a.bookId}:::${a.cfiRange}`)
     })
+    const affectedBookIds = new Set<number>()
 
     for (const remoteAnn of (backup.annotations || []).slice(0, MAX_BACKUP_ANNOTATIONS)) {
       const localBookId = bookIdMapping.get(remoteAnn.bookId)
@@ -533,9 +552,13 @@ export class BackupService {
           color: sanitizeNoteColor(remoteAnn.color),
           pageNumber: typeof remoteAnn.pageNumber === 'number' && Number.isFinite(remoteAnn.pageNumber) ? remoteAnn.pageNumber : undefined,
           chapterTitle: remoteAnn.chapterTitle ? sanitizeString(remoteAnn.chapterTitle, 128) : undefined,
-          createdAt: typeof remoteAnn.createdAt === 'number' && Number.isFinite(remoteAnn.createdAt) ? remoteAnn.createdAt : Date.now()
+          href: remoteAnn.href ? sanitizeString(remoteAnn.href, 256) : undefined,
+          iceRange: sanitizeIceRange(remoteAnn.iceRange),
+          createdAt: typeof remoteAnn.createdAt === 'number' && Number.isFinite(remoteAnn.createdAt) ? remoteAnn.createdAt : Date.now(),
+          updatedAt: typeof remoteAnn.updatedAt === 'number' && Number.isFinite(remoteAnn.updatedAt) ? remoteAnn.updatedAt : undefined
         })
         annotationKeySet.add(key)
+        affectedBookIds.add(localBookId)
         addedAnnotations++
       }
     }
@@ -560,6 +583,9 @@ export class BackupService {
           bookId: localBookId,
           cfi: safeCfi,
           label: sanitizeString(remoteBm.label, 128) || 'Bookmark',
+          excerpt: remoteBm.excerpt ? sanitizeString(remoteBm.excerpt, 512) : undefined,
+          href: remoteBm.href ? sanitizeString(remoteBm.href, 256) : undefined,
+          xpath: remoteBm.xpath ? sanitizeString(remoteBm.xpath, 256) : undefined,
           pageNumber: typeof remoteBm.pageNumber === 'number' && Number.isFinite(remoteBm.pageNumber) ? Math.max(1, remoteBm.pageNumber) : 1,
           progressPercent: typeof remoteBm.progressPercent === 'number' && Number.isFinite(remoteBm.progressPercent) ? Math.max(0, Math.min(100, remoteBm.progressPercent)) : undefined,
           chapterTitle: remoteBm.chapterTitle ? sanitizeString(remoteBm.chapterTitle, 128) : undefined,
@@ -570,12 +596,28 @@ export class BackupService {
       }
     }
 
-    // 5. Restore validated, bounds-clamped user settings if included in the backup
+    // 5. Synchronize notesCount on all affected books in Dexie
+    for (const bookId of affectedBookIds) {
+      const count = await db.annotations.where('bookId').equals(bookId).count()
+      await db.books.update(bookId, { notesCount: count })
+    }
+
+    // 6. Restore validated, bounds-clamped user settings if included in the backup
     if (backup.settings) {
       const safeSettings = sanitizeSettings(backup.settings)
       if (Object.keys(safeSettings).length > 0) {
         useAppStore.getState().updateSettings(safeSettings)
       }
+    }
+
+    if (addedAnnotations > 0) {
+      useAppStore.getState().bumpAnnotationsVersion()
+    }
+    if (addedBookmarks > 0) {
+      useAppStore.getState().bumpBookmarksVersion()
+    }
+    if (addedBooks > 0 || affectedBookIds.size > 0 || addedCategories > 0) {
+      useAppStore.getState().bumpLibraryVersion()
     }
 
     return { addedBooks, addedAnnotations, addedBookmarks, addedCategories }
