@@ -3579,6 +3579,53 @@ Hardened and resolved subtle concurrency, hotkey collision, dual-mode calibratio
 
 ---
 
+## Increment 64: Preserve Remaining Countdown Duration on Auto-Scroll Pause & Resume
+> **Agent**: @Agent-AutoFlipRefiner | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Decoupled Spacebar Unpausing from Page Re-Arming (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Refactored Spacebar play/pause handling across the outer window keydown listener (`EpubReaderView.tsx`), the sandboxed EPUB iframe listener (`EpubReaderView.tsx`), and the PDF canvas listener (`PdfReaderView.tsx`).
+   - If the engine is already active on the current page (`isActive: true`) and in a paused state (`isPaused: true`), tapping Space strictly calls `adaptiveScrollEngine.setUserPaused(false)` and skips `armPageRef.current()`.
+   - The countdown engine immediately resumes ticking from its exact saved remaining seconds (e.g. 15s remaining out of 25s) rather than re-starting the full duration from scratch.
+2. **Dormant Engine Initial Arming Preserved**:
+   - If Auto-Flip is enabled but the engine is uninitialized or dormant on fresh load (`!isActive`), tapping Space cleanly initializes and arms the page countdown via `armPageRef.current()`.
+3. **Automated Unit & Integration Verification (`scratch/test_autoflip_engines.ts`)**:
+   - Added test assertions verifying that pausing mid-dwell, simulating Spacebar unpause, and resuming decrements from `remainingSec` without invoking `armPage()`.
+
+### Problem Statement
+In `EpubReaderView.tsx` and `PdfReaderView.tsx`, the Spacebar toggle evaluated `if (isPaused || !isActive)` and executed both `setUserPaused(false)` and `armPageRef.current()`. Calling `armPageRef.current()` invoked `startPageCountdown()`, which immediately overwrote `remainingSec` with the full dwell duration (`clampedSec`), forcing the countdown to start all over again from the beginning whenever a user paused and unpaused.
+
+### Technical Fix
+- In `src/renderer/src/components/reader/EpubReaderView.tsx` (lines 766-778 and lines 2297-2308) and `src/renderer/src/components/reader/PdfReaderView.tsx` (lines 713-722):
+  ```typescript
+  if (!isActive) {
+    adaptiveScrollEngine.setUserPaused(false)
+    armPageRef.current()
+  } else if (isPaused) {
+    adaptiveScrollEngine.setUserPaused(false)
+  } else {
+    adaptiveScrollEngine.setUserPaused(true)
+  }
+  ```
+- This guarantees that resuming an already active engine simply calls `countdownEngine.resume()` to resume the monotonic 1-second interval timer at `remainingSec`.
+
+### Touched Files
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `scratch/test_autoflip_engines.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsx scratch/test_autoflip_engines.ts`: 77/77 assertions passed.
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+
+### Handoff Notes
+- In `CountdownScrollEngine.ts`, `pause()` and `resume()` preserve `remainingSec` and `onExpire` by design. Only `start()`, `rearm()`, or page relocation reset `remainingSec`. Spacebar unpause now strictly respects this contract.
+
+
+---
+
 ## Increment 64: Fix electron-builder NSIS Schema Validation & Retrigger v1.0.8-beta.1 Release
 > **Agent**: @Agent-ReleaseDeployer | **Status**: [COMPLETED]
 
@@ -3858,6 +3905,43 @@ Implemented an on-demand manual update checker in the Settings > About panel. Us
 
 ### Handoff Notes
 - All external links continue through `window.desktopAPI.openExternal(url)`, gated by strict host whitelisting in `src/main/index.ts`.
+
+---
+
+## Increment 71: Forensic Security Audit & Purge of Phishing Lure Repository (`Aquile-Reader-Premium`)
+> **Agent**: @Agent-SecurityAudit | **Status**: [COMPLETED]
+
+### What Was Done
+Conducted a deep forensic audit on the cloned `Aquile-Reader-Premium` repository, uncovered a malicious GitHub Pages redirector and Frankenstein codebase assembly, and completely purged the directory and associated tracking rules from the workspace.
+
+### Problem Statement
+1. **Malicious Phishing / SEO Poisoning Trap**: The repository `Aquile-Reader-Premium` was analyzed and discovered to be an SEO-poisoning trap containing a Base64-encoded redirector (`laterploat.com/garle.kosin`) inside `index.html` alongside mismatched scraped code from Thorium Reader (`EDRLab.ThoriumReader`), KOReader (`readerui.lua`), and Librera (`com.foobnix.ui2`).
+2. **Workplace Security Requirement**: Immediate complete deletion and purging of all files and references to prevent any accidental script execution, malware exposure, or workspace contamination.
+
+### Technical Fix
+1. **Directory Purge**:
+   - Forcibly removed `c:\Users\USER\Documents\Projects\EPUB READER DESKTOP\Aquile-Reader-Premium` using recursive cleanup.
+   - Verified that the directory is nonexistent on the filesystem.
+2. **Git Baseline Restoration (`.gitignore`)**:
+   - Reverted `.gitignore` back to its pristine state, eliminating any residual patterns.
+3. **Security Audit Record**:
+   - Documented the threat profile: SEO keyword stuffing in `README.md`, disguised package metadata, and external telemetry/exploit links.
+
+### Touched Files
+- `.gitignore` (reverted)
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification
+- `Test-Path "c:\Users\USER\Documents\Projects\EPUB READER DESKTOP\Aquile-Reader-Premium"`: Returned `False`.
+- `git status --short`: Workspace clean of untracked files; only documentation files modified.
+- `npx tsc --noEmit`: Clean pass (0 TypeScript errors across all processes).
+
+### Handoff Notes
+- The threat has been completely neutralized. No scripts were executed from the purged directory.
+
+
+
 
 
 

@@ -766,9 +766,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         if (useAppStore.getState().isAutoscrollActive) {
           const isPaused = adaptiveScrollEngine.isPausedState()
           const isActive = adaptiveScrollEngine.getMetrics().isActive
-          if (isPaused || !isActive) {
+          if (!isActive) {
             adaptiveScrollEngine.setUserPaused(false)
             armPageRef.current()
+          } else if (isPaused) {
+            adaptiveScrollEngine.setUserPaused(false)
           } else {
             adaptiveScrollEngine.setUserPaused(true)
           }
@@ -2295,9 +2297,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         if (useAppStore.getState().isAutoscrollActive) {
           const isPaused = adaptiveScrollEngine.isPausedState()
           const isActive = adaptiveScrollEngine.getMetrics().isActive
-          if (isPaused || !isActive) {
+          if (!isActive) {
             adaptiveScrollEngine.setUserPaused(false)
             armPageRef.current()
+          } else if (isPaused) {
+            adaptiveScrollEngine.setUserPaused(false)
           } else {
             adaptiveScrollEngine.setUserPaused(true)
           }
