@@ -272,3 +272,8 @@
 - **Full-Fidelity Library Backup & Note Badge Synchronization**: Restoring library backups preserves all granular highlight anchors (including XPaths and section references) and bookmark metadata. Restored annotations immediately update note badges and sorting metrics across the library catalog.
 - **Safe External Link Routing**: Looking up word definitions in Merriam-Webster, translating selections via Google Translate, or opening external reference links routes through your operating system's default web browser without leaking renderer window handles.
 - **Notes Drawer Filter Reset**: Clicking "All" in the Notes drawer resets both color filters and comment-only filters, guaranteeing that tapping "All" displays every annotation in the book.
+- **Selection Toolbar Edge Protection**: Text selection popups automatically clamp within screen boundaries without clipping when selecting words at the far edges of pages.
+- **Literary Underline Highlight**: Underline highlights render as clean bottom strokes under text without any enclosing 4-sided boxes.
+- **Consolidated Category Move Submenu**: Right-clicking a library book consolidates category options into a clean "Move to:" submenu with quick removal and palette indicators.
+- **Header Page Orientation**: A subtle bare page number indicator is displayed in the reader top bar and fullscreen controls, providing continuous page awareness even when the bottom progress bar is hidden.
+- **Focus-Aware Auto-Flip**: Leaving or switching away from the app automatically freezes the countdown timer in place without background skips or unexpected deactivations, keeping Spacebar ready to resume upon return.

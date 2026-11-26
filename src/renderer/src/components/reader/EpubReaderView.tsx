@@ -376,12 +376,17 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
         font-weight: ${emphasisWeight} !important;
       }
       /* Clean Literary Underline Highlight (replaces bounding box with bottom stroke) */
-      svg g.underlinenote rect {
+      svg g.underlinenote rect,
+      svg g[ref='underlinenote'] rect,
+      svg g.epubjs-ul rect {
         stroke: none !important;
+        stroke-width: 0 !important;
         fill: transparent !important;
         cursor: pointer !important;
       }
-      svg g.underlinenote line {
+      svg g.underlinenote line,
+      svg g[ref='underlinenote'] line,
+      svg g.epubjs-ul line {
         stroke: ${isLightTheme ? '#2a69df' : '#79c0ff'} !important;
         stroke-width: 2.5px !important;
         stroke-linecap: round !important;
@@ -871,7 +876,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           return
         }
         if (st.isAutoscrollActive) {
-          st.setAutoscrollActive(false)
+          if (!adaptiveScrollEngine.isPausedState()) {
+            adaptiveScrollEngine.setUserPaused(true)
+          } else {
+            st.setAutoscrollActive(false)
+          }
           return
         }
         if (st.isTTSActive) {
@@ -1856,8 +1865,21 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
     window.addEventListener('wheel', recordActivity, { passive: true })
     window.addEventListener('touchstart', recordActivity, { passive: true })
 
+    const unsubWindowFocus = window.desktopAPI?.onWindowFocusChange?.((isFocused) => {
+      if (!isFocused) {
+        adaptiveScrollEngine.setSuspension('blur', true)
+      } else {
+        if (blurTimer) {
+          clearTimeout(blurTimer)
+          blurTimer = null
+        }
+        adaptiveScrollEngine.setSuspension('blur', false)
+      }
+    })
+
     return () => {
       if (blurTimer) clearTimeout(blurTimer)
+      unsubWindowFocus?.()
       window.removeEventListener('blur', handleBlur)
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibility)
@@ -2535,7 +2557,11 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           return
         }
         if (isAutoscrollActive) {
-          setAutoscrollActive(false)
+          if (!adaptiveScrollEngine.isPausedState()) {
+            adaptiveScrollEngine.setUserPaused(true)
+          } else {
+            setAutoscrollActive(false)
+          }
           return
         }
         if (useAppStore.getState().isTTSActive) {
@@ -3320,6 +3346,7 @@ const EpubReaderViewBase: React.FC<EpubReaderViewProps> = ({ book, onBack }) => 
           onBack={onBack}
           currentChapter={currentChapter}
           isCurrentPageBookmarked={isCurrentPageBookmarked}
+          currentPage={currentPage}
         />
       )}
 

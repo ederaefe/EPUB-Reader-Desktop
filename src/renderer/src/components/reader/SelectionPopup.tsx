@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import {
   Copy,
   Volume2,
@@ -116,10 +116,11 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
   }, [onClose, showDictModal, showWikiModal])
 
   // Precision Viewport Clamping (Subtle Micro-Pill Positioning)
-  // Direct pixel coordinate calculation without CSS transform -translate-x-1/2 to prevent animation & clipping conflicts
-  const [measuredWidth, setMeasuredWidth] = useState(showNoteComposer ? 310 : 270)
+  // Direct pixel coordinate calculation to prevent boundary clipping on far edge word selections
+  const defaultBaseWidth = showNoteComposer ? 330 : 285
+  const [measuredWidth, setMeasuredWidth] = useState(defaultBaseWidth)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (popupRef.current) {
       const rect = popupRef.current.getBoundingClientRect()
       if (rect.width > 0) {
@@ -128,10 +129,10 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
     }
   }, [showNoteComposer, showMoreMenu, selectedText])
 
-  const effectiveWidth = Math.max(measuredWidth, showNoteComposer ? 310 : 270)
-  const paddingX = 16
+  const effectiveWidth = Math.max(measuredWidth, defaultBaseWidth)
+  const paddingX = 20
   const maxLeft = Math.max(paddingX, window.innerWidth - effectiveWidth - paddingX)
-  const leftPos = Math.max(paddingX, Math.min(maxLeft, position.x - effectiveWidth / 2))
+  const leftPos = Math.max(paddingX, Math.min(maxLeft, Math.round(position.x - effectiveWidth / 2)))
 
   // Determine whether to show above or below selection based on clearance
   const isNearTop = position.y < (showNoteComposer ? 220 : 120)
@@ -220,7 +221,7 @@ export const SelectionPopup: React.FC<SelectionPopupProps> = ({
       <div
         ref={popupRef}
         style={{ left: `${leftPos}px`, top: `${clampedY}px` }}
-        className="fixed z-50 flex flex-col items-center select-none app-no-drag animate-in fade-in duration-100"
+        className="fixed z-50 flex flex-col items-center select-none app-no-drag animate-in fade-in duration-100 max-w-[calc(100vw-40px)]"
       >
         {/* The Action Pill (Antigravity UI Translucent Dual-Hairline Floating Pill) */}
         <div className="h-8 px-2 w-max whitespace-nowrap bg-[rgba(18,20,24,0.85)] dark:bg-[rgba(14,16,20,0.88)] backdrop-blur-2xl border border-white/[0.10] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),0_12px_40px_rgba(0,0,0,0.55)] rounded-full flex items-center gap-1.5">

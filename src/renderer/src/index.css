@@ -831,17 +831,31 @@ span.underlinenote {
   text-decoration-color: #2a69df !important;
 }
 
-svg g.underlinenote rect {
+svg g.underlinenote rect,
+svg g[ref='underlinenote'] rect,
+svg g.epubjs-ul rect {
   stroke: none !important;
+  stroke-width: 0 !important;
   fill: transparent !important;
   cursor: pointer !important;
 }
 
-svg g.underlinenote line {
+svg g.underlinenote line,
+svg g[ref='underlinenote'] line,
+svg g.epubjs-ul line {
   stroke: #2a69df !important;
   stroke-width: 2.5px !important;
   stroke-linecap: round !important;
   stroke-opacity: 0.9 !important;
+}
+
+[data-theme='night'] svg g.underlinenote line,
+[data-theme='dark-sepia'] svg g.underlinenote line,
+[data-theme='night'] svg g[ref='underlinenote'] line,
+[data-theme='dark-sepia'] svg g[ref='underlinenote'] line,
+[data-theme='night'] svg g.epubjs-ul line,
+[data-theme='dark-sepia'] svg g.epubjs-ul line {
+  stroke: #79c0ff !important;
 }
 
 span.speechActive {

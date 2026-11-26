@@ -573,6 +573,53 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
     adaptiveScrollEngine.setSuspension('selection', Boolean(selectedPdfText))
   }, [selectedPdfText])
 
+  // Window Focus & Blur Suspension for PDF Autoscroll
+  useEffect(() => {
+    let blurTimer: ReturnType<typeof setTimeout> | null = null
+    const handleBlur = () => {
+      if (blurTimer) clearTimeout(blurTimer)
+      blurTimer = setTimeout(() => {
+        if (!document.hasFocus()) {
+          adaptiveScrollEngine.setSuspension('blur', true)
+        }
+      }, 60)
+    }
+    const handleFocus = () => {
+      if (blurTimer) {
+        clearTimeout(blurTimer)
+        blurTimer = null
+      }
+      adaptiveScrollEngine.setSuspension('blur', false)
+    }
+    const handleVisibility = () => {
+      adaptiveScrollEngine.setSuspension('hidden', document.visibilityState === 'hidden')
+    }
+
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    const unsubWindowFocus = window.desktopAPI?.onWindowFocusChange?.((isFocused) => {
+      if (!isFocused) {
+        adaptiveScrollEngine.setSuspension('blur', true)
+      } else {
+        if (blurTimer) {
+          clearTimeout(blurTimer)
+          blurTimer = null
+        }
+        adaptiveScrollEngine.setSuspension('blur', false)
+      }
+    })
+
+    return () => {
+      if (blurTimer) clearTimeout(blurTimer)
+      unsubWindowFocus?.()
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
   // Reverse sync: Persist dwell time changes (hotkeys/overlay) back to settings
   useEffect(() => {
     return adaptiveScrollEngine.onSyncSettings((s) => {
@@ -1114,6 +1161,14 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           setTTSMuted(false)
           return
         }
+        if (isAutoscrollActive) {
+          if (!adaptiveScrollEngine.isPausedState()) {
+            adaptiveScrollEngine.setUserPaused(true)
+          } else {
+            setAutoscrollActive(false)
+          }
+          return
+        }
         if (isImmersiveFullscreen || Boolean(document.fullscreenElement)) {
           setImmersiveFullscreen(false)
           window.desktopAPI?.setFullscreen?.(false)
@@ -1370,6 +1425,7 @@ const PdfReaderViewBase: React.FC<PdfReaderViewProps> = ({
           onBack={onBack}
           currentChapter={activePdfChapterLabel}
           isCurrentPageBookmarked={isCurrentPdfPageBookmarked}
+          currentPage={currentPage}
         />
       )}
 

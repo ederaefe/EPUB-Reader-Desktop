@@ -15,9 +15,14 @@ interface ReaderTopBarProps {
   onBack: () => void
   currentChapter?: string
   isCurrentPageBookmarked?: boolean
+  currentPage?: number
 }
 
-export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: ReaderTopBarProps) {
+export function ReaderTopBar({
+  onBack,
+  isCurrentPageBookmarked = false,
+  currentPage
+}: ReaderTopBarProps) {
   const {
     isTOCDrawerOpen,
     toggleTOCDrawer,
@@ -116,8 +121,17 @@ export function ReaderTopBar({ onBack, isCurrentPageBookmarked = false }: Reader
         </button>
       </div>
 
-      {/* Right Controls: Only Immersive Fullscreen & Settings */}
-      <div className="flex items-center gap-1 text-[12px]">
+      {/* Right Controls: Bare Page Number, Immersive Fullscreen & Settings */}
+      <div className="flex items-center gap-1.5 text-[12px]">
+        {typeof currentPage === 'number' && currentPage > 0 && (
+          <span
+            className="px-1.5 py-0.5 text-[11px] font-mono font-medium tracking-wide text-[#8b949e] opacity-60 tabular-nums select-none"
+            title={`Page ${currentPage}`}
+          >
+            {currentPage}
+          </span>
+        )}
+
         <button
           onClick={handleToggleFullscreen}
           className="w-7 h-7 flex items-center justify-center rounded-md text-[#888888] hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"

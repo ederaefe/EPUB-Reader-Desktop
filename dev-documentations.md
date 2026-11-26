@@ -4040,6 +4040,59 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
 ### Verification Matrix
 - `npx tsc --noEmit`: 0 TypeScript compilation errors.
 
+---
+
+## Increment 67: Selection Popup Clamping, Literary Underline Rect Isolation, Move to Category Submenu, Header Page Number & Focus-Aware Auto-Flip
+> **Agent**: @Agent-ReaderCore | **Status**: [COMPLETED]
+
+### What Was Done
+1. **Selection Popup Precision Boundary Clamping (`SelectionPopup.tsx`)**:
+   - Resolved floating toolbar clipping when selecting words at the far right viewport edge.
+   - Synchronously measured popup dimensions using `useLayoutEffect`, applied a minimum width floor (285px / 330px with composer), clamped `leftPos` between `paddingX` (20px) and `maxLeft` (`window.innerWidth - effectiveWidth - paddingX`), and capped container width to `max-w-[calc(100vw-40px)]`.
+2. **Clean Literary Underline Rect Isolation (`annotationService.ts`, `index.css`, `EpubReaderView.tsx`)**:
+   - Eliminated the 4-sided bounding box around underlined text selections.
+   - Explicitly passed `stroke: 'none'`, `'stroke-opacity': '0'`, `'stroke-width': '0'` in `getSvgAnnotationStyle` to override epub.js's default `{ stroke: 'black', 'stroke-opacity': '0.3' }` cascade on the SVG `<g>` mark element.
+   - Enforced `stroke: none !important; stroke-width: 0 !important; fill: transparent !important;` on `rect` elements and styled `line` elements with literary theme strokes (`#2a69df` light / `#79c0ff` dark) across both parent document CSS and dynamic iframe stylesheets.
+3. **Restored Consolidated "Move to:" Category Submenu (`BookCard.tsx`)**:
+   - Re-integrated the consolidated `Move to:` parent menu item with `categoryChildren` submenu in the book right-click context menu.
+   - Maintained top-level `Remove from: [Category]` action with red indicator when a category is assigned, followed by categorized options with custom palette swatches and `(Current)` indicators.
+4. **Persistent Bare Page Number in Header (`ReaderTopBar.tsx`, `EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Added `currentPage?: number` prop to `ReaderTopBar` and rendered the bare page number (e.g., `34`) beside fullscreen and settings controls in the top bar.
+   - Ensures readers maintain spatial page awareness even when the bottom progress bar is hidden or toggled off, complementing the fullscreen exit indicator.
+5. **Focus-Aware Auto-Flip & Spacebar State Hardening (`EpubReaderView.tsx`, `PdfReaderView.tsx`)**:
+   - Wired `window.desktopAPI.onWindowFocusChange` to `adaptiveScrollEngine.setSuspension('blur', !isFocused)` in both EPUB and PDF reader views. Leaving the app now reliably freezes the countdown timer in place without background page turns or deactivation.
+   - Refined the `Escape` key handler to pause running Auto-Flip instead of destroying the active autoscroll state.
+   - Preserved Spacebar play/pause handling so returning to the app resumes the visible countdown timer seamlessly without skipping pages.
+
+### Problem Statement
+1. Selecting words near the right viewport edge caused the selection toolbar to be cropped off-screen.
+2. Underline annotations rendered as a 4-sided box around words because epub.js's marks-pane applied `stroke: black` to `<g>` which cascaded to the transparent hit `<rect>`.
+3. In `BookCard.tsx`, the consolidated `Move to:` category submenu had been accidentally removed in a previous release commit.
+4. Readers lacked a bare page number in the header when the bottom progress bar was toggled off.
+5. Switching away from the app allowed the countdown timer to run down or deactivate, causing Spacebar to flip pages upon returning.
+
+### Technical Fix
+- In `SelectionPopup.tsx`, switched measurement to `useLayoutEffect`, used a 285px base width, clamped coordinates against `window.innerWidth`, and added `max-w-[calc(100vw-40px)]`.
+- In `annotationService.ts`, set `stroke: 'none'`, `'stroke-opacity': '0'`, `'stroke-width': '0'` for underline annotations. In `index.css` and `EpubReaderView.tsx`, styled `rect` with zero stroke and styled `line` with 2.5px stroke.
+- In `BookCard.tsx`, restored `if (categories.length > 0)` adding `move-to-category` with `categoryChildren`.
+- In `ReaderTopBar.tsx`, added `currentPage` prop and rendered the bare number. Passed `currentPage` from `EpubReaderView.tsx` and `PdfReaderView.tsx`.
+- In `EpubReaderView.tsx` and `PdfReaderView.tsx`, added `window.desktopAPI.onWindowFocusChange` listener suspending for `'blur'` and updated `Escape` handler to pause Auto-Flip.
+
+### Touched Files
+- `src/renderer/src/components/library/BookCard.tsx`
+- `src/renderer/src/components/reader/EpubReaderView.tsx`
+- `src/renderer/src/components/reader/PdfReaderView.tsx`
+- `src/renderer/src/components/reader/ReaderTopBar.tsx`
+- `src/renderer/src/components/reader/SelectionPopup.tsx`
+- `src/renderer/src/index.css`
+- `src/renderer/src/services/annotationService.ts`
+- `dev-documentations.md`
+- `documentation.md`
+
+### Verification Matrix
+- `npx tsc --noEmit`: 0 TypeScript compilation errors.
+- `npx tsx scratch/test_autoflip_engines.ts`: 77/77 unit and integration assertions passed.
+
 
 
 
