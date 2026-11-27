@@ -17,6 +17,8 @@ export interface Book {
   categoryId: number | null
   isFavorite: boolean
   isRead: boolean
+  /** True for fresh in-app browser downloads until first opened by the reader. */
+  isNewDownload?: boolean
   isPinned?: boolean
   pinnedAt?: number | null
   /** @deprecated Soft-delete was removed in v3; retained optional for legacy backup compatibility. */

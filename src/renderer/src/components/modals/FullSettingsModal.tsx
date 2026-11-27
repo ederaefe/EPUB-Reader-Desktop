@@ -142,7 +142,9 @@ export const FullSettingsModal: React.FC = () => {
     updateSettings,
     openConfirmDialog,
     showToast,
-    bumpLibraryVersion
+    bumpLibraryVersion,
+    availableUpdate,
+    setPendingUpdateBadge
   } = useAppStore()
 
   const isPdf = activeBook?.format === 'pdf'
@@ -153,12 +155,13 @@ export const FullSettingsModal: React.FC = () => {
 
   useEffect(() => {
     if (!isFullSettingsModalOpen) return
+    setPendingUpdateBadge(false)
     adaptiveScrollEngine.setSuspension('modal', true)
     return () => {
       adaptiveScrollEngine.setSuspension('modal', false)
       adaptiveScrollEngine.recordUserActivity()
     }
-  }, [isFullSettingsModalOpen])
+  }, [isFullSettingsModalOpen, setPendingUpdateBadge])
 
   useEffect(() => {
     if (!isFullSettingsModalOpen) return
@@ -230,11 +233,23 @@ export const FullSettingsModal: React.FC = () => {
     })
   }
 
-  const handleOpenExternal = (e: React.MouseEvent, url: string) => {
+  const handleOpenExternal = async (e: React.MouseEvent, url: string) => {
     e.preventDefault()
-    if (window.desktopAPI?.openExternal) {
-      window.desktopAPI.openExternal(url)
-    } else {
+    e.stopPropagation()
+    try {
+      if (url.startsWith('mailto:')) {
+        const emailMatch = url.match(/mailto:([^?]+)/)
+        const email = emailMatch ? emailMatch[1] : 'efeoghene@proton.me'
+        await navigator.clipboard.writeText(email).catch(() => {})
+        showToast(`Email copied: ${email}`, 'info')
+      }
+      if (window.desktopAPI?.openExternal) {
+        await window.desktopAPI.openExternal(url)
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      console.warn('Failed to open external link:', err)
       window.open(url, '_blank', 'noopener,noreferrer')
     }
   }
@@ -1081,6 +1096,21 @@ export const FullSettingsModal: React.FC = () => {
                       className="text-[11px] text-[var(--app-accent)] underline hover:opacity-80 transition-opacity cursor-pointer font-medium disabled:opacity-50"
                     >
                       {updateStatus.state === 'checking' ? 'Checking...' : 'Check now'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const target =
+                          availableUpdate?.downloadUrl ||
+                          availableUpdate?.releaseUrl ||
+                          updateStatus.downloadUrl ||
+                          updateStatus.releaseUrl ||
+                          'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+                        handleOpenExternal(e, target)
+                      }}
+                      className="text-[11px] text-emerald-400 underline hover:opacity-80 transition-opacity cursor-pointer font-medium"
+                    >
+                      Update now
                     </button>
                   </div>
 

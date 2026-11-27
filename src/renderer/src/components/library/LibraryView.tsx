@@ -19,6 +19,7 @@ import { Sidebar } from './Sidebar'
 import { BookCard } from './BookCard'
 import { AddBookCard } from './AddBookCard'
 import { ResumeBar } from './ResumeBar'
+import { GetBooksView } from '../browser/GetBooksView'
 import { SettingsDrawer } from '../drawers/SettingsDrawer'
 import { ImportBooksModal } from '../modals/ImportBooksModal'
 import {
@@ -350,7 +351,8 @@ export const LibraryView: React.FC = () => {
       selectedCategory === 'all' ||
       selectedCategory === 'recent' ||
       selectedCategory === 'favorites' ||
-      selectedCategory === 'read'
+      selectedCategory === 'read' ||
+      selectedCategory === 'get-books'
     ) {
       return null
     }
@@ -737,7 +739,11 @@ export const LibraryView: React.FC = () => {
 
       const openedAt = Date.now()
       if (freshBook.id) {
-        await db.books.update(freshBook.id, { lastOpenedAt: openedAt })
+        await db.books.update(freshBook.id, {
+          lastOpenedAt: openedAt,
+          ...(freshBook.isNewDownload ? { isNewDownload: false } : {})
+        })
+        freshBook.isNewDownload = false
       }
       // Clear any previous ResumeBar dismissal so this genuinely opened book becomes resumable
       if (useAppStore.getState().settings.resumeBarDismissedAt) {
@@ -899,9 +905,12 @@ export const LibraryView: React.FC = () => {
       {/* Left Sidebar */}
       <Sidebar counts={counts} categories={categories} categoryCounts={categoryCounts} onRefresh={loadData} />
 
-      {/* Main Catalog View */}
-      <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#0a0a0a]">
-        {/* Top Action Strip with Subtle Hover-to-Reveal Select Mode [] */}
+      {/* Main Catalog View or In-App Book Browser */}
+      {selectedCategory === 'get-books' ? (
+        <GetBooksView onBookImported={loadData} />
+      ) : (
+        <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#0a0a0a]">
+          {/* Top Action Strip with Subtle Hover-to-Reveal Select Mode [] */}
         <header className="group/header h-11 bg-[#0d0d0d] border-b border-white/[0.07] px-5 flex items-center justify-between gap-3 select-none shrink-0">
           {/* Left Context: Subtle Hover-Reveal [] Select Mode / Select All + Active Shelf Label */}
           <div className="flex items-center gap-2.5 min-w-0">
@@ -1270,6 +1279,7 @@ export const LibraryView: React.FC = () => {
           onDismiss={handleDismissResumeBar}
         />
       </div>
+      )}
 
       <SettingsDrawer />
 

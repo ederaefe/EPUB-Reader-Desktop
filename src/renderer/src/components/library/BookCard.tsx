@@ -363,23 +363,31 @@ const BookCardBase: React.FC<BookCardProps> = ({
           </div>
 
           <div className="flex items-center gap-6 shrink-0 text-[11px] text-[#8b949e]">
-            <span
-              data-preserve-theme="true"
-              className={`uppercase text-[9.5px] font-semibold tracking-wider px-1.5 py-0.5 rounded-[3px] font-mono ${
-                book.format === 'pdf'
-                  ? 'bg-[#d9534f]/15 text-[#d9534f]'
-                  : book.format === 'epub'
-                  ? 'bg-[#2a69df]/15 text-[#4d8bf5]'
-                  : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)]'
-              }`}
-              title={
-                book.format === 'pdf' && book.preferredPdfMode === 'reflow'
-                  ? 'PDF (opens in cached EPUB view)'
-                  : book.format.toUpperCase()
-              }
-            >
-              {book.format}
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                data-preserve-theme="true"
+                className={`uppercase text-[9.5px] font-semibold tracking-wider px-1.5 py-0.5 rounded-[3px] font-mono ${
+                  book.format === 'pdf'
+                    ? 'bg-[#d9534f]/15 text-[#d9534f]'
+                    : book.format === 'epub'
+                    ? 'bg-[#2a69df]/15 text-[#4d8bf5]'
+                    : 'bg-[var(--app-surface-2)] text-[var(--app-text-muted)]'
+                }`}
+                title={
+                  book.format === 'pdf' && book.preferredPdfMode === 'reflow'
+                    ? 'PDF (opens in cached EPUB view)'
+                    : book.format.toUpperCase()
+                }
+              >
+                {book.format}
+              </span>
+              {book.isNewDownload && (
+                <span
+                  className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)] shrink-0 animate-pulse"
+                  title="Newly downloaded (Unopened)"
+                />
+              )}
+            </div>
             <span className="w-16 text-right" title="Saved highlights and notes">
               {book.notesCount ? `${book.notesCount} ${book.notesCount === 1 ? 'note' : 'notes'}` : '0 notes'}
             </span>
@@ -567,6 +575,7 @@ const BookCardBase: React.FC<BookCardProps> = ({
             <div className="text-[11px] text-[#8b949e] truncate leading-tight min-w-0">
               {book.author || 'Unknown'}
             </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             <span
               data-preserve-theme="true"
               className={`shrink-0 uppercase text-[9px] font-mono font-semibold tracking-wider px-1 py-[1px] rounded-[3px] leading-none ${
@@ -584,6 +593,13 @@ const BookCardBase: React.FC<BookCardProps> = ({
             >
               {book.format}
             </span>
+            {book.isNewDownload && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)] shrink-0 animate-pulse"
+                title="Newly downloaded (Unopened)"
+              />
+            )}
+          </div>
           </div>
         </div>
       </div>
@@ -612,6 +628,7 @@ function areBookCardPropsEqual(prev: BookCardProps, next: BookCardProps): boolea
   if (prev.book.totalPages !== next.book.totalPages) return false
   if (prev.book.isFavorite !== next.book.isFavorite) return false
   if (prev.book.isRead !== next.book.isRead) return false
+  if (prev.book.isNewDownload !== next.book.isNewDownload) return false
   if (prev.book.isPinned !== next.book.isPinned) return false
   if (prev.book.categoryId !== next.book.categoryId) return false
   if (prev.book.format !== next.book.format) return false

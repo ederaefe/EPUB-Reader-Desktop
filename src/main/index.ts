@@ -69,7 +69,7 @@ function isAllowedExternalUrl(rawUrl: string): boolean {
     const parsed = new URL(trimmed)
     if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
       if (parsed.username || parsed.password) return false
-      return isAllowedExternalBrowserHost(parsed.hostname)
+      return true
     }
     return false
   } catch {
@@ -466,7 +466,8 @@ function createWindow(): void {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: true
+      webSecurity: true,
+      webviewTag: true
     }
   })
 
@@ -1292,12 +1293,6 @@ handleTrusted('app:checkForUpdates', async () => {
       }
     }
 
-    if (hasUpdate && app.isPackaged) {
-      autoUpdater.checkForUpdates().catch((err) => {
-        console.warn('[AutoUpdater] manual check:', err)
-      })
-    }
-
     return {
       hasUpdate,
       currentVersion,
@@ -1321,8 +1316,243 @@ handleTrusted('app:checkForUpdates', async () => {
   }
 })
 
+// =========================================================================
+// In-App Book Browser: Session, Download Interception & 3-Tier Validation
+// =========================================================================
+const BOOK_BROWSER_PARTITION = 'persist:bookbrowser'
+
+const VERIFIED_BOOK_HOSTS = [
+  'standardebooks.org',
+  'gutenberg.org',
+  'openlibrary.org',
+  'archive.org',
+  'librivox.org',
+  'manybooks.net',
+  'oceanofpdf.com',
+  'pdfdrive.com',
+  'pdfdrive.to',
+  'pdfdrive.net',
+  'd-pdf.com',
+  'readanybook.com',
+  'bdebooks.com',
+  // Infrastructure CDNs and bot verification challenges
+  'cloudflare.com',
+  'challenges.cloudflare.com',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com',
+  'cdnjs.cloudflare.com',
+  'jsdelivr.net',
+  'google.com',
+  'gstatic.com',
+  'recaptcha.net'
+]
+
+const customAllowedHosts = new Set<string>()
+
+function isAllowedBookBrowserHost(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  if (VERIFIED_BOOK_HOSTS.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))) {
+    return true
+  }
+  for (const custom of customAllowedHosts) {
+    if (host === custom || host.endsWith(`.${custom}`)) {
+      return true
+    }
+  }
+  return false
+}
+
+const GENERIC_BLOCKLIST_DOMAINS = [
+  'google.com', 'bing.com', 'yahoo.com', 'duckduckgo.com', 'baidu.com', 'yandex.com', 'ask.com',
+  'football.com', 'espn.com', 'goal.com', 'nba.com', 'nfl.com', 'fifa.com', 'premierleague.com', 'skysports.com', 'bleacherreport.com', 'cbssports.com',
+  'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'reddit.com', 'tiktok.com', 'linkedin.com', 'pinterest.com', 'snapchat.com', 'tumblr.com',
+  'youtube.com', 'netflix.com', 'twitch.tv', 'spotify.com', 'disneyplus.com', 'hulu.com', 'primevideo.com',
+  'amazon.com', 'ebay.com', 'walmart.com', 'aliexpress.com'
+]
+
+const BOOK_KEYWORDS = [
+  'book', 'ebook', 'e-book', 'epub', 'pdf', 'mobi', 'library', 'novel',
+  'literature', 'author', 'archive', 'catalog', 'reading', 'publish',
+  'gutenberg', 'calibre', 'kavita', 'opds', 'audiobook', 'fiction', 'manuscript'
+]
+
+async function validateBookWebsite(rawUrl: string): Promise<{ valid: boolean; title?: string; hostname?: string; error?: string }> {
+  let parsed: URL
+  try {
+    const trimmed = rawUrl.trim()
+    const withProto = trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`
+    parsed = new URL(withProto)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { valid: false, error: 'Please enter a valid web address starting with https://' }
+    }
+  } catch {
+    return { valid: false, error: 'Invalid web address format.' }
+  }
+
+  const host = parsed.hostname.toLowerCase()
+
+  // Tier 1: Instant Blocklist (search engines, sports, social media, streaming)
+  const isBlocked = GENERIC_BLOCKLIST_DOMAINS.some((b) => host === b || host.endsWith(`.${b}`))
+  if (isBlocked) {
+    return { valid: false, error: 'Only e-book archives, digital libraries, and reading portals can be added.' }
+  }
+
+  // Tier 2 & Tier 3: Lightweight fetch of page head & format signatures
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 6000)
+
+    const resp = await fetch(parsed.href, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml,application/atom+xml;q=0.9,*/*;q=0.8'
+      }
+    })
+    clearTimeout(timeout)
+
+    if (!resp.ok) {
+      return { valid: false, error: `Website returned HTTP status ${resp.status}. Could not verify portal.` }
+    }
+
+    const html = (await resp.text()).slice(0, 500000)
+    const htmlLower = html.toLowerCase()
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
+    const pageTitle = titleMatch ? titleMatch[1].trim() : parsed.hostname
+
+    const metaDescMatch = html.match(
+      /<meta[^>]*name=["'](?:description|keywords)["'][^>]*content=["']([^"']+)["']/i
+    )
+    const metaContent = (metaDescMatch ? metaDescMatch[1] : '').toLowerCase()
+    const titleLower = pageTitle.toLowerCase()
+
+    const hasTier2Signals = BOOK_KEYWORDS.some((kw) => titleLower.includes(kw) || metaContent.includes(kw))
+
+    const hasTier3Signals =
+      htmlLower.includes('.epub') ||
+      htmlLower.includes('.pdf') ||
+      htmlLower.includes('.mobi') ||
+      htmlLower.includes('application/epub+zip') ||
+      htmlLower.includes('application/pdf') ||
+      htmlLower.includes('application/atom+xml;profile=opds-catalog') ||
+      htmlLower.includes('calibre') ||
+      htmlLower.includes('kavita') ||
+      htmlLower.includes('opds')
+
+    if (hasTier2Signals || hasTier3Signals) {
+      return {
+        valid: true,
+        title: pageTitle.slice(0, 100),
+        hostname: parsed.hostname
+      }
+    }
+
+    return {
+      valid: false,
+      error: 'Only e-book archives, digital libraries, and reading portals can be added.'
+    }
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      return { valid: false, error: 'Connection timed out while reaching the website.' }
+    }
+    return { valid: false, error: 'Could not connect to the website. Check the URL and your internet connection.' }
+  }
+}
+
+function setupBookBrowserSession(): void {
+  const ses = session.fromPartition(BOOK_BROWSER_PARTITION)
+
+  ses.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false)
+  })
+
+  ses.on('will-download', (_event, item) => {
+    const rawFilename = item.getFilename()
+    const downloadsDir = app.getPath('downloads')
+
+    let targetPath = join(downloadsDir, rawFilename)
+    if (existsSync(targetPath)) {
+      const ext = extname(rawFilename)
+      const nameWithoutExt = basename(rawFilename, ext)
+      let counter = 1
+      while (existsSync(targetPath)) {
+        targetPath = join(downloadsDir, `${nameWithoutExt} (${counter})${ext}`)
+        counter++
+      }
+    }
+
+    item.setSavePath(targetPath)
+    const downloadId = `${Date.now()}-${randomBytes(4).toString('hex')}`
+
+    item.on('updated', (_evt, state) => {
+      const totalBytes = item.getTotalBytes()
+      const receivedBytes = item.getReceivedBytes()
+      const percent = totalBytes > 0 ? Math.round((receivedBytes / totalBytes) * 100) : 0
+
+      mainWindow?.webContents.send('browser:downloadProgress', {
+        id: downloadId,
+        filename: rawFilename,
+        receivedBytes,
+        totalBytes,
+        percent,
+        state
+      })
+    })
+
+    item.once('done', (_evt, state) => {
+      if (state === 'completed') {
+        try {
+          authorizeFile(targetPath)
+        } catch {
+          // Ignore if already authorized
+        }
+        mainWindow?.webContents.send('browser:downloadCompleted', {
+          id: downloadId,
+          filePath: targetPath,
+          filename: rawFilename,
+          fileSize: item.getReceivedBytes()
+        })
+      } else {
+        mainWindow?.webContents.send('browser:downloadFailed', {
+          id: downloadId,
+          filename: rawFilename,
+          error: state
+        })
+      }
+    })
+  })
+}
+
+handleTrusted('browser:validateBookSite', async (_, url: string) => {
+  return await validateBookWebsite(url)
+})
+
+handleTrusted('browser:setAllowedCustomDomains', (_, domains: string[]) => {
+  if (Array.isArray(domains)) {
+    customAllowedHosts.clear()
+    for (const d of domains) {
+      if (typeof d === 'string' && d.trim()) {
+        try {
+          const parsed = new URL(d.includes('://') ? d : `https://${d}`)
+          customAllowedHosts.add(parsed.hostname.toLowerCase())
+        } catch {
+          customAllowedHosts.add(d.toLowerCase().trim())
+        }
+      }
+    }
+  }
+  return true
+})
+
+handleTrusted('browser:getDownloadsPath', () => {
+  return app.getPath('downloads')
+})
+
 function configureSessionSecurity(): void {
   const defaultSes = session.defaultSession
+  setupBookBrowserSession()
 
   // Deny all unneeded browser permissions; allow only clipboard writes from our trusted primary frame
   defaultSes.setPermissionRequestHandler((webContents, permission, callback, details) => {
@@ -1471,11 +1701,53 @@ function configureSessionSecurity(): void {
   })
 }
 
-// Harden all WebContents instances against unexpected webviews and child windows
+// Harden WebContents instances: allow only sandboxed book-browser webviews and guard child navigation
 app.on('web-contents-created', (_event, contents) => {
-  contents.on('will-attach-webview', (event) => {
-    event.preventDefault()
-  })
+  if (contents.getType() === 'webview') {
+    contents.on('will-navigate', (navEvent, url) => {
+      try {
+        const parsed = new URL(url)
+        if (!isAllowedBookBrowserHost(parsed.hostname)) {
+          navEvent.preventDefault()
+          mainWindow?.webContents.send('browser:navigationBlocked', {
+            url,
+            hostname: parsed.hostname
+          })
+        }
+      } catch {
+        navEvent.preventDefault()
+      }
+    })
+
+    contents.setWindowOpenHandler((details) => {
+      try {
+        const parsed = new URL(details.url)
+        if (isAllowedBookBrowserHost(parsed.hostname)) {
+          contents.loadURL(details.url)
+        } else {
+          mainWindow?.webContents.send('browser:navigationBlocked', {
+            url: details.url,
+            hostname: parsed.hostname
+          })
+        }
+      } catch {
+        // Disallowed
+      }
+      return { action: 'deny' }
+    })
+  } else {
+    contents.on('will-attach-webview', (event, webPreferences, params) => {
+      if (params.partition === BOOK_BROWSER_PARTITION) {
+        delete (webPreferences as any).preload
+        webPreferences.nodeIntegration = false
+        webPreferences.contextIsolation = true
+        webPreferences.sandbox = true
+        webPreferences.webSecurity = true
+        return
+      }
+      event.preventDefault()
+    })
+  }
 })
 
 if (process.platform === 'win32') {
@@ -1486,11 +1758,9 @@ if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     configureSessionSecurity()
     createWindow()
-    if (app.isPackaged) {
-      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-        console.warn('[AutoUpdater] Failed to check for updates:', err)
-      })
-    }
+    // User-controlled update checks (no silent background auto-updates)
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = false
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

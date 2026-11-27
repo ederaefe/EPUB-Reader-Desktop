@@ -221,6 +221,7 @@
         <ul class="nav-list">
           <li><a class="nav-link active" href="#getting-started">Getting Started</a></li>
           <li><a class="nav-link" href="#library-and-import">Library &amp; Importing Books</a></li>
+          <li><a class="nav-link" href="#get-books-browser">Get Books (In-App Browser)</a></li>
           <li><a class="nav-link" href="#reading-experience">Reading, Themes &amp; Fullscreen</a></li>
         </ul>
       </div>
@@ -393,6 +394,58 @@
           <li><strong>Consolidated "Move to:" Submenu:</strong> Right-click any book to open the clean <strong>Move to:</strong> submenu. Color swatches show each shelf, and an explicit <strong>Remove from: [Category]</strong> button appears at the top if the book is already filed.</li>
           <li><strong>Intelligent 4-Way Viewport Flipping:</strong> Context menus and submenus automatically measure on-screen space to flip left/right and up/down with smooth mousewheel scrolling, preventing any offscreen menu clipping at window borders.</li>
           <li><strong>Book Actions:</strong> Open/Continue, Favorite, Mark Read/Unread, Refresh Cover, <strong>Convert PDF to EPUB (Offline)</strong>, <strong>Reveal in Explorer</strong>, or Move to Trash.</li>
+        </ul>
+      </section>
+
+      <!-- 2b. In-App Book Browser ("Get Books") -->
+      <section id="get-books-browser" class="doc-section">
+        <div class="section-header">
+          <h2>In-App Book Browser ("Get Books")</h2>
+          <button type="button" class="copy-anchor" data-copy-id="get-books-browser" aria-label="Copy link to In-App Book Browser"># link</button>
+        </div>
+        <p>
+          Stationed directly under <strong>Read</strong> in the left sidebar, <strong>Get Books</strong> provides a quiet, sandboxed in-app hub for exploring and downloading free, legal digital books without browser window clutter or external ads.
+        </p>
+
+        <h3>Curated Directory Hub</h3>
+        <p>
+          The directory hub comes pre-loaded with ranked, verified e-book libraries and digital archives:
+        </p>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Standard Ebooks &amp; Gutenberg</h3>
+            <p>Carefully proofread, beautifully typeset public domain classics and historical literature.</p>
+          </article>
+          <article class="card">
+            <h3>Open Library &amp; Internet Archive</h3>
+            <p>Millions of scanned books, community libraries, and open lending manuscripts.</p>
+          </article>
+          <article class="card">
+            <h3>LibriVox &amp; ManyBooks</h3>
+            <p>Free audio editions and classic literature across hundreds of genres.</p>
+          </article>
+          <article class="card">
+            <h3>Digital Reference Archives</h3>
+            <p>Direct access to Ocean of PDF, PDF Drive, D-PDF, ReadAnyBook, and BDeBooks.</p>
+          </article>
+        </div>
+
+        <h3>3-Tier Custom Site Validation</h3>
+        <p>
+          Users can safely add their own known reading portals, self-hosted Calibre-web servers, Kavita libraries, or OPDS catalogs using the <strong>New Site</strong> card. To keep your workstation distraction-free, Semply enforces a rigorous 3-tier validation gate:
+        </p>
+        <ul>
+          <li><strong>Tier 1 (Instant Domain Blocklist):</strong> Blocks search engines, social media platforms, sports sites, and streaming portals instantly.</li>
+          <li><strong>Tier 2 (Metadata &amp; Keyword Verification):</strong> Verifies that page titles and metadata explicitly contain book, library, and reading signals.</li>
+          <li><strong>Tier 3 (Download &amp; Format Signatures):</strong> Checks for direct <code>.epub</code> and <code>.pdf</code> download links, OPDS feeds, or library application endpoints.</li>
+        </ul>
+
+        <h3>Direct Downloads &amp; Instant Shelf Indexing</h3>
+        <ul>
+          <li><strong>Direct to Downloads:</strong> Downloaded books save straight to your operating system's standard <code>Downloads</code> folder, giving you permanent local file ownership.</li>
+          <li><strong>Instant Shelf Placement:</strong> Semply automatically extracts jacket artwork and places newly downloaded books at the very top of your <strong>All</strong> shelf.</li>
+          <li><strong>WhatsApp-Style Unread Dot:</strong> An emerald green pulsing dot sits beside the book format tag, clearing automatically the moment you open the book to read.</li>
+          <li><strong>Offline Resilience:</strong> If an external connection drops, Semply displays a calm in-app card with a direct retry button, eliminating raw browser dinosaur error pages.</li>
         </ul>
       </section>
 
@@ -839,6 +892,7 @@
       <ul>
         <li><a href="#getting-started">Getting Started</a></li>
         <li><a href="#library-and-import">Library &amp; Import</a></li>
+        <li><a href="#get-books-browser">Get Books Browser</a></li>
         <li><a href="#reading-experience">Reading &amp; Fullscreen</a></li>
         <li><a href="#pdf-and-reflow">PDF &amp; Offline Reflow</a></li>
         <li><a href="#notes-highlights-bookmarks">Notes &amp; Bookmarks</a></li>

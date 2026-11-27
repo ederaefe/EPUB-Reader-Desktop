@@ -1,161 +1,232 @@
-# Semply Ebook Reader — Complete User Documentation
+# Semply Ebook Reader — Complete Technical & User Manual
 
-> Semply Ebook Reader is a free, open, offline-first desktop ebook and document reader for Windows, macOS, and Linux. It supports EPUB, PDF (with native HiDPI viewing and offline MuPDF Reflow Mode), MOBI, and TXT with zero accounts and zero paywalls.
+> Semply Ebook Reader is a free, open-source, offline-first desktop ebook workstation designed for deep, distraction-free reading of EPUB, PDF (with native HiDPI canvas viewing and client-side MuPDF Reflow Mode), MOBI, and TXT documents on Windows, macOS, and Linux.
 
----
-
-## 1. Getting Started
-
-### Supported Formats
-- **EPUB** (EPUB 2 and EPUB 3)
-- **PDF** (Native HiDPI canvas viewer with selectable text + one-click offline Reflow Mode to EPUB)
-- **MOBI** (with embedded cover extraction)
-- **TXT** (plain text with miniature first-page preview)
-
-### Supported Platforms
-- **Windows**: NSIS installer (`x64`)
-- **macOS**: `.dmg` and `.zip`
-- **Linux**: `AppImage` and `.deb`
-
-### Quick Start
-1. **Import books**: Click the dashed **+ Add book** card in the first library slot, press `Ctrl + O`, or drag and drop files anywhere onto the Semply window.
-2. **Open directly from OS File Explorer / Finder**: Double-click any associated `.epub` or `.pdf` file to import and open it directly in Semply's existing window.
-3. **Resume reading**: Click **Continue reading** in the bottom Resume Bar to jump straight back to your exact page.
-
-### Privacy & Offline Operation
-All reading, cover extraction, full-book search, annotations, bookmarks, PDF Reflow conversion, Read Aloud TTS, and JSON/ZIP backups work 100% offline. Internet access is used only when you explicitly click online Dictionary, Wikipedia, or external Translate lookups.
+Semply operates under a digital sovereignty model: zero accounts, zero cloud dependencies, zero telemetry tracking, and zero paid feature gates. All reading positions, highlights, notes, custom shelves, and downloaded files reside strictly on the user's local machine.
 
 ---
 
-## 2. Library & Importing Books
+## 1. Getting Started & Core Philosophy
 
-- **Grid & List Views**: Switch between book-cover tiles (with reading progress overlays) and sortable rows displaying `Title`, `Author`, `Date`, `Notes`, and `Progress`.
-- **Import Methods**:
-  - **Add Book**: Multi-select native file picker.
-  - **Add Folder**: Recursive directory scan importing all `.epub`, `.pdf`, `.mobi`, and `.txt` files.
-  - **Drag & Drop**: Drop files onto the full window.
-  - **Bulk Add to Category**: Inside any custom category, open the `+` card to multi-select existing books from your main library.
-- **Automatic Cover & Metadata Extraction**: Extracts embedded EPUB/MOBI covers, renders Page 1 of PDFs offline, strips noisy download filename prefixes, and typesets a warm-paper miniature First Page when a book has no embedded cover. Right-click any book and select **Refresh Cover / First Page** to re-extract on demand.
-- **Built-in Shelves**: `All`, `Recently Read`, `Favorites`, `Formats` (`EPUB`, `PDF`), `Read`, and `Deleted` (soft-delete Trash with Restore).
-- **Custom Color Categories**: Create custom shelves with 9 preset colors or any custom color picker value.
-- **Book Right-Click Menu**: Open/Continue, Toggle Favorite, Mark Read/Unread, Assign Category, Refresh Cover / First Page, Convert PDF to EPUB (Offline), Reveal in Explorer/Finder, and Move to Trash / Restore.
+### Supported Document Formats
+- **EPUB (EPUB 2 & EPUB 3)**: Full spine layout parsing, custom CSS typography injection, live full-book text search, 6-color highlight annotations, and non-destructive footnote peeking.
+- **PDF**: Native HiDPI canvas rendering with selectable text layer, single/double page spreads (`F10`), continuous vertical smooth scrolling with edge page-turning, bookmarking, and offline MuPDF Reflow Mode.
+- **MOBI**: Native embedded cover art and metadata extraction with automated conversion for seamless reading.
+- **TXT**: Plaintext reading with auto-generated warm-paper miniature first-page preview.
 
----
+### Supported Operating Systems & Packaging
+- **Windows**: Modern NSIS installer (`x64`) with automated protocol and file association (`.epub`, `.pdf`) and Explorer single-instance forwarding.
+- **macOS**: Universal `.dmg` disk image and `.zip` bundle with full retina rendering.
+- **Linux**: Standalone `.AppImage` and Debian `.deb` package.
 
-## 3. Reading Experience, Themes & Fullscreen
-
-### Minimalist Reader Toolbar
-- **Left**: `Library`, `Contents` (TOC), `Notes`, `Bookmarks`, `Find` (`Ctrl + F`).
-- **Right**: `Immersive Fullscreen` (`F11`) and `Settings`.
-
-### 3-Tab Floating Settings Panel
-1. **Display**:
-   - **4 Reading Themes**: `Light` (Day), `Paper` (Light Sepia), `Dusk` (Dark Sepia), and `Obsidian` (Night).
-   - **Typefaces**: `Publisher` (Original), `Sans`, `Serif`, and `Mono`.
-   - **Font Size & Line Spacing**: Direct size stepper/slider and `Tight` / `Normal` / `Relaxed` spacing presets.
-   - **Page Layout**: `Single` or `Double` page spread (`F10`).
-   - **Eye Comfort**: Screen Dimming and Warm Blue Light Night Filter (`2000K–4500K`).
-2. **Flow**:
-   - **Auto-Scroll**: Toggle on/off, switch between `Fixed` and `Smart`, enter exact manual seconds (`3–600s`), and toggle `Pause at breaks`.
-   - **Read Aloud**: Play/Stop, Pause/Mute, and 1-tap speed chips (`0.8x` to `2.0x`).
-3. **PDF / More**:
-   - **PDF Mode Switcher** (when reading a PDF): `Original` vs. `Reflow` with live progress indicator and **Export as EPUB (Offline)**.
-   - Direct links to **All Preferences** (`FullSettingsModal`) and **Keyboard Shortcuts** (`F1`).
-
-### True Immersive Fullscreen & Content-Only Zoom
-- **Immersive Fullscreen (`F11`)**: Removes the titlebar, top bar, footer, side arrows, and open drawers so only the book text remains. Exit via `Esc`, `F11`, or hovering the top-right exit button.
-- **Dual-State Progress Bar**: Shows 5 quiet dots at rest; expands on hover to show `currentPage / totalPages` and a full-width page scrubber.
-- **Content-Only Zoom (`Ctrl + +` / `Ctrl + -` / `Ctrl + 0`)**: Scales EPUB font size or PDF zoom while keeping window chrome locked at 100%.
+### Local-First Sovereignty Architecture
+All reading records, notes, and catalog indexes are stored client-side in an IndexedDB database powered by Dexie.js. The app never phones home for telemetry or core operations. Network egress occurs only during user-initiated external lookups (online Dictionary, Wikipedia, or DeepL/Google Translate) and when navigating the In-App Book Browser.
 
 ---
 
-## 4. Native PDF Viewer & Offline MuPDF Reflow
+## 2. Library Catalog & Book Ingestion Pipeline
 
-- **Native PDF Viewer**: HiDPI canvas rendering with aligned selectable text overlay, Single/Double page spreads, `50%–300%` zoom, native PDF outline in `Contents`, page bookmarks, smooth `Up`/`Down` scrolling with seamless edge page-turning, and automatic Night/Sepia color adaptation.
-- **Offline MuPDF Reflow Mode**: Powered by Artifex `mupdf` WebAssembly running locally:
-  - Strips repeating running headers, footers, and page numbers.
-  - Preserves headings, bold/italic emphasis, monospace code blocks, chapter bookmarks, and deduplicated inline images.
-  - Rasterizes scanned or diagram-only pages (`< 25` text chars) cleanly as responsive figures.
-  - Caches reflowed EPUBs locally for instant reopening and unlocks all EPUB tools (custom fonts, highlights, notes, full-book Find, Read Aloud, Auto-Scroll).
-- **Offline EPUB Export**: Export any PDF to a standalone `.epub` file from Settings or right-click any PDF in the Library and select **Convert to EPUB (Offline)**.
+### Catalog Views & Visual Ergonomics
+- **Grid View**: Fluid, responsive cover tiles displaying extracted book jacket art, format pills (`EPUB`, `PDF`, `MOBI`, `TXT`), reading progress bars, and emerald green unread badges for newly downloaded books.
+- **List View**: Dense, sortable 5-column table displaying `Title`, `Author`, `Date Added`, `Notes Count`, and `Progress Percentage`.
+- **5-Column Sorting**: Click any header in List or Grid view to toggle ascending and descending order.
 
----
+### File Ingestion Protocols
+1. **Multi-File Picker**: Click the dashed **+ Add book** card in the first shelf slot (or press `Ctrl + O`) to select one or multiple files.
+2. **Recursive Folder Ingestion**: Choose **Add Folder** to scan nested directory trees, identifying and cataloging all supported book formats automatically.
+3. **Full-Window Drag & Drop**: Drag documents directly from Windows Explorer, macOS Finder, or desktop folders anywhere onto the Semply window.
+4. **Bulk Shelf Population**: Inside any custom category, open the `+` card to multi-select existing books from your library without file re-imports.
 
-## 5. Highlights, Notes & Bookmarks
+### Automated Metadata & Jacket Extraction
+- **Cover Discovery**: Reads embedded EPUB/MOBI metadata archives and rasterizes Page 1 of PDFs offline into optimized WebP thumbnails.
+- **Clean Title Normalization**: Automatically identifies and strips common noisy download prefixes (e.g., `[z-lib.org]`, `oceanofpdf.com_`, `(v. 1.0)`) to ensure clean, human-readable titles.
+- **Warm-Paper First Page Typesetting**: When an EPUB or TXT file lacks embedded jacket art, Semply renders a clean, typeset miniature first page displaying the opening paragraphs on a textured warm paper card.
+- **Thumbnail Regeneration**: Right-click any book card and select **Refresh Cover / First Page** to re-extract or re-render thumbnail artwork on demand.
 
-### 6 Theme-Aware Highlight Styles
-Select text in an EPUB to highlight in **Yellow**, **Blue**, **Green**, **Purple**, **Red**, or **Underline**. Semply uses `screen` blending on dark themes and `multiply` blending on light themes so highlights stay sharp and readable in every theme.
-
-### Managing & Exporting Notes
-- Click any highlight on the page to recolor it live, edit its comment (`Ctrl + Enter` to save), copy the quote and note, read it aloud, or delete it (with an Undo toast).
-- Open the **Notes** drawer to search, filter by color or commented-only notes, sort (`Page order`, `Newest`, `Oldest`, `Color`), group by chapter, or export via native Save dialog to **HTML**, **Markdown (.md)**, or **Plain Text**.
-
-### Auto-Excerpt Bookmarks
-Press `Ctrl + B` or click the top-right bookmark ribbon to bookmark the current spread. Semply automatically captures the page's opening sentence as an excerpt inside the **Bookmarks** drawer, where you can rename, search, sort, or jump back.
-
----
-
-## 6. Full-Book Search (`Ctrl + F`)
-
-- Press `Ctrl + F` anywhere in an EPUB (outer window or inside book text) to open **Find in Book**.
-- Live search scans every chapter across the book as you type (`2+` characters), displaying chapter labels and inline amber-highlighted excerpts.
-- Press `Enter` / `Shift + Enter` to step forward/backward through matches with temporary in-page amber highlighting.
+### Shelf Organization & Dynamic Categories
+- **Built-in Shelves**: `All`, `Recently Read`, `Favorites`, `Formats` (`EPUB`, `PDF`), `Read`, and `Trash` (soft-delete staging area with one-click restoration).
+- **Custom Color Categories**: Create an unlimited number of custom shelves. Assign custom labels and choose from 9 curated palette swatches or an interactive RGB/Hex color picker.
+- **Consolidated "Move to:" Menu**: Right-click any book to access the consolidated category submenu. Visual color dots indicate existing assignments, and a top-level **Remove from: [Category]** button appears whenever a book is currently assigned.
+- **4-Way Viewport Flipping**: All context menus dynamically measure available viewport coordinates, automatically flipping horizontally and vertically with mousewheel pass-through to eliminate screen border clipping.
 
 ---
 
-## 7. Dual-Mode Auto-Scroll
+## 3. In-App Book Browser ("Get Books") & Sandboxed Downloads
 
-Configure Auto-Scroll in **Settings -> Flow** or **All Preferences -> Reading settings**:
+### Purpose & Architecture
+Stationed directly under "Read" in the left sidebar, the **Get Books** view provides a calm, in-app directory for discovering and downloading free public-domain books and open digital literature without external browser clutter.
 
-- **Fixed Timer (`3–600s`, default `20s`)**: Deterministic fixed countdown per page.
-- **Smart Pace (`3–600s`, default `25s` base per 180-word reference spread)**: Automatically scales duration to the exact number of visible words on the current spread, clamped to `3s–600s`, with optional `300ms` cognitive micro-pauses on section dividers and blockquotes.
-- **Wheel Nudges (Smart Mode)**: Scroll up to slow pace by `15%`; scroll down to speed up by `10%`.
-- **Muted Bottom-Right Countdown**: Persists even in Immersive Fullscreen. Click the number to pause, switch modes, or edit seconds.
-- **Automatic Safeguards**: Suspends whenever you open a drawer, hover/open footnotes, select text, or leave the app; locks into a safe inactivity pause if you leave Semply for 5+ minutes; automatically recovers across chapter boundaries and stops cleanly at the end of the book.
+### Session Isolation & Navigation Sandboxing
+- **Partitioned Webview**: Browser instances run in an isolated Electron session (`persist:bookbrowser`) completely segregated from the reader app's local storage and security tokens.
+- **Allowlist Domain Gate**: Navigation is strictly locked to verified open e-book repositories and digital archives. Accidental redirects, arbitrary links, or tracking ads to external domains are immediately blocked.
+- **Offline Resilience**: The webview intercepts Chromium network load failures (`did-fail-load`), replacing raw browser error and dinosaur pages with a calm Semply in-app card featuring a "Retry" trigger and a direct return button to the Directory Hub.
+
+### Curated Directory Hub
+The hub comes pre-loaded with ranked, verified e-book archives:
+1. **Standard Ebooks**: High-quality, beautifully typeset public domain editions.
+2. **Project Gutenberg**: Over 70,000 free digital classic books.
+3. **Open Library**: Millions of cataloged open-access and lending books.
+4. **Internet Archive**: Community digital texts, manuscripts, and historical prints.
+5. **LibriVox**: Free public domain audiobooks and text editions.
+6. **ManyBooks**: Popular classics and indie digital publications.
+7. **Ocean of PDF**: Comprehensive digital book search portal.
+8. **PDF Drive**: Large repository of instructional, non-fiction, and academic PDFs.
+9. **D-PDF**: Digital book and manual download archive.
+10. **ReadAnyBook**: Direct browser-based digital reading portal.
+11. **BDeBooks**: Curated collection of international and regional books.
+
+### 3-Tier Custom Site Validation
+Users can add their own self-hosted or trusted reading portals (such as private Calibre-web servers, Kavita libraries, or OPDS feeds) through the **New Site** card. To prevent non-book websites (search engines, social media, streaming, sports) from being added, Semply enforces a strict 3-tier validation engine:
+1. **Tier 1 (Instant Domain Blocklist)**: Rejects known search engines (google, bing), social media (facebook, twitter, reddit, instagram), video streaming (youtube, netflix, twitch), and sports domains (espn, football) instantly without network latency.
+2. **Tier 2 (Metadata & Semantic Keyword Analysis)**: Performs a lightweight head fetch to verify that page titles, descriptions, and meta tags contain authentic book terms (`book`, `ebook`, `epub`, `pdf`, `library`, `literature`, `catalog`, `reading`).
+3. **Tier 3 (Download & Format Signatures)**: Inspects HTML markup for direct e-book download paths (`.epub`, `.pdf`, `.mobi`), OPDS manifest signatures, or self-hosted library application roots (Calibre-web, Kavita). Non-qualifying domains are rejected with a clear message: *"Only e-book archives, digital libraries, and reading portals can be added."*
+
+### Direct File Download & Library Auto-Registration
+- **Local Downloads Target**: Downloads intercepted from verified sites stream directly into the user's native operating system `Downloads` folder (`app.getPath('downloads')`), guaranteeing complete user ownership of the file on disk.
+- **Instant IndexedDB Registration**: Completed downloads are parsed, cover-extracted, and indexed immediately into Semply's Dexie database with `isNewDownload: true` and an instant timestamp, positioning them at the very top of the "All" shelf.
+- **WhatsApp-Style Unread Indicator**: A pulsing emerald green dot appears beside the format pill on the book card in List and Grid views. The indicator stays active until the user opens the book to read, after which the unread status automatically clears.
 
 ---
 
-## 8. Read Aloud (TTS), Dictionary, Footnotes & Warm Night Filter
+## 4. Reading Experience, Themes & Typography
 
-- **Read Aloud**: Live Web Speech Synthesis with smart pronunciation rules (acronyms, decimals like `3.14` -> `3 point 14`, abbreviations like `Dr.` / `e.g.` / `etc.`, and Roman numeral chapters like `Chapter IV` -> `Chapter 4`), configurable speed (`0.8x–2.0x`), pitch, and voice.
-- **Dictionary, Wikipedia & Translation**: Select text for inline definitions (Free Dictionary API) and Wikipedia summaries, or open Merriam-Webster, Oxford Learners, Cambridge, Collins, Vocabulary.com, Wiktionary, Google Translate, or DeepL.
-- **Non-Destructive Footnotes**: Click footnote or endnote references to preview them in a bottom popover (including cross-chapter endnotes) without losing your reading position.
-- **Warm Blue Light Night Filter & Dimming**: Hardware-independent warm amber tint (`2000K–4500K`) and brightness dimming across both EPUB and PDF views.
+### Minimalist Desktop Chrome
+- **Header Titlebar**: Clean native chrome displaying the Semply logo and document title during reading. Free of intrusive beta chips or secondary publisher links.
+- **Left Dock**: Collapsible sidebar with quick navigation to All Books, Recently Read, Favorites, Formats, Custom Categories, Read, and Get Books.
+- **Bottom Dock**: Direct access to Full Settings Modal (`Ctrl + ,`) and Keyboard Shortcuts Help (`F1`).
+
+### 4 Bookmaker Reading Themes
+Engineered with exact chromatic contrast ratios for extended ocular comfort:
+1. **Light**: Crisp alabaster background (`#ffffff`) with deep slate typography (`#1a1a1a`) for bright daytime environments.
+2. **Paper**: Warm light sepia (`#f4ecd8`) evoking premium cotton book stock with gentle charcoal ink (`#2c2416`).
+3. **Dusk**: Muted dark sepia (`#221d18`) providing soft contrast for evening reading.
+4. **Obsidian**: True deep dark theme (`#121212`) engineered for OLED and late-night reading with zero glare.
+
+### Typography Engine
+- **Typeface Families**: Choose between `Publisher` (preserves publisher-specified fonts), `Sans` (Inter, Helvetica Neue), `Serif` (Charter, Georgia, Merriweather), and `Mono` (JetBrains Mono).
+- **Proportional Scaling**: Direct font-size adjustment from `12px` to `36px` alongside three calibrated line-height presets: `Tight` (1.35), `Normal` (1.6), and `Relaxed` (1.9).
+- **Dual/Single Column Spread (`F10`)**: Automatically toggle between single-page reading and classic two-page book spreads. On wide monitors, two-page layout preserves optimal line length (55–75 characters).
+
+### Immersive Fullscreen (`F11`) & Focus Protections
+- **Zero-Chrome Immersion**: Hides titlebars, navigation toolbars, footers, and side arrows so only pristine book text occupies the screen.
+- **10-Second Zero-CPU Cursor Concealment**: When the mouse remains still for 10 seconds during reading, the cursor vanishes completely without continuous timer polling or CPU overhead. Any mouse movement or keypress immediately restores the pointer.
+- **Tactile "Go to Page" Box**: The current page counter is encased in an interactive bracket. Clicking it reveals an autofocus input; enter any page number and press `Enter` to jump instantly across both EPUB and PDF views.
+- **Quiet Progress Scrubber**: At rest, the bottom edge displays five discreet dots. Hovering the edge expands a full-width reading scrubber and chapter progress readout.
 
 ---
 
-## 9. Backup & Additive Sync
+## 5. Native PDF Viewer & Offline MuPDF Reflow
 
-From **All Preferences -> Backup & Sync**:
-- **Export JSON**: Full metadata, shelves, progress, annotations, bookmarks, and preferences.
-- **Export ZIP Archive**: Portable archive bundling `library_metadata.json` plus all book cover art.
-- **Non-Destructive Additive Import**: Merges backups without overwriting local data — unions custom categories, deduplicates books, recovers missing covers from ZIP archives, advances progress only when the backup is further ahead, and appends unseen highlights and bookmarks.
+### Native HiDPI PDF Engine
+- Powered by `pdfjs-dist` rendering onto a sharp HiDPI HTML5 canvas.
+- Features selectable text overlay for effortless copy/paste and highlight creation.
+- Seamless vertical edge scrolling allows continuous reading across page boundaries.
+- Preserves native PDF bookmarks and hierarchical table of contents in the Contents drawer.
+
+### One-Click Offline MuPDF Reflow Mode
+Fixed-column PDFs can be difficult to read on smaller laptop displays. Semply integrates Artifex MuPDF compiled to WebAssembly running 100% locally:
+- **Structural Cleanup**: Analyzes geometric coordinates to identify and strip recurring running headers, footers, and page numbers.
+- **Semantic Reconstruction**: Reconstructs paragraphs into resizable, responsive EPUB chapters while preserving headings, bold/italic text, lists, and monospace code blocks.
+- **Visual Safety Fallback**: Any page containing complex mathematical formulas, diagrams, or scanned images (`< 25` characters of text) is rasterized as a crisp, full-bleed figure so zero content is lost.
+- **Non-Blocking Execution**: Cooperative asynchronous yielding prevents desktop interface freezing during long document conversions. Users can cancel conversion at any time via the UI or `Esc`.
+- **Local Cache**: Converted reflow documents are cached locally for instantaneous subsequent opening.
+
+### Offline Standalone EPUB Export
+Right-click any PDF in your library and select **Convert PDF to EPUB (Offline)**, or click **Export as EPUB** inside the reader settings, to save a standalone, universally readable `.epub` file to your local drive.
 
 ---
 
-## 10. Keyboard Shortcuts
+## 6. Annotations, Second-Brain Notes & Search
 
-| Shortcut | Scope | Action |
-| --- | --- | --- |
-| `Ctrl + O` | Library / Global | Open Import Books / Add Folder modal |
-| `Right` / `Down` / `Page Down` / `Space` | Reader | Next page (or smooth scroll down in PDF / Library) |
-| `Left` / `Up` / `Page Up` / `Backspace` | Reader | Previous page (or smooth scroll up in PDF / Library) |
-| `Home` / `End` | Reader | Jump to first / last page |
-| `Ctrl + F` | EPUB Reader | Open Find in Book / re-focus search input |
-| `Enter` / `Shift + Enter` | Find Drawer | Next / Previous search match |
-| `Ctrl + B` | Reader | Toggle bookmark on current page |
-| `Ctrl + +` / `Ctrl + -` / `Ctrl + 0` | Reader | Content-only zoom (EPUB font size / PDF zoom) |
-| `F9` | Reader | Cycle reading theme |
-| `F10` | Reader | Toggle Single / Double page spread |
+### 6 Theme-Aware Highlight Blends
+Select any passage in an EPUB or PDF document to apply highlights in:
+- **Yellow**, **Blue**, **Green**, **Purple**, **Red**, or **Underline**.
+- Highlights use `multiply` CSS blending on light themes and `screen` blending on dark themes, ensuring text remains sharp and legible across every color profile.
+
+### Interactive In-Page Popover & Note Management
+- Click any highlighted passage to recolor it, add or edit notes (`Ctrl + Enter` to save), copy quotes, read aloud, or delete with an immediate Undo toast.
+- The **Notes Drawer** lets you search, filter by color, view commented-only notes, and sort by page position, date, or color.
+- **Second-Brain Export**: Export all notes and highlights for any book to **Markdown (.md)**, **HTML**, or **Plain Text (.txt)** files ready for Obsidian, Logseq, or Notion.
+
+### Auto-Excerpt Bookmarks (`Ctrl + B`)
+Press `Ctrl + B` or click the ribbon icon to bookmark your spread. Semply automatically captures the opening sentence of the page as a contextual excerpt in the Bookmarks drawer, making it easy to review favorite passages.
+
+### Full-Book Live Spine Search (`Ctrl + F`)
+Press `Ctrl + F` to open Find in Book:
+- Scans every spine item across the entire book in parallel as you type (`2+` characters).
+- Displays matches grouped by chapter with inline amber-highlighted previews.
+- Press `Enter` or `Shift + Enter` to cycle forward and backward through search results.
+
+---
+
+## 7. Dual-Mode Auto-Scroll, TTS & Comfort Tools
+
+### Dual-Mode Auto-Scroll
+Engage hands-free reading via **Settings -> Flow** or the floating countdown widget:
+- **Fixed Timer Mode (`3–600s`, default `20s`)**: Flips pages on a deterministic fixed countdown.
+- **Smart Pace Adaptive Mode (`3–600s`, default `25s` per 180-word base)**: Dynamically calculates page duration based on the exact visible word count of the current spread. Short dialogue pages turn faster; dense prose gives you extra reading time.
+- **Cognitive Micro-Pauses**: Automatically inserts a 300ms pause when turning onto section dividers, blockquotes, or chapter headers.
+- **Mousewheel Cadence Nudges**: Scroll up while reading to slow the pace by 15%; scroll down to speed up by 10%.
+- **Automatic Safeguards**: Auto-Scroll pauses when hovering footnotes, opening drawers, selecting text, or switching application focus.
+
+### Read Aloud (TTS) with Pronunciation Normalization
+- Converts book chapters into spoken voice using the native Web Speech Synthesis API.
+- Normalizes decimal numbers (`3.14` -> `3 point 14`), common abbreviations (`Dr.` -> `Doctor`, `e.g.` -> `for example`), and Roman numeral chapter headings (`Chapter IV` -> `Chapter 4`).
+- Configurable playback speeds from `0.8x` to `2.0x`.
+
+### Non-Destructive Footnote Peeking
+Clicking any footnote or endnote marker opens a clean popover at the bottom of the screen. Users can read footnotes and cross-chapter endnotes without jumping away from their page.
+
+### Hardware-Independent Warm Night Filter
+A specialized blue-light reduction overlay offering color temperatures between `2000K` and `4500K` alongside separate screen dimming controls, functioning across both EPUB and PDF engines.
+
+---
+
+## 8. Backup, Additive Sync & Update Management
+
+### Additive Sync Protocol
+From **Settings -> Backup & Sync**:
+- **Export JSON**: Saves full metadata, reading progress, shelves, annotations, and bookmarks.
+- **Export ZIP Archive**: Bundles the JSON database with all extracted book cover artwork.
+- **Additive Conflict-Free Import**: Merges backup files into your existing library without data loss. Progress is advanced only if the backup has a higher completion percentage; unique notes and highlights are appended seamlessly.
+
+### Gentle Update System & Action Badges
+Semply avoids aggressive background updates that restart the app without warning:
+- Checks for updates quietly upon startup (if auto-check is enabled in settings).
+- When a new release is detected, presents an **Update Available** toast displaying version numbers and **What's New** release notes.
+- Users can choose **Update Now** (opens the release installer directly) or **Later**.
+- Selecting "Later" adds a persistent red notification dot on the **Settings** button in the left sidebar, reminding users an update is pending without interrupting reading.
+- Inside Settings under **System & Updates**, a permanent **Update now** button sits beside "Check now" for immediate access.
+- All external links (GitHub, Documentation, Website, efedera.me, Email Support) execute reliably via the operating system's default browser and mail client, copying email addresses to the clipboard automatically if no desktop mail client is configured.
+
+---
+
+## 9. Complete Keyboard Shortcuts Matrix
+
+| Key Combination | Scope | Function |
+| :--- | :--- | :--- |
+| `Ctrl + O` | Library / Global | Open Add Book / Add Folder dialog |
+| `Right` / `Down` / `Page Down` / `Space` | Reader | Advance to next page / scroll down |
+| `Left` / `Up` / `Page Up` / `Backspace` | Reader | Return to previous page / scroll up |
+| `Home` / `End` | Reader | Jump to beginning / end of book |
+| `Ctrl + F` / `/` | Reader | Open Full-Book Search |
+| `Enter` / `Shift + Enter` | Search Drawer | Step to next / previous match |
+| `Ctrl + B` / `Ctrl + D` | Reader | Toggle bookmark on current page |
+| `Ctrl + +` / `Ctrl + -` | Reader | Content-only text or canvas zoom |
+| `Ctrl + 0` | Reader | Reset content zoom to 100% |
+| `F9` | Reader | Cycle through 4 reading themes |
+| `F10` / `r` | Reader | Toggle Single vs Dual column spread |
 | `F11` | Global | Toggle True Immersive Fullscreen |
-| `F1` | Global | Open Hotkeys & Navigation modal |
-| `Esc` | Global / Reader | Cascade-close popovers, drawers, footnotes, Auto-Scroll, fullscreen, or return to Library |
+| `F1` | Global | Open Hotkeys & Navigation guide |
+| `Esc` | Global | Dismiss drawers, modals, Auto-Scroll, or exit Fullscreen |
 
 ---
 
-## 11. Troubleshooting & FAQ
+## 10. Technical Specifications & Maintenance FAQ
 
-- **Does Semply require an account or internet?** No. Everything runs offline locally; internet is only used for optional Dictionary, Wikipedia, and Translate lookups.
-- **Why does a book display a miniature first page?** Coverless EPUBs and TXT files automatically generate a crisp warm-paper first-page preview; PDFs render Page 1.
-- **Why don't `Ctrl+R` or `F5` reload the app?** Semply intentionally blocks accidental reload, close, and browser history shortcuts so reading state is never wiped.
-- **How do I report an issue or contact the developer?** Submit a bug report at `https://github.com/ederaefe/EPUB-Reader-Desktop/issues/new` or email `efeoghene@proton.me`.
+- **Where are downloaded books stored?** All books downloaded from the in-app browser save directly into your operating system's standard `Downloads` folder (`C:\Users\<User>\Downloads` on Windows).
+- **Can I use Semply completely offline?** Yes. All core reading, PDF reflow conversion, search indexing, TTS voice generation, and database operations run 100% locally.
+- **How are corrupt files handled?** Corrupt EPUB or PDF files trigger an in-app error card offering safe removal or repair without crashing the renderer process.
+- **License**: MIT Open Source License.
+- **Repository**: `https://github.com/ederaefe/EPUB-Reader-Desktop`
+- **Developer**: Efedera (`https://efedera.me` • `efeoghene@proton.me`)

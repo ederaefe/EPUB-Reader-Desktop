@@ -4113,3 +4113,78 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
 
 
 
+
+
+---
+
+## Increment: In-App Book Browser ("Get Books") with Sandboxed Allowlist, 3-Tier Validation & Direct Download Interception
+
+- **Agent Username**: `@Agent-InAppBookBrowser`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Implemented a sandboxed in-app browser ("Get Books") stationed directly below "Read" in the sidebar with 10 popularity-ranked portals (Standard Ebooks, Project Gutenberg, Open Library, LibriVox, ManyBooks, Ocean of PDF, PDF Drive, D-PDF, ReadAnyBook, BDEBooks). Built the `NewSiteCard` matching `AddBookCard`'s squircle geometry with a 3-tier validation engine (Instant Blocklist, Metadata Keyword Analysis, and Download/OPDS Format Signatures) to reject non-book sites. Configured an isolated `persist:bookbrowser` session that intercepts file downloads directly to the standard OS Downloads folder (`app.getPath('downloads')`), extracts covers/metadata, and indexes books into Dexie with a WhatsApp-style green unread badge that clears on first open. Added offline resilience intercepting `did-fail-load` to prevent raw Chromium dinosaur screens.
+- **Problem Statement**: Readers lacked a safe, built-in way to browse free e-book archives or connect to their self-hosted book libraries (Calibre-web, Kavita, OPDS). Navigating in external browsers exposes readers to deceptive ad-redirects, requires manual drag-and-drop of downloaded files from OS folders, and clutters reading focus.
+- **Technical Fix**:
+  - In `src/main/index.ts`: Enabled `webviewTag: true` on `BrowserWindow`. Configured `session.fromPartition('persist:bookbrowser')` with `will-download` saving directly to `app.getPath('downloads')`, dispatching `browser:downloadProgress` and `browser:downloadCompleted`, and calling `authorizeFile`. Configured `app.on('web-contents-created')` to restrict `<webview>` navigation and window-open attempts strictly to verified book hosts and user-approved custom hosts.
+  - In `src/main/index.ts`: Implemented `validateBookWebsite` with 3 tiers: Tier 1 checks an instant blocklist of search engines, sports, social media, and streaming domains; Tier 2 performs an aborted GET request inspecting `<title>` and `<meta>` description/keywords for literary terms; Tier 3 inspects body HTML for `.epub`, `.pdf`, `.mobi`, Calibre, Kavita, or OPDS feed signatures.
+  - In `src/preload/index.ts`: Exposed `window.desktopAPI.bookBrowser` with typed methods for site validation, custom domain updates, download path discovery, and event listeners.
+  - In `src/renderer/src/db/index.ts`: Added optional `isNewDownload?: boolean` to the `Book` interface.
+  - In `src/renderer/src/components/browser/NewSiteCard.tsx`: Constructed a theme-adaptive squircle card with centered `+` medallion and label "New Site", opening a modal with real-time 3-tier validation feedback.
+  - In `src/renderer/src/components/browser/GetBooksView.tsx`: Built the dual-mode view (Curated Directory Hub and Active Webview Browser). Managed custom site persistence in `localStorage` (`semply_custom_book_sites`). Intercepted `did-fail-load` to present a calm theme-adaptive offline screen instead of Chromium dinosaur errors. Auto-imported completed downloads into Dexie with `isNewDownload: true`.
+  - In `src/renderer/src/components/library/Sidebar.tsx`: Added the "Get Books" button under "Read" using a clean `Compass` icon with zero extra badges.
+  - In `src/renderer/src/components/library/BookCard.tsx`: Added an emerald green unread dot (`bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)] animate-pulse`) beside the format tag in both Grid and List modes, clearing upon opening. Updated `areBookCardPropsEqual` to compare `isNewDownload`.
+  - In `src/renderer/src/components/library/LibraryView.tsx`: Mounted `<GetBooksView>` when `selectedCategory === 'get-books'` while keeping the sidebar visible. Cleared `isNewDownload` inside `handleOpenBook`.
+- **Touched Files**:
+  - `src/main/index.ts`
+  - `src/preload/index.ts`
+  - `src/renderer/src/vite-env.d.ts`
+  - `src/renderer/src/db/index.ts`
+  - `src/renderer/src/components/browser/NewSiteCard.tsx`
+  - `src/renderer/src/components/browser/GetBooksView.tsx`
+  - `src/renderer/src/components/library/Sidebar.tsx`
+  - `src/renderer/src/components/library/BookCard.tsx`
+  - `src/renderer/src/components/library/LibraryView.tsx`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - `npm run typecheck` (`tsc --noEmit`): 0 TypeScript compilation errors across main, preload, and renderer.
+  - `npm run build` (`electron-vite build`): All 3 bundles (main, preload, renderer) built and optimized successfully in 36.66s.
+- **Handoff Notes**:
+  - Partition session `persist:bookbrowser` uses Chromium HTTP disk cache to accelerate revisited book sites and store cookies independently from the air-gapped renderer.
+  - To add future default verified book domains, update `VERIFIED_BOOK_HOSTS` in `src/main/index.ts` and `VERIFIED_PORTALS` in `src/renderer/src/components/browser/GetBooksView.tsx`.
+
+---
+
+## Increment: Non-Intrusive Update Notifications, Deferred Action Dot, External Link Fallback & Exhaustive LLM Documentation
+
+- **Agent Username**: `@Agent-UpdateExperience`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Disabled silent background auto-updates (`autoUpdater.autoDownload = false`, `autoUpdater.autoInstallOnAppQuit = false`). Implemented an interactive update toast with release notes and actions ("Update Now" and "Later"). Added a persistent pulsing red notification dot on the Settings button in `Sidebar.tsx` when an update is deferred. In `FullSettingsModal.tsx`, added a direct text button `"Update now"` beside "Check now", cleared the pending badge on modal open, and hardened `handleOpenExternal` with email clipboard copying and desktop API routing. Completely expanded and refreshed `documentations/llms.txt`, `documentations/llms-full.txt`, `documentations/index.html`, and `index.html` to comprehensively cover the "Get Books" in-app browser and reader capabilities.
+- **Problem Statement**: Users found silent background updates or instant downloads intrusive during reading sessions. Deferring an update lacked an indicator to remind users of pending software updates, and clicking external links or `mailto:` could fail silently if default OS handlers were unconfigured. Additionally, AI documentation files (`llms.txt`, `llms-full.txt`) lacked deep architectural coverage.
+- **Technical Fix**:
+  - In `src/main/index.ts`: Configured `autoUpdater` with `autoDownload: false` and `autoInstallOnAppQuit: false`. Forwarded update checks to renderer. Permitted all standard `http:`, `https:`, and `mailto:` URLs in `isAllowedExternalUrl`.
+  - In `src/renderer/src/stores/useAppStore.ts`: Added state fields `availableUpdate`, `showUpdateToast`, and `hasPendingUpdateBadge` with corresponding setters.
+  - In `src/renderer/src/App.tsx`: Dispatched initial update checks cleanly to store state upon startup.
+  - In `src/renderer/src/components/ui/NativeFeedbackHost.tsx`: Built the interactive update toast card rendering release notes and "Update Now" / "Later" actions.
+  - In `src/renderer/src/components/library/Sidebar.tsx`: Rendered a pulsing red notification dot (`w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse`) on the Settings button when `hasPendingUpdateBadge` is true.
+  - In `src/renderer/src/components/modals/FullSettingsModal.tsx`: Added an `"Update now"` text button beside "Check now", cleared `hasPendingUpdateBadge` on modal open, and updated `handleOpenExternal` to copy email address to clipboard on `mailto:` links with a confirmation toast.
+  - In `documentations/llms.txt` and `documentations/llms-full.txt`: Extensively expanded both single-file references with deep technical descriptions of the sandbox session, 3-tier validation algorithms, Dexie indexing, and reader architectures.
+  - In `documentations/index.html` and `index.html`: Added section anchors, Bento grid showcase card, and comparison table entries for the in-app book browser.
+- **Touched Files**:
+  - `src/main/index.ts`
+  - `src/renderer/src/stores/useAppStore.ts`
+  - `src/renderer/src/App.tsx`
+  - `src/renderer/src/components/ui/NativeFeedbackHost.tsx`
+  - `src/renderer/src/components/library/Sidebar.tsx`
+  - `src/renderer/src/components/modals/FullSettingsModal.tsx`
+  - `documentations/llms.txt`
+  - `documentations/llms-full.txt`
+  - `documentations/index.html`
+  - `index.html`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - `npm run typecheck` (`tsc --noEmit`): 0 TypeScript errors.
+  - `npm run build` (`electron-vite build`): All bundles built successfully in 32.63s.
+- **Handoff Notes**:
+  - Update status and notifications honor `settings.autoUpdate !== false`. When auto-check is off, manual checks in Settings remain fully functional.
+

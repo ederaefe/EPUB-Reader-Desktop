@@ -28,6 +28,29 @@ export interface AppUpdateCheckResult {
   error?: string
 }
 
+export interface BookBrowserDownloadProgress {
+  id: string
+  filename: string
+  receivedBytes: number
+  totalBytes: number
+  percent: number
+  state: string
+}
+
+export interface BookBrowserDownloadCompleted {
+  id: string
+  filePath: string
+  filename: string
+  fileSize: number
+}
+
+export interface BookBrowserValidateResult {
+  valid: boolean
+  title?: string
+  hostname?: string
+  error?: string
+}
+
 export interface DesktopAPI {
   minimize: () => Promise<void>
   maximize: () => Promise<void>
@@ -110,6 +133,15 @@ export interface DesktopAPI {
   checkForUpdates: () => Promise<AppUpdateCheckResult>
   getPathForFile: (file: File) => string
   authorizeDroppedFile: (filePath: string) => Promise<{ success: boolean; filePath: string; error?: string }>
+  bookBrowser: {
+    validateBookSite: (url: string) => Promise<BookBrowserValidateResult>
+    setCustomDomains: (domains: string[]) => Promise<boolean>
+    getDownloadsPath: () => Promise<string>
+    onDownloadProgress: (callback: (data: BookBrowserDownloadProgress) => void) => () => void
+    onDownloadCompleted: (callback: (data: BookBrowserDownloadCompleted) => void) => () => void
+    onDownloadFailed: (callback: (data: { id: string; filename: string; error: string }) => void) => () => void
+    onNavigationBlocked: (callback: (data: { url: string; hostname: string }) => void) => () => void
+  }
 }
 
 const api: DesktopAPI = {
@@ -208,7 +240,35 @@ const api: DesktopAPI = {
       return (file as any).path || ''
     }
   },
-  authorizeDroppedFile: (filePath: string) => ipcRenderer.invoke('app:authorizeDroppedFile', filePath)
+  authorizeDroppedFile: (filePath: string) => ipcRenderer.invoke('app:authorizeDroppedFile', filePath),
+  bookBrowser: {
+    validateBookSite: (url: string): Promise<BookBrowserValidateResult> =>
+      ipcRenderer.invoke('browser:validateBookSite', url),
+    setCustomDomains: (domains: string[]): Promise<boolean> =>
+      ipcRenderer.invoke('browser:setAllowedCustomDomains', domains),
+    getDownloadsPath: (): Promise<string> =>
+      ipcRenderer.invoke('browser:getDownloadsPath'),
+    onDownloadProgress: (callback: (data: BookBrowserDownloadProgress) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: BookBrowserDownloadProgress) => callback(data)
+      ipcRenderer.on('browser:downloadProgress', listener)
+      return () => ipcRenderer.removeListener('browser:downloadProgress', listener)
+    },
+    onDownloadCompleted: (callback: (data: BookBrowserDownloadCompleted) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: BookBrowserDownloadCompleted) => callback(data)
+      ipcRenderer.on('browser:downloadCompleted', listener)
+      return () => ipcRenderer.removeListener('browser:downloadCompleted', listener)
+    },
+    onDownloadFailed: (callback: (data: { id: string; filename: string; error: string }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: { id: string; filename: string; error: string }) => callback(data)
+      ipcRenderer.on('browser:downloadFailed', listener)
+      return () => ipcRenderer.removeListener('browser:downloadFailed', listener)
+    },
+    onNavigationBlocked: (callback: (data: { url: string; hostname: string }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: { url: string; hostname: string }) => callback(data)
+      ipcRenderer.on('browser:navigationBlocked', listener)
+      return () => ipcRenderer.removeListener('browser:navigationBlocked', listener)
+    }
+  }
 }
 
 contextBridge.exposeInMainWorld('desktopAPI', api)

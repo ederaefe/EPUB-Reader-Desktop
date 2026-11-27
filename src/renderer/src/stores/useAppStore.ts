@@ -166,6 +166,19 @@ interface AppState {
   // User Settings (aligned with Semply Reader defaults)
   settings: UserSettings
 
+  // Update Notification & Red-Dot State
+  availableUpdate: {
+    hasUpdate: boolean
+    currentVersion: string
+    latestVersion: string
+    releaseName: string
+    releaseNotes: string
+    releaseUrl: string
+    downloadUrl?: string
+  } | null
+  showUpdateToast: boolean
+  hasPendingUpdateBadge: boolean
+
   // Actions
   setView: (view: 'library' | 'reader') => void
   setSelectedCategory: (cat: string) => void
@@ -226,6 +239,9 @@ interface AppState {
   addDownloadedFontId: (id: string) => void
   setDownloadingFontId: (id: string | null) => void
   setIsOnline: (online: boolean) => void
+  setAvailableUpdate: (update: AppState['availableUpdate']) => void
+  setShowUpdateToast: (show: boolean) => void
+  setPendingUpdateBadge: (pending: boolean) => void
 }
 
 let toastDismissTimer: ReturnType<typeof setTimeout> | null = null
@@ -274,6 +290,10 @@ export const useAppStore = create<AppState>((set) => ({
   scrollMode: initialSettings.scrollMode || 'horizontal',
   toast: null,
   confirmDialog: null,
+
+  availableUpdate: null,
+  showUpdateToast: false,
+  hasPendingUpdateBadge: false,
 
   settings: initialSettings,
 
@@ -522,5 +542,8 @@ export const useAppStore = create<AppState>((set) => ({
         : [id, ...s.downloadedFontIds]
     })),
   setDownloadingFontId: (id) => set({ downloadingFontId: id }),
-  setIsOnline: (online) => set({ isOnline: online })
+  setIsOnline: (online) => set({ isOnline: online }),
+  setAvailableUpdate: (update) => set({ availableUpdate: update }),
+  setShowUpdateToast: (show) => set({ showUpdateToast: show }),
+  setPendingUpdateBadge: (pending) => set({ hasPendingUpdateBadge: pending })
 }))

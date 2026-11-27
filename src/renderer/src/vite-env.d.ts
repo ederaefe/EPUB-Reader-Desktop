@@ -6,6 +6,18 @@ declare global {
   interface Window {
     desktopAPI: DesktopAPI
   }
+
+  namespace JSX {
+    interface IntrinsicElements {
+      webview: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        src?: string
+        partition?: string
+        allowpopups?: boolean | string
+        webpreferences?: string
+        useragent?: string
+      }
+    }
+  }
 }
 
 declare module '*.epub' {

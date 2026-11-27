@@ -1,9 +1,18 @@
 import React, { useEffect } from 'react'
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X, Download } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 
 export const NativeFeedbackHost: React.FC = () => {
-  const { toast, clearToast, confirmDialog, closeConfirmDialog } = useAppStore()
+  const {
+    toast,
+    clearToast,
+    confirmDialog,
+    closeConfirmDialog,
+    availableUpdate,
+    showUpdateToast,
+    setShowUpdateToast,
+    setPendingUpdateBadge
+  } = useAppStore()
 
   // Keyboard shortcuts for native confirmation dialog (Escape cancels, Enter confirms)
   useEffect(() => {
@@ -49,6 +58,88 @@ export const NativeFeedbackHost: React.FC = () => {
             <X className="w-3 h-3" />
           </button>
         </div>
+      )}
+
+      {/* Global Interactive Update Notification Card */}
+      {availableUpdate && showUpdateToast && (
+        <aside
+          role="region"
+          aria-label="App update available"
+          className="fixed bottom-5 right-5 z-[125] w-[360px] max-w-[92vw] bg-[#121316]/98 backdrop-blur-md border border-white/15 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] p-4 select-none animate-in fade-in slide-in-from-bottom-3 duration-200"
+        >
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <Download className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-[13px] font-semibold text-white truncate">
+                    Update Available
+                  </h4>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-medium">
+                    v{availableUpdate.latestVersion}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpdateToast(false)
+                setPendingUpdateBadge(true)
+              }}
+              className="text-[#888888] hover:text-white p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              title="Remind me later"
+              aria-label="Close update notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {availableUpdate.releaseNotes && (
+            <div className="mt-2.5 pt-2 border-t border-white/[0.08] text-[11.5px] text-[#a0a0a0] leading-relaxed max-h-24 overflow-y-auto space-y-1">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-[#d0d0d0] block">
+                What's New:
+              </span>
+              <p className="whitespace-pre-line text-[#b0b0b0]">
+                {availableUpdate.releaseNotes}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-3.5 pt-2.5 border-t border-white/[0.08] flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpdateToast(false)
+                setPendingUpdateBadge(true)
+              }}
+              className="h-7 px-3 rounded-md text-[11.5px] font-medium text-[#a0a0a0] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              Later
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowUpdateToast(false)
+                setPendingUpdateBadge(false)
+                const target =
+                  availableUpdate.downloadUrl ||
+                  availableUpdate.releaseUrl ||
+                  'https://github.com/ederaefe/EPUB-Reader-Desktop/releases/latest'
+                if (window.desktopAPI?.openExternal) {
+                  window.desktopAPI.openExternal(target)
+                } else {
+                  window.open(target, '_blank', 'noopener,noreferrer')
+                }
+              }}
+              className="h-7 px-3.5 rounded-md text-[11.5px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-sm"
+            >
+              Update Now
+            </button>
+          </div>
+        </aside>
       )}
 
       {/* Global Native-Style In-App Confirmation Dialog (replaces window.confirm) */}

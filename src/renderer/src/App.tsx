@@ -69,6 +69,24 @@ export const App: React.FC = () => {
   useEffect(() => {
     hydrateSettingsFromDb()
     hydrateDownloadedFonts()
+
+    // Check for available updates on startup if automatic update checking is enabled
+    const checkUpdates = async () => {
+      const state = useAppStore.getState()
+      if (state.settings.autoUpdate !== false && window.desktopAPI?.checkForUpdates) {
+        try {
+          const res = await window.desktopAPI.checkForUpdates()
+          if (res && res.hasUpdate) {
+            state.setAvailableUpdate(res)
+            state.setShowUpdateToast(true)
+          }
+        } catch {
+          // Ignore offline check failures
+        }
+      }
+    }
+    const timer = setTimeout(checkUpdates, 2500)
+    return () => clearTimeout(timer)
   }, [hydrateSettingsFromDb])
 
   useEffect(() => {

@@ -10,7 +10,8 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Compass
 } from 'lucide-react'
 import { useAppStore } from '../../stores/useAppStore'
 import { db, type Category } from '../../db'
@@ -52,7 +53,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
     toggleFullSettingsModal,
     toggleHelpModal,
     openConfirmDialog,
-    showToast
+    showToast,
+    hasPendingUpdateBadge,
+    setPendingUpdateBadge
   } = useAppStore()
 
   const [formatsExpanded, setFormatsExpanded] = useState(false)
@@ -367,17 +370,49 @@ export const Sidebar: React.FC<SidebarProps> = ({ counts, categories, categoryCo
             </span>
             <span className="text-[11px] text-[#6e7681]">{counts.read}</span>
           </button>
+
+          {/* Get Books */}
+          <button
+            onClick={() => {
+              setSelectedCategory('get-books')
+              setFormatFilter(null)
+            }}
+            className={`w-full h-8 flex items-center justify-between px-2.5 rounded transition-colors relative ${
+              isNavActive('get-books')
+                ? 'bg-[#232732] text-white font-medium'
+                : 'text-[#9da7b3] hover:bg-[#1f232c] hover:text-white'
+            }`}
+          >
+            {isNavActive('get-books') && (
+              <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-[#2a69df] rounded-r" />
+            )}
+            <span className="flex items-center gap-2">
+              <Compass className="w-4 h-4 text-[#8b949e]" />
+              <span>Get Books</span>
+            </span>
+          </button>
         </nav>
       </div>
 
       {/* Bottom Docked Settings & Help */}
       <div className="p-2 border-t border-[#232732] space-y-1 text-[12px]">
         <button
-          onClick={() => toggleFullSettingsModal(true)}
-          className="w-full h-8 flex items-center gap-2 px-2.5 rounded text-[#9da7b3] hover:bg-[#1f232c] hover:text-white transition-colors"
+          onClick={() => {
+            setPendingUpdateBadge(false)
+            toggleFullSettingsModal(true)
+          }}
+          className="w-full h-8 flex items-center justify-between px-2.5 rounded text-[#9da7b3] hover:bg-[#1f232c] hover:text-white transition-colors relative"
         >
-          <Settings className="w-4 h-4 text-[#8b949e]" />
-          <span>Settings</span>
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-[#8b949e]" />
+            <span>Settings</span>
+          </div>
+          {hasPendingUpdateBadge && (
+            <span
+              className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse"
+              title="Update available"
+            />
+          )}
         </button>
         <button
           onClick={() => toggleHelpModal(true)}
