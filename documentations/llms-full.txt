@@ -19,6 +19,12 @@ Semply operates under a digital sovereignty model: zero accounts, zero cloud dep
 - **macOS**: Universal `.dmg` disk image and `.zip` bundle with full retina rendering.
 - **Linux**: Standalone `.AppImage` and Debian `.deb` package.
 
+### First-Time Open-Source Installation Notes
+Because Semply is 100% free and open-source under the MIT license with zero paid tiers, commercial corporate signing certificates ($400/yr) are intentionally avoided:
+- **Windows**: Microsoft Defender SmartScreen may display an "Unknown publisher" prompt. Click **"More info"** &rarr; **"Run anyway"**.
+- **macOS**: Apple Gatekeeper may note that the developer cannot be verified. In Finder, **right-click (or Control-click)** `Semply.app` &rarr; choose **"Open"** &rarr; confirm **"Open"** (or use *System Settings &rarr; Privacy &amp; Security &rarr; Open Anyway*).
+- **Linux**: For `.AppImage`, enable execution permissions via file Properties (or `chmod +x Semply-*.AppImage && ./Semply-*.AppImage`). For Debian/Ubuntu, install via `sudo dpkg -i Semply-*.deb`.
+
 ### Local-First Sovereignty Architecture
 All reading records, notes, and catalog indexes are stored client-side in an IndexedDB database powered by Dexie.js. The app never phones home for telemetry or core operations. Network egress occurs only during user-initiated external lookups (online Dictionary, Wikipedia, or DeepL/Google Translate) and when navigating the In-App Book Browser.
 

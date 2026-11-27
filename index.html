@@ -122,6 +122,14 @@
           "@type": "Answer",
           "text": "Yes. Semply is completely free and open-source under the permissive MIT License. There are no subscriptions, ads, or locked features."
         }
+      },
+      {
+        "@type": "Question",
+        "name": "Why do Windows, macOS, or Linux show an unverified developer or permission prompt?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Semply is completely free and open-source. Operating system vendors charge hundreds of dollars annually for proprietary code-signing certificates. On Windows, click 'More info' and 'Run anyway'. On macOS, right-click the app in Finder and choose 'Open'. On Linux, enable executable permissions on the .AppImage."
+        }
       }
     ]
   }
@@ -302,6 +310,66 @@
               </svg>
               <span>All Releases</span>
             </a>
+          </div>
+
+          <!-- Multi-Platform Open-Source Install Guide -->
+          <div class="install-guide-card" role="region" aria-label="First-time installation guide">
+            <div class="install-guide-header">
+              <span>First-time setup guide (free &amp; open source):</span>
+              <div class="install-guide-tabs" role="tablist">
+                <button type="button" class="install-tab-btn active" data-install-target="windows" role="tab" aria-selected="true">Windows</button>
+                <button type="button" class="install-tab-btn" data-install-target="macos" role="tab" aria-selected="false">macOS</button>
+                <button type="button" class="install-tab-btn" data-install-target="linux" role="tab" aria-selected="false">Linux</button>
+              </div>
+            </div>
+            <div class="install-guide-body">
+              <!-- Windows Panel -->
+              <div class="install-panel active" data-install-panel="windows" role="tabpanel">
+                <div class="install-panel-title">
+                  <span>Windows Defender SmartScreen Prompt</span>
+                </div>
+                <p>If Windows shows <em>"Unknown publisher"</em> or prevents startup:</p>
+                <ol class="install-steps-list">
+                  <li>Click the underlined <strong>"More info"</strong> link on the blue prompt.</li>
+                  <li>Click the <strong>"Run anyway"</strong> button that appears at the bottom right.</li>
+                </ol>
+                <p class="install-guide-note">
+                  Semply is 100% free and open-source under the MIT license; we intentionally avoid purchasing $400/yr corporate certificates so the app stays free forever. Every binary is publicly compiled on GitHub Actions.
+                </p>
+              </div>
+
+              <!-- macOS Panel -->
+              <div class="install-panel" data-install-panel="macos" role="tabpanel">
+                <div class="install-panel-title">
+                  <span>Apple Gatekeeper Notice</span>
+                </div>
+                <p>If macOS says Semply <em>"cannot be opened because Apple cannot check it for malicious software"</em>:</p>
+                <ol class="install-steps-list">
+                  <li>In Finder, <strong>right-click (or Control-click)</strong> <code>Semply.app</code> and select <strong>Open</strong>.</li>
+                  <li>Click <strong>Open</strong> on the confirmation dialog. (You only have to do this once).</li>
+                  <li>Alternatively, open <em>System Settings &rarr; Privacy &amp; Security</em> and click <strong>"Open Anyway"</strong>.</li>
+                </ol>
+                <p class="install-guide-note">
+                  Apple requires paid annual developer subscriptions for commercial notarization. As an open-source tool, Semply uses the standard macOS right-click launch.
+                </p>
+              </div>
+
+              <!-- Linux Panel -->
+              <div class="install-panel" data-install-panel="linux" role="tabpanel">
+                <div class="install-panel-title">
+                  <span>Linux Executable Permissions (.AppImage)</span>
+                </div>
+                <p>To run the standalone <code>.AppImage</code> on Ubuntu, Fedora, Arch, or Debian:</p>
+                <ol class="install-steps-list">
+                  <li>Right-click the downloaded <code>.AppImage</code> &rarr; <strong>Properties</strong> &rarr; <strong>Permissions</strong> &rarr; enable <strong>"Allow executing file as program"</strong>.</li>
+                  <li>Or run in terminal: <code>chmod +x Semply-*.AppImage &amp;&amp; ./Semply-*.AppImage</code></li>
+                  <li>For Debian/Ubuntu, you can also install the <code>.deb</code> package: <code>sudo dpkg -i Semply-*.deb</code></li>
+                </ol>
+                <p class="install-guide-note">
+                  Standard Linux security requires explicitly granting execution permission to downloaded binaries.
+                </p>
+              </div>
+            </div>
           </div>
 
           <!-- Universal Format Ribbon -->
@@ -1061,6 +1129,25 @@
             <div class="faq-answer-panel">
               <div class="faq-answer-content">
                 Yes. Semply is free and open-source under the permissive MIT License. There are no paid tiers, no ads, no locked features, and no subscriptions. You own the software and you own your books.
+              </div>
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-question-btn" aria-expanded="false">
+              <span>Why do Windows, macOS, or Linux show an "Unverified" or permission prompt?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="faq-answer-panel">
+              <div class="faq-answer-content">
+                Semply is completely free, community-built, and open-source under the MIT License. Operating system vendors (Microsoft and Apple) charge developers hundreds of dollars in recurring annual fees for proprietary code-signing certificates. We intentionally keep Semply 100% free with zero paywalls.
+                <br><br>
+                <strong>Windows:</strong> Click <em>"More info"</em> &rarr; <em>"Run anyway"</em> on the Defender SmartScreen box.<br>
+                <strong>macOS:</strong> In Finder, right-click (or Control-click) <code>Semply.app</code> and choose <em>"Open"</em> &rarr; <em>"Open"</em>, or click <em>"Open Anyway"</em> under System Settings &rarr; Privacy &amp; Security.<br>
+                <strong>Linux:</strong> Enable <em>"Allow executing file as program"</em> under file Properties, or run <code>chmod +x Semply-*.AppImage</code>.<br><br>
+                Every binary is compiled transparently on GitHub Actions with published SHA-256 checksums you can verify anytime.
               </div>
             </div>
           </div>

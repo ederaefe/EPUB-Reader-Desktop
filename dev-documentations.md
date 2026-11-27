@@ -4188,3 +4188,29 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
 - **Handoff Notes**:
   - Update status and notifications honor `settings.autoUpdate !== false`. When auto-check is off, manual checks in Settings remain fully functional.
 
+---
+
+## Increment: Multi-Platform Open-Source Installation Guide (Windows, macOS, Linux)
+
+- **Agent Username**: `@Agent-PlatformDocs`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Added an interactive multi-platform installation guide card on the website landing page (`index.html`, `landing.css`, `landing.js`) and user documentation (`documentations/index.html`, `documentations/llms-full.txt`). Synchronized the active OS tab with the platform switcher. Documented first-time bypass steps for Windows Defender SmartScreen, macOS Gatekeeper unnotarized app prompts, and Linux AppImage execution permissions.
+- **Problem Statement**: Users downloading open-source releases encounter OS security warnings (SmartScreen "Unknown publisher", macOS Gatekeeper "unidentified developer", or Linux missing executable bit) and need reassurance and direct guidance.
+- **Technical Fix**:
+  - In `landing.css`: Added responsive styles for `.install-guide-card`, `.install-guide-tabs`, `.install-tab-btn`, and `.install-panel`.
+  - In `landing.js`: Implemented `switchInstallGuideTab(targetOS)` and linked it to `setPlatform(newOS)` so the guide automatically selects the user's detected or chosen operating system.
+  - In `index.html`: Embedded `.install-guide-card` under the download CTA, added an accordion FAQ entry, and updated the JSON-LD FAQ schema.
+  - In `documentations/index.html` and `documentations/llms-full.txt`: Documented the OS installation steps in the Getting Started and Troubleshooting sections.
+- **Touched Files**:
+  - `landing.css`
+  - `landing.js`
+  - `index.html`
+  - `documentations/index.html`
+  - `documentations/llms-full.txt`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - Verified tab switching between Windows, macOS, and Linux panels in `landing.js`.
+  - Validated JSON-LD schema syntax.
+
+
