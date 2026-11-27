@@ -4214,3 +4214,29 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
   - Validated JSON-LD schema syntax.
 
 
+
+---
+
+## Increment: Landing Page Tagline, Smart Pace Moat Promotion & Grid Symmetry
+
+- **Agent Username**: `@Agent-MarketingWeb`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Updated the primary landing page (`index.html`) hero headline to *"Built for the part of you that still finishes books."*, promoted the **Smart Pace Auto-Scroll** moat to the #1 showcase position directly below the hero, rewrote the Smart Pace copy for higher reader resonance grounded in `adaptiveScrollService.ts`, moved One-Click Portable Library Backups into the `#ownership` 2x2 matrix to eliminate the trailing orphan slot in `.bento-grid`, and reordered navigation/comparison entries accordingly.
+- **Problem Statement**:
+  1. The previous Smart Pace card sat as Card 4 inside `#ownership` ("Your Books Belong to You, Not to a Corporation"), creating a thematic mismatch and leaving Smart Pace absent from the primary Bento feature showcase.
+  2. In `#features`, six cards with two `bento-span-2` spans occupied 8 of 9 desktop 3-column grid slots, leaving an empty bottom-right cell.
+  3. The Smart Pace description used generic pacing phrasing instead of vivid language reflecting its actual visible-word scaling, 7-page EMA cadence batches, `300ms` scene-break micro-pauses, wheel nudges, and auto-suspension guards.
+- **Technical Fix**:
+  - In `index.html`: Updated `<title>`, `<meta name="title">`, `<meta name="description">`, Open Graph/Twitter tags, `#hero-heading`, and `.hero-subtitle` with the selected tagline *"Built for the part of you that still finishes books."* and Smart Pace-first positioning.
+  - In `index.html`: Moved `#features` directly after `#hero`, replaced the Bento 1 `bento-span-2` slot with the newly paraphrased **Smart Pace** card, shifted `Offline PDF Reflow` to Bento 3 (`bento-span-2`), paired `In-App Book Browser` (`bento-span-2`) with `Whisper-Quiet Battery Efficiency` for 3 full 3-column desktop rows (9 cells total), and updated section background alternation (`#ownership` and `#compare` using `--bg-surface-subtle`).
+  - In `index.html`: Relocated `One-Click Portable Library Backups` into Card 4 of `#ownership` (`.security-matrix-grid`) for a thematically pure 2x2 digital sovereignty grid.
+  - In `index.html`: Promoted Smart Pace to index 0 of the JSON-LD `featureList` and row 1 of the `#compare` comparison table, and aligned header, mobile drawer, and footer anchor link order (`Features`, `Ownership`, `Sanctuary`, `Comparison`).
+- **Touched Files**:
+  - `index.html`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - `npx tsc --noEmit`: Passed with exit code 0.
+  - Local Playwright inspection (`http://localhost:3457/`): Verified both JSON-LD blocks parse cleanly (`ldCount: 2`), confirmed `#hero` -> `#features` -> `#ownership` -> `#experience` -> `#compare` section order, and verified aligned bounding rects across all 3 Bento rows and the 2x2 Ownership grid.
+- **Handoff Notes**:
+  - Changes remain local (uncommitted/unpushed unless requested); never push to `marketing-refinement` — use `origin/main` only.
