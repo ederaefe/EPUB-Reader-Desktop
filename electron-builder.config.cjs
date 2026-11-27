@@ -122,7 +122,7 @@ const config = {
     ]
   },
   dmg: {
-    title: 'Semply Ebook Reader ${version}'
+    title: 'Semply Ebook Reader ${version} ${arch}'
   },
   linux: {
     icon: 'build/icon.png',
