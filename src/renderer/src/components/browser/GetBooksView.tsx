@@ -137,6 +137,54 @@ const VERIFIED_PORTALS: BookPortal[] = [
 
 const CUSTOM_SITES_STORAGE_KEY = 'semply_custom_book_sites'
 
+interface PortalFaviconProps {
+  hostname: string
+  name: string
+  className?: string
+}
+
+/**
+ * Resilient portal favicon renderer with multi-tier source fallbacks:
+ * 1. Google Favicon Service (sz=64 returns crisp PNG icons for virtually all public web domains)
+ * 2. DuckDuckGo Favicon Service
+ * 3. Direct domain /favicon.ico fallback
+ * 4. Calm initial letter / quiet icon fallback on network isolation or load failure
+ */
+const PortalFavicon: React.FC<PortalFaviconProps> = ({ hostname, name, className = 'w-6 h-6' }) => {
+  const [srcIndex, setSrcIndex] = useState(0)
+
+  // Clean hostname (remove port or subpath if any)
+  const cleanHost = hostname.replace(/:\d+$/, '').toLowerCase()
+
+  const sources = [
+    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(cleanHost)}&sz=64`,
+    `https://icons.duckduckgo.com/ip3/${encodeURIComponent(cleanHost)}.ico`,
+    `https://${cleanHost}/favicon.ico`
+  ]
+
+  const handleError = () => {
+    setSrcIndex((prev) => prev + 1)
+  }
+
+  if (srcIndex >= sources.length) {
+    return (
+      <div className={`${className} flex items-center justify-center font-bold text-xs text-[var(--app-accent)] uppercase select-none`}>
+        {name ? name.charAt(0) : <BookOpen className="w-4 h-4 text-[var(--app-accent)]" />}
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={sources[srcIndex]}
+      alt={`${name} icon`}
+      loading="lazy"
+      onError={handleError}
+      className={`${className} object-contain rounded-xs select-none pointer-events-none transition-opacity duration-150`}
+    />
+  )
+}
+
 interface GetBooksViewProps {
   onBookImported?: () => void
 }
@@ -581,10 +629,10 @@ export const GetBooksView: React.FC<GetBooksViewProps> = ({ onBookImported }) =>
                         )}
                       </div>
 
-                      {/* Icon & Title */}
+                      {/* Favicon & Title */}
                       <div className="flex flex-col items-center text-center my-auto py-2">
-                        <div className="w-10 h-10 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] group-hover:border-[var(--app-accent)]/40 flex items-center justify-center text-[var(--app-accent)] mb-2 transition-colors">
-                          <BookOpen className="w-5 h-5" />
+                        <div className="w-11 h-11 rounded-full bg-[var(--app-surface-2)] border border-[var(--app-border)] group-hover:border-[var(--app-accent)]/50 flex items-center justify-center p-2 mb-2 transition-colors overflow-hidden shrink-0 shadow-xs">
+                          <PortalFavicon hostname={portal.hostname} name={portal.name} />
                         </div>
                         <h4 className="text-xs font-bold text-[var(--app-text-strong)] leading-snug line-clamp-2">
                           {portal.name}

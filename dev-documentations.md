@@ -4244,10 +4244,6 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
 ---
 
 ## Increment: Hero Tagline Refinement & Inline Install Guide Removal
-
-- **Agent Username**: `@Agent-MarketingWeb`
-- **Status**: `[COMPLETED]`
-- **What Was Done**: Replaced the landing page hero headline and metadata tagline with *"Your library. Your pace. Nothing else."* and removed the inline `.install-guide-card` block from the hero download CTA (along with its unused styles and tab-switching JS) so the interactive reader mockup sits cleanly above/near the fold while preserving OS setup answers inside `#faq` and `documentations/index.html`.
 - **Problem Statement**:
   1. The previous two-line hero tagline (*"Built for the part of you that still finishes books."*) was superseded by the tighter, cadence-focused *"Your library. Your pace. Nothing else."*
   2. Rendering `.install-guide-card` directly underneath the hero platform pills introduced visual clutter and prominent SmartScreen warning copy before the interactive reader mockup.
@@ -4266,3 +4262,28 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
   - `node --check landing.js`: Passed with exit code 0.
 - **Handoff Notes**:
   - Changes remain local (uncommitted/unpushed) unless explicitly requested; never push to `marketing-refinement` — use `origin/main` only.
+
+---
+
+## Increment: Directory Portal Favicon Display & CSP Permissive Image Sources
+
+- **Agent Username**: `@Agent-BrowserFavicons`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Replaced the generic `<BookOpen />` icon in the "Get Books" directory portal cards with authentic, high-resolution website favicons. Implemented a resilient `PortalFavicon` component utilizing Google's 64px favicon service, DuckDuckGo icon proxy, and direct `/favicon.ico` fallbacks, along with an initial-letter / quiet icon fallback for offline state. Expanded Electron CSP `img-src` in development and production headers to permit external favicon loading.
+- **Problem Statement**:
+  1. The Directory Hub rendered an identical generic book outline icon in the center circular medallion across all 10 verified portals and user-added custom sites, reducing visual distinguishability.
+  2. The default Electron Content Security Policy strictly limited `img-src` to `'self' data: blob:`, preventing external brand favicons from loading over HTTPS.
+- **Technical Fix**:
+  - In `src/main/index.ts`: Expanded `img-src` in both development and production CSP configurations to include `https://www.google.com https://*.google.com https://icons.duckduckgo.com https:`.
+  - In `src/renderer/src/components/browser/GetBooksView.tsx`: Created `PortalFavicon` with multi-tier source resolution (`Google Favicons -> DuckDuckGo -> /favicon.ico -> initial letter/quiet icon`).
+  - In `src/renderer/src/components/browser/GetBooksView.tsx`: Updated the circular card medallion to `w-11 h-11` matching `NewSiteCard` geometry, housing the responsive favicon (`w-6 h-6 object-contain rounded-xs`).
+- **Touched Files**:
+  - `src/main/index.ts`
+  - `src/renderer/src/components/browser/GetBooksView.tsx`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - `npm run typecheck` (`tsc --noEmit`): Exit code 0, zero TypeScript errors.
+  - `npm run build` (`electron-vite build`): Exit code 0, verified bundling of main, preload, and renderer packages.
+- **Handoff Notes**:
+  - Portal cards now render crisp 64px favicons for all verified portals (Standard Ebooks, Project Gutenberg, Open Library, LibriVox, ManyBooks, Ocean of PDF, PDF Drive, D-PDF, ReadAnyBook, BDeBooks) as well as any user-added custom sites.

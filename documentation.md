@@ -297,3 +297,4 @@
 - **Refined Hero Tagline & Cleaner Download Area**:
   - **Hero Brand Messaging**: Updated the Semply landing page hero headline and metadata to *"Your library. Your pace. Nothing else."*
   - **Streamlined Hero Above the Fold**: Removed the inline first-time OS setup card beneath the hero download buttons so visitors move directly from the format chips into the interactive reader preview, while keeping first-time Windows, macOS, and Linux setup answers available in the FAQ and documentation.
+  - **Directory Hub Favicon Medallions**: Replaced the generic book icon in the "Get Books" directory portal cards with authentic, high-resolution website favicons. Both verified public domain repositories and user-added custom libraries display their live brand icons with resilient offline fallbacks.
