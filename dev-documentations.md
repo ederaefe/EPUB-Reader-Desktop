@@ -4240,3 +4240,29 @@ In `NotesDrawer.tsx`, clicking the "All" button only reset `selectedColor = 'all
   - Local Playwright inspection (`http://localhost:3457/`): Verified both JSON-LD blocks parse cleanly (`ldCount: 2`), confirmed `#hero` -> `#features` -> `#ownership` -> `#experience` -> `#compare` section order, and verified aligned bounding rects across all 3 Bento rows and the 2x2 Ownership grid.
 - **Handoff Notes**:
   - Changes remain local (uncommitted/unpushed unless requested); never push to `marketing-refinement` — use `origin/main` only.
+
+---
+
+## Increment: Hero Tagline Refinement & Inline Install Guide Removal
+
+- **Agent Username**: `@Agent-MarketingWeb`
+- **Status**: `[COMPLETED]`
+- **What Was Done**: Replaced the landing page hero headline and metadata tagline with *"Your library. Your pace. Nothing else."* and removed the inline `.install-guide-card` block from the hero download CTA (along with its unused styles and tab-switching JS) so the interactive reader mockup sits cleanly above/near the fold while preserving OS setup answers inside `#faq` and `documentations/index.html`.
+- **Problem Statement**:
+  1. The previous two-line hero tagline (*"Built for the part of you that still finishes books."*) was superseded by the tighter, cadence-focused *"Your library. Your pace. Nothing else."*
+  2. Rendering `.install-guide-card` directly underneath the hero platform pills introduced visual clutter and prominent SmartScreen warning copy before the interactive reader mockup.
+- **Technical Fix**:
+  - In `index.html`: Updated `<title>`, `<meta name="title">`, `<meta name="description">`, Open Graph/Twitter metadata, JSON-LD `SoftwareApplication.description`, and `#hero-heading` to *"Your library. Your pace. Nothing else."* Removed `<div class="install-guide-card">` from `#download` while keeping the `#faq` entry intact.
+  - In `landing.css`: Removed the unused `.install-guide-card`, `.install-guide-header`, `.install-guide-tabs`, `.install-tab-btn`, `.install-guide-body`, `.install-panel`, `.install-panel-title`, `.install-steps-list`, and `.install-guide-note` rules.
+  - In `landing.js`: Removed `switchInstallGuideTab()` and its `.install-tab-btn` event listeners, keeping `setPlatform()` focused on platform pill selection and download URL/label switching.
+- **Touched Files**:
+  - `index.html`
+  - `landing.css`
+  - `landing.js`
+  - `documentation.md`
+  - `dev-documentations.md`
+- **Verification Matrix**:
+  - `npx tsc --noEmit`: Passed with exit code 0.
+  - `node --check landing.js`: Passed with exit code 0.
+- **Handoff Notes**:
+  - Changes remain local (uncommitted/unpushed) unless explicitly requested; never push to `marketing-refinement` — use `origin/main` only.

@@ -149,23 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function switchInstallGuideTab(targetOS) {
-    const tabBtns = document.querySelectorAll('.install-tab-btn[data-install-target]');
-    const panels = document.querySelectorAll('.install-panel[data-install-panel]');
-    tabBtns.forEach(btn => {
-      const match = btn.getAttribute('data-install-target') === targetOS;
-      btn.classList.toggle('active', match);
-      btn.setAttribute('aria-selected', match ? 'true' : 'false');
-    });
-    panels.forEach(panel => {
-      panel.classList.toggle('active', panel.getAttribute('data-install-panel') === targetOS);
-    });
-  }
-
   function setPlatform(newOS) {
     activeOS = newOS;
     updatePlatformPillsUI(activeOS);
-    switchInstallGuideTab(activeOS);
     applyReleaseData(activeReleaseData.tag, activeReleaseData.assets, activeReleaseData.publishedAt);
   }
 
@@ -181,18 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Wire install guide tab clicks
-  const installTabBtns = document.querySelectorAll('.install-tab-btn[data-install-target]');
-  installTabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.getAttribute('data-install-target');
-      if (target) switchInstallGuideTab(target);
-    });
-  });
-
   // Highlight initial detected OS
   updatePlatformPillsUI(activeOS);
-  switchInstallGuideTab(activeOS);
 
   // Initial immediate application of fallback so button is immediately clickable
   applyReleaseData(FALLBACK_VERSION, [], null);
